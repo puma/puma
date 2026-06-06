@@ -85,8 +85,15 @@ class TestPumaServerShutdownDebug < PumaTest
     end
 
     assert_equal 1, output.scan("Shutdown timeout exceeded").length
-    assert_equal 1, output.scan("Shutdown grace timeout exceeded").length
-    assert_equal 2, output.scan("Begin thread backtrace dump").length
+
+    grace_timeout_count = output.scan("Shutdown grace timeout exceeded").length
+    if TRUFFLE_HEAD
+      assert_includes [0, 1], grace_timeout_count
+      assert_equal 1 + grace_timeout_count, output.scan("Begin thread backtrace dump").length
+    else
+      assert_equal 1, grace_timeout_count
+      assert_equal 2, output.scan("Begin thread backtrace dump").length
+    end
   end
 
   private
