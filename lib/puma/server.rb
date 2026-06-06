@@ -457,7 +457,7 @@ module Puma
 
     # :nodoc:
     def handle_check
-      cmd = @check.read(1)
+      cmd = @check.sysread 1
 
       case cmd
       when STOP_COMMAND
@@ -641,16 +641,18 @@ module Puma
     end
 
     def notify_safely(message)
-      @notify << message
-    rescue IOError, NoMethodError, Errno::EPIPE, Errno::EBADF
-      # The server, in another thread, is shutting down
-    rescue RuntimeError => e
-      # Temporary workaround for https://bugs.ruby-lang.org/issues/13239
-      if e.message.include?('IOError')
-        # ignore
-      else
-        raise e
-      end
+      # Use syswrite (a single write(2) syscall) rather than `<<` to
+      # bypass MRI's buffered-IO write lock. That lock can deadlock with
+      # IO#close running in handle_servers' ensure block — the closer
+      # parks in sleep_forever while a buffered writer is mid-write,
+      # even though the writer is woken with IOError (puma#3677).
+      # syswrite is also async-signal-safe, so notify_safely remains
+      # callable from puma's signal handlers (TERM/USR2/INT/HUP) without
+      # raising "can't be called from trap context".
+      notify = @notify
+      notify.syswrite(message) if notify && !notify.closed?
+    rescue IOError, NoMethodError, Errno::EPIPE, Errno::EBADF => e
+      @log_writer.unknown_error(e, nil, "notify_safely error") if Puma::IS_MRI && RUBY_VERSION > '3.3'
     end
     private :notify_safely
 
