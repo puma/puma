@@ -653,6 +653,10 @@ module Puma
           # Puma doesn't process chunk extensions, but should parse if they're
           # present, which is the reason for the semicolon regex
           chunk_hex = line.strip[/\A[^;]+/]
+          if chunk_hex.nil?
+            raise HttpParserError, "Empty chunk size"
+          end
+
           if CHUNK_SIZE_INVALID.match? chunk_hex
             raise HttpParserError, "Invalid chunk size: '#{chunk_hex}'"
           end

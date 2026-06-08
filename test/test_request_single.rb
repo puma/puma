@@ -684,6 +684,14 @@ class TestRequestChunkedInvalid < TestRequestBase
     assert_invalid "#{GET_PREFIX}#{te}\r\n\r\n#{chunked}",
       "Chunk size mismatch"
   end
+
+  def test_chunked_size_empty
+    te = 'Transfer-Encoding: chunked'
+    chunked = "\r\n\r\n"
+
+    assert_invalid "#{GET_PREFIX}#{te}\r\n\r\n#{chunked}",
+      "Empty chunk size"
+  end
 end
 
 # Tests invalid Transfer-Ecoding headers
