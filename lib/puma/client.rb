@@ -623,10 +623,7 @@ module Puma
       @prev_chunk = ""
       @excess_cr = 0
 
-      @body = Tempfile.create(Const::PUMA_TMP_BASE)
-      File.unlink @body.path unless IS_WINDOWS
-      @body.binmode
-      @tempfile = @body
+      @body = EmptyBody
       @chunked_content_length = 0
 
       if decode_chunk(body)
@@ -639,6 +636,14 @@ module Puma
     def write_chunk(str)
       if @http_content_length_limit&.< @chunked_content_length + str.bytesize
         raise_above_http_content_limit
+      end
+
+      if @body.equal?(EmptyBody)
+        @body = Tempfile.create(Const::PUMA_TMP_BASE)
+        File.unlink @body.path unless IS_WINDOWS
+        @body.binmode
+        @tempfile = @body
+        @env[RACK_INPUT] = @body
       end
 
       @chunked_content_length += @body.write(str)

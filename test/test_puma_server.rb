@@ -1121,6 +1121,19 @@ class TestPumaServer < PumaTest
     refute_equal path1, path2
   end
 
+  def test_chunked_request_with_empty_body_does_not_allocate_tempfile
+    rack_input = nil
+    server_run { |env|
+      rack_input = env['rack.input']
+      [200, {}, [""]]
+    }
+
+    response = send_http_read_response "POST / HTTP/1.1\r\nHost: x\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n"
+
+    assert_equal "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
+    assert_kind_of Puma::NullIO, rack_input
+  end
+
   def test_large_chunked_request
     body = nil
     content_length = nil
