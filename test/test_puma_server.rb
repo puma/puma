@@ -2189,9 +2189,10 @@ class TestPumaServer < PumaTest
   end
 
   def test_update_thread_pool_min_max
-    # add a small delay so requests back up
+    # delay enough that 5 requests back up faster than threads finish them,
+    # so the pool spawns up to max rather than reusing the existing thread
     @app = ->(env) do
-      sleep 0.001
+      sleep 0.1
       [200, {}, [env['rack.url_scheme']]]
     end
 
