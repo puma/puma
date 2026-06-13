@@ -498,6 +498,7 @@ class TestIntegration < PumaTest
     skipped = nil
 
     clustered = (workers || 0) >= 2
+    restart_loop_sleep = clustered ? 0.15 : 0.10
 
     args = "-w #{workers} -t 5:5 -q test/rackup/hello_with_delay.ru"
     if Puma.windows?
@@ -588,7 +589,7 @@ class TestIntegration < PumaTest
           begin
             get_worker_pids phase, log: log
             # Wait with an exponential backoff before signaling next restart
-            sleep 0.15 * restart_count
+            sleep restart_loop_sleep * restart_count
           rescue Minitest::Assertion # Timeout
             run = false
           rescue Errno::EBADF # bad restart?
