@@ -42,6 +42,7 @@ jobs:
       PUMA_TEST_DEBUG: true
       TESTOPTS: -v
       PUMA_NO_RUBOCOP: true
+      HOMEBREW_REQUIRE_TAP_TRUST: 1 # remove when Homebrew 6.0.0 or 5.2.0 released
 
     runs-on: ${{ matrix.os }}
     if: |
