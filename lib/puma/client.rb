@@ -46,7 +46,7 @@ module Puma
     ALLOWED_TRANSFER_ENCODING = %w[compress deflate gzip].freeze
 
     # chunked body validation
-    CHUNK_SIZE_INVALID = /[^\h]/.freeze
+    CHUNK_SIZE_VALID = /\A\h+\z/.freeze
     CHUNK_VALID_ENDING = Const::LINE_END
     CHUNK_VALID_ENDING_SIZE = CHUNK_VALID_ENDING.bytesize
 
@@ -653,13 +653,13 @@ module Puma
           # Puma doesn't process chunk extensions, but should parse if they're
           # present, which is the reason for the semicolon regex
           chunk_hex = line.strip[/\A[^;]+/]
-          if chunk_hex.nil?
-            raise HttpParserError, "Empty chunk size"
+          unless CHUNK_SIZE_VALID.match? chunk_hex
+            err_msg = chunk_hex && !chunk_hex.empty? ?
+              "Invalid chunk size: '#{chunk_hex}'" :
+              "Chunk size cannot be empty or nil"
+            raise HttpParserError, err_msg
           end
 
-          if CHUNK_SIZE_INVALID.match? chunk_hex
-            raise HttpParserError, "Invalid chunk size: '#{chunk_hex}'"
-          end
           len = chunk_hex.to_i(16)
           if len == 0
             @in_last_chunk = true

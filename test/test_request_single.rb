@@ -690,7 +690,7 @@ class TestRequestChunkedInvalid < TestRequestBase
     chunked = "\r\n\r\n"
 
     assert_invalid "#{GET_PREFIX}#{te}\r\n\r\n#{chunked}",
-      "Empty chunk size"
+      "Chunk size cannot be empty or nil"
   end
 end
 
