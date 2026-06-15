@@ -65,7 +65,7 @@ class WebServerTest < PumaTest
   end
 
   def test_bad_path
-    socket = do_test("GET : HTTP/1.1\r\n\r\n", 3)
+    socket = do_test("GET : HTTP/1.1\r\nHost: test.com\r\n\r\n", 3)
     data = socket.read
     assert_start_with data, "HTTP/1.1 400 Bad Request\r\ncontent-length: "
     # match is for last backtrace line, may be brittle
@@ -74,7 +74,7 @@ class WebServerTest < PumaTest
   end
 
   def test_header_is_too_long
-    long = "GET /test HTTP/1.1\r\n" + ("X-Big: stuff\r\n" * 15000) + "\r\n"
+    long = "GET /test HTTP/1.1\r\nHost: test.com\r\n" + ("X-Big: stuff\r\n" * 15000) + "\r\n"
     assert_raises Errno::ECONNRESET, Errno::EPIPE, Errno::ECONNABORTED, Errno::EINVAL, IOError do
       do_test_raise(long, long.length/2, 10)
     end
@@ -82,21 +82,21 @@ class WebServerTest < PumaTest
 
   def test_file_streamed_request
     body = "a" * (Puma::Const::MAX_BODY * 2)
-    long = "GET /test HTTP/1.1\r\nContent-length: #{body.length}\r\nConnection: close\r\n\r\n" + body
+    long = "GET /test HTTP/1.1\r\nHost: test.com\r\nContent-length: #{body.length}\r\nConnection: close\r\n\r\n" + body
     socket = do_test(long, (Puma::Const::CHUNK_SIZE * 2) - 400)
     assert_match "hello", socket.read
     socket.close
   end
 
   def test_supported_http_method
-    socket = do_test("PATCH www.zedshaw.com:443 HTTP/1.1\r\nConnection: close\r\n\r\n", 100)
+    socket = do_test("PATCH www.zedshaw.com:443 HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\n\r\n", 100)
     response = socket.read
     assert_match "hello", response
     socket.close
   end
 
   def test_nonexistent_http_method
-    socket = do_test("FOOBARBAZ www.zedshaw.com:443 HTTP/1.1\r\nConnection: close\r\n\r\n", 100)
+    socket = do_test("FOOBARBAZ www.zedshaw.com:443 HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\n\r\n", 100)
     response = socket.read
     assert_match "Not Implemented", response
     socket.close

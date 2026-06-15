@@ -56,7 +56,7 @@ class TestPumaServerShutdownDebug < PumaTest
 
     output = capture_syswrite do
       mutex.synchronize do
-        send_http("GET / HTTP/1.1\r\n\r\n")
+        send_http("GET / HTTP/1.1\r\nHost: test.com\r\n\r\n")
         app_started.wait(mutex)
       end
       @server.stop(true)
@@ -78,7 +78,7 @@ class TestPumaServerShutdownDebug < PumaTest
 
     output = capture_syswrite do
       mutex.synchronize do
-        send_http("GET / HTTP/1.1\r\n\r\n")
+        send_http("GET / HTTP/1.1\r\nHost: test.com\r\n\r\n")
         app_started.wait(mutex)
       end
       @server.stop(true)

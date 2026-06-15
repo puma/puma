@@ -37,10 +37,10 @@ module TestPuma
       s2 = send_http(
         post ?
           "POST /s2 HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nhi!" :
-          "GET /s2 HTTP/1.1\r\n"
+          "GET /s2 HTTP/1.1\r\nHost: test.com\r\n"
       )
       mutex.synchronize do
-        s1 = send_http("GET /s1 HTTP/1.1\r\n\r\n")
+        s1 = send_http("GET /s1 HTTP/1.1\r\nHost: test.com\r\n\r\n")
         app_finished.wait(mutex)
         app_finished.signal if s1_complete
       end
