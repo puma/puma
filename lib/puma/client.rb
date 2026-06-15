@@ -342,6 +342,7 @@ module Puma
 
     # processes the `env` and the request body
     def process_env_body
+      validate_env
       temp = setup_body
       normalize_env
       req_env_post_parse

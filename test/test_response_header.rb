@@ -154,7 +154,7 @@ class TestResponseHeader < PumaTest
 
   def test_header_value_array
     server_run app: ->(env) { [200, {'set-cookie' => ['z=1', 'a=2']}, ['Hello']] }
-    data = send_http_and_read "GET / HTTP/1.1\r\n\r\n"
+    data = send_http_and_read "GET / HTTP/1.1\r\nHost: test.com\r\n\r\n"
 
     resp = "HTTP/1.1 200 OK\r\nset-cookie: z=1\r\nset-cookie: a=2\r\ncontent-length: 5\r\n\r\n"
     assert_includes data, resp

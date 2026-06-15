@@ -61,7 +61,7 @@ module TestPuma
   #
   module PumaSocket
     GET_10 = "GET / HTTP/1.0\r\n\r\n"
-    GET_11 = "GET / HTTP/1.1\r\n\r\n"
+    GET_11 = "GET / HTTP/1.1\r\nHost: test.com\r\n\r\n"
 
     HELLO_11 = "HTTP/1.1 200 OK\r\ncontent-type: text/plain\r\n" \
       "Content-Length: 11\r\n\r\nHello World"

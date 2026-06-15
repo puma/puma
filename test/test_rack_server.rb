@@ -165,6 +165,7 @@ class TestRackServer < PumaTest
 
     socket = TCPSocket.open HOST, @port
     socket.puts "GET /test HTTP/1.1\r\n"
+    socket.puts "Host: #{HOST}:#{@port}\r\n"
     socket.puts "Connection: Keep-Alive\r\n"
     socket.puts "\r\n"
 
@@ -296,6 +297,7 @@ class TestRackServer < PumaTest
 
     socket = TCPSocket.open HOST, @port
     socket.puts "GET /test HTTP/1.1\r\n"
+    socket.puts "Host: #{HOST}:#{@port}\r\n"
     socket.puts "Connection: Keep-Alive\r\n"
     socket.puts "\r\n"
 
@@ -370,7 +372,7 @@ class TestRackServer < PumaTest
     @server.run
 
     socket = TCPSocket.open HOST, @port
-    socket.syswrite "GET / HTTP/1.1\r\nversion: version\r\n\r\n"
+    socket.syswrite "GET / HTTP/1.1\r\nHost: test.com\r\nversion: version\r\n\r\n"
 
     body = socket.sysread(256).split("\r\n\r\n").last
 

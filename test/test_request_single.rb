@@ -14,7 +14,7 @@ class TestRequestBase < PumaTest
 
   PEER_ADDR = -> () { ["AF_INET", 80, "127.0.0.1", "127.0.0.1"] }
 
-  GET_PREFIX = "GET / HTTP/1.1\r\nConnection: close\r\n"
+  GET_PREFIX = "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\n"
   CHUNKED = "1\r\nH\r\n4\r\nello\r\n5\r\nWorld\r\n0\r\n\r\n"
 
   HTTP_METHODS = SUPPORTED_HTTP_METHODS.sort.product([nil]).to_h.freeze
@@ -87,31 +87,31 @@ end
 class TestRequestLineValid < TestRequestBase
 
   def test_method
-    create_client "GET /?a=1 HTTP/1.1\r\n\r\n"
+    create_client "GET /?a=1 HTTP/1.1\r\nHost: test.com\r\n\r\n"
 
     assert_equal 'GET', @client.env[REQUEST_METHOD]
   end
 
   def test_path_plain
-    create_client "GET /puma/request HTTP/1.1\r\n\r\n"
+    create_client "GET /puma/request HTTP/1.1\r\nHost: test.com\r\n\r\n"
 
     assert_equal '/puma/request', @client.env[REQUEST_PATH]
   end
 
   def test_path_with_query
-    create_client "GET /puma/request?query=books&sort=price&order=asc HTTP/1.1\r\n\r\n"
+    create_client "GET /puma/request?query=books&sort=price&order=asc HTTP/1.1\r\nHost: test.com\r\n\r\n"
 
     assert_equal '/puma/request', @client.env[REQUEST_PATH]
   end
 
   def test_query
-    create_client "GET /puma/request?query=books&sort=price&order=asc HTTP/1.1\r\n\r\n"
+    create_client "GET /puma/request?query=books&sort=price&order=asc HTTP/1.1\r\nHost: test.com\r\n\r\n"
 
     assert_equal 'query=books&sort=price&order=asc', @client.env[QUERY_STRING]
   end
 
   def test_uri
-    create_client "GET /puma/request?query=books&sort=price&order=asc HTTP/1.1\r\n\r\n"
+    create_client "GET /puma/request?query=books&sort=price&order=asc HTTP/1.1\r\nHost: test.com\r\n\r\n"
 
     assert_equal '/puma/request?query=books&sort=price&order=asc', @client.env[REQUEST_URI]
   end
@@ -123,7 +123,7 @@ class TestRequestLineValid < TestRequestBase
   end
 
   def test_PROTOCOL_1_1
-    create_client "GET /puma/request?query=books&sort=price&order=asc HTTP/1.1\r\n\r\n"
+    create_client "GET /puma/request?query=books&sort=price&order=asc HTTP/1.1\r\nHost: test.com\r\n\r\n"
 
     assert_equal 'HTTP/1.1', @client.env[SERVER_PROTOCOL]
   end
@@ -132,6 +132,7 @@ class TestRequestLineValid < TestRequestBase
     te = "gzip \t , \t chunked"
     request = <<~REQ.gsub("\n", "\r\n").rstrip
       GET / HTTP/1.1
+      Host: test.com
       Transfer_Encoding: #{te}
       Content_Length: 11
 
@@ -168,18 +169,18 @@ class TestRequestLineInvalid < TestRequestBase
   end
 
   def test_method_lower_case
-    assert_invalid "GEt /?a=1 HTTP/1.1\r\n\r\n",
+    assert_invalid "GEt /?a=1 HTTP/1.1\r\nHost: test.com\r\n\r\n",
       "Invalid HTTP format, parsing fails. Bad method GEt"
   end
 
   def test_method_non_standard
-    assert_invalid "PUMA /?a=1 HTTP/1.1\r\n\r\n",
+    assert_invalid "PUMA /?a=1 HTTP/1.1\r\nHost: test.com\r\n\r\n",
       "PUMA method is not supported",
       err: Puma::HttpParserError501
   end
 
   def test_method_user_not_allowed
-    assert_invalid("POST /?a=1 HTTP/1.1\r\n\r\n",
+    assert_invalid("POST /?a=1 HTTP/1.1\r\nHost: test.com\r\n\r\n",
       "POST method is not supported",
       err: Puma::HttpParserError501) { |c| c.supported_http_methods =
         {'HEAD' => nil, 'GET' => nil}
@@ -187,12 +188,12 @@ class TestRequestLineInvalid < TestRequestBase
   end
 
   def test_path_non_printable
-    assert_invalid "GET /\e?a=1 HTTP/1.1\r\n\r\n",
+    assert_invalid "GET /\e?a=1 HTTP/1.1\r\nHost: test.com\r\n\r\n",
       "Invalid HTTP format, parsing fails. Bad path /\e"
   end
 
   def test_query_non_printable
-    assert_invalid "GET /?a=\e1 HTTP/1.1\r\n\r\n",
+    assert_invalid "GET /?a=\e1 HTTP/1.1\r\nHost: test.com\r\n\r\n",
       "Invalid HTTP format, parsing fails. Bad query a=\e1"
   end
 
@@ -212,7 +213,7 @@ class TestRequestOversizeItem < TestRequestBase
 
   # limit is 256
   def test_header_name
-    request = "GET /test1 HTTP/1.1\r\n#{'a' * 257}: val\r\n\r\n"
+    request = "GET /test1 HTTP/1.1\r\nHost: test.com\r\n#{'a' * 257}: val\r\n\r\n"
 
     msg = Puma::IS_JRUBY ?
       "HTTP element FIELD_NAME is longer than the 256 allowed length." :
@@ -223,7 +224,7 @@ class TestRequestOversizeItem < TestRequestBase
 
   # limit is 80 * 1024
   def test_header_value
-    request = "GET /test1 HTTP/1.1\r\ntest: #{'a' * (80 * 1_024 + 1)}\r\n\r\n"
+    request = "GET /test1 HTTP/1.1\r\nHost: test.com\r\ntest: #{'a' * (80 * 1_024 + 1)}\r\n\r\n"
 
     msg = Puma::IS_JRUBY ?
       "HTTP element FIELD_VALUE is longer than the 81920 allowed length." :
@@ -234,7 +235,7 @@ class TestRequestOversizeItem < TestRequestBase
 
   # limit is 1024
   def test_request_fragment
-    request = "GET /##{'a' * 1025} HTTP/1.1\r\n\r\n"
+    request = "GET /##{'a' * 1025} HTTP/1.1\r\nHost: test.com\r\n\r\n"
 
     msg = Puma::IS_JRUBY ?
       "HTTP element FRAGMENT is longer than the 1024 allowed length." :
@@ -251,12 +252,12 @@ class TestRequestOversizeItem < TestRequestBase
       "HTTP element HEADER is longer than the 114688 allowed length." :
       "HTTP element HEADER is longer than the (1024 * (80 + 32)) allowed length ("
 
-    assert_invalid "GET / HTTP/1.1\r\n#{hdrs}\r\n", msg, start_with: true
+    assert_invalid "GET / HTTP/1.1\r\nHost: test.com\r\n#{hdrs}\r\n", msg, start_with: true
   end
 
   # limit is 10 * 1024
   def test_query_string
-    request = "GET /?#{'a' * (5 * 1024)}=#{'b' * (5 * 1024)} HTTP/1.1\r\n\r\n"
+    request = "GET /?#{'a' * (5 * 1024)}=#{'b' * (5 * 1024)} HTTP/1.1\r\nHost: test.com\r\n\r\n"
 
     msg = Puma::IS_JRUBY ?
       "HTTP element QUERY_STRING is longer than the 10240 allowed length." :
@@ -271,12 +272,12 @@ class TestRequestOversizeItem < TestRequestBase
       "HTTP element REQUEST_PATH is longer than the 8192 allowed length." :
       "HTTP element REQUEST_PATH is longer than the (8192) allowed length (was 8193)"
 
-    assert_invalid "GET /#{'a' * (8 * 1024)} HTTP/1.1\r\n\r\n", msg
+    assert_invalid "GET /#{'a' * (8 * 1024)} HTTP/1.1\r\nHost: test.com\r\n\r\n", msg
   end
 
   # limit is 12 * 1024
   def test_request_uri
-    request = "GET /#{'a' * 6 * 1024}?#{'a' * 3 * 1024}=#{'a' * 3 * 1024} HTTP/1.1\r\n\r\n"
+    request = "GET /#{'a' * 6 * 1024}?#{'a' * 3 * 1024}=#{'a' * 3 * 1024} HTTP/1.1\r\nHost: test.com\r\n\r\n"
 
     msg = Puma::IS_JRUBY ?
       "HTTP element REQUEST_URI is longer than the 12288 allowed length." :
@@ -288,7 +289,7 @@ class TestRequestOversizeItem < TestRequestBase
   def test_content_length_exceeded
     long_string = 'a' * 200_000
 
-    request = "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nContent-Length: #{long_string.bytesize}\r\n\r\n" \
+    request = "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: Keep-Alive\r\nContent-Length: #{long_string.bytesize}\r\n\r\n" \
       "#{long_string}"
 
     msg = 'Payload Too Large'
@@ -304,7 +305,7 @@ class TestRequestOversizeItem < TestRequestBase
     long_string_part = "#{long_string.bytesize.to_s 16}\r\n#{long_string}\r\n"
     long_chunked = "#{long_string_part * chunk_part_qty}0\r\n\r\n"
 
-    request = "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\n" \
+    request = "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: Keep-Alive\r\n" \
       "Transfer-Encoding: chunked\r\n\r\n#{long_chunked}"
 
     msg = 'Payload Too Large'
@@ -317,7 +318,7 @@ end
 class TestRequestHeadersValid < TestRequestBase
 
   def test_content
-    create_client "GET / HTTP/1.1\r\nContent-Length: 11\r\n\r\nHello World"
+    create_client "GET / HTTP/1.1\r\nHost: test.com\r\nContent-Length: 11\r\n\r\nHello World"
 
     assert_instance_of Float, @client.env['puma.request_body_wait']
     assert_equal '11', @client.env[CONTENT_LENGTH]
@@ -328,6 +329,7 @@ class TestRequestHeadersValid < TestRequestBase
   def test_content_chunked
     request = request = <<~REQ.gsub("\n", "\r\n")
       GET / HTTP/1.1
+      Host: test.com
       Transfer-Encoding: chunked
 
       11
@@ -350,7 +352,7 @@ class TestRequestHeadersValid < TestRequestBase
 
   # if a header with an underscore exists, and is a singular key,  accept it
   def test_underscore_single
-    request = "GET / HTTP/1.1\r\n" \
+    request = "GET / HTTP/1.1\r\nHost: test.com\r\n" \
       "x_forwarded_for: 1.1.1.1\r\n" \
       "Content-Length: 11\r\n\r\nHello World"
 
@@ -361,7 +363,7 @@ class TestRequestHeadersValid < TestRequestBase
   end
 
   def test_underscore_single_disallowed
-    request = "GET / HTTP/1.1\r\n" \
+    request = "GET / HTTP/1.1\r\nHost: test.com\r\n" \
       "x_forwarded_for: 1.1.1.1\r\n" \
       "Content-Length: 11\r\n\r\nHello World"
 
@@ -374,6 +376,7 @@ class TestRequestHeadersValid < TestRequestBase
   def test_underscore_header_1
     request = <<~REQ.gsub("\n", "\r\n").rstrip
       GET / HTTP/1.1
+      Host: test.com
       x-forwarded_for: 2.2.2.2
       x-forwarded-for: 1.1.1.1
       Content-Length: 11
@@ -391,6 +394,7 @@ class TestRequestHeadersValid < TestRequestBase
   def test_underscore_collision_disallowed
     request = <<~REQ.gsub("\n", "\r\n").rstrip
       GET / HTTP/1.1
+      Host: test.com
       x-forwarded-for: 1.1.1.1
       x_forwarded_for: 2.2.2.2
       Content-Length: 11
@@ -438,6 +442,7 @@ class TestRequestHeadersValid < TestRequestBase
   def test_unmaskable_headers
     request = <<~REQ.gsub("\n", "\r\n").rstrip
       GET / HTTP/1.1
+      Host: test.com
       Transfer_Encoding: chunked
       Content_Length: 11
 
@@ -479,10 +484,24 @@ class TestRequestHeadersValid < TestRequestBase
     assert_instance_of Puma::NullIO, @client.body
   end
 
-  def test_host_header_missing
+  def test_host_header_missing_http10
     create_client "GET / HTTP/1.0\r\n\r\n"
 
     assert_equal 'localhost', @client.env[SERVER_NAME]
+    assert_equal '80', @client.env[SERVER_PORT]
+  end
+
+  def test_host_header_empty_http10
+    create_client "GET / HTTP/1.0\r\nHost:\r\n\r\n"
+
+    assert_equal '', @client.env[SERVER_NAME]
+    assert_equal '80', @client.env[SERVER_PORT]
+  end
+
+  def test_host_header_whitespace_http10
+    create_client "GET / HTTP/1.0\r\nHost: \r\n\r\n"
+
+    assert_equal '', @client.env[SERVER_NAME]
     assert_equal '80', @client.env[SERVER_PORT]
   end
 
@@ -567,23 +586,41 @@ end
 class TestRequestHeadersInvalid < TestRequestBase
 
   def test_malformed_headers_no_return
-    request = "GET / HTTP/1.1\r\nno-return: 10\nContent-Length: 11\r\n\r\nHello World"
+    request = "GET / HTTP/1.1\r\nHost: test.com\r\nno-return: 10\nContent-Length: 11\r\n\r\nHello World"
 
     msg = Puma::IS_JRUBY ?
-      "Invalid HTTP format, parsing fails. Bad headers\nno-return: 10\\nContent-Length: 11" :
-      "Invalid HTTP format, parsing fails. Bad headers\nNO_RETURN: 10\\nContent-Length: 11"
+      "Invalid HTTP format, parsing fails. Bad headers\nhost: test.com\nno-return: 10\\nContent-Length: 11" :
+      "Invalid HTTP format, parsing fails. Bad headers\nHOST: test.com\nNO_RETURN: 10\\nContent-Length: 11"
 
     assert_invalid request, msg
   end
 
   def test_malformed_headers_no_newline
-    request = "GET / HTTP/1.1\r\nno-newline: 10\rContent-Length: 11\r\n\r\nHello World"
+    request = "GET / HTTP/1.1\r\nHost: test.com\r\nno-newline: 10\rContent-Length: 11\r\n\r\nHello World"
 
     msg = Puma::IS_JRUBY ?
-      "Invalid HTTP format, parsing fails. Bad headers\nno-newline: 10\rContent-Length: 11" :
-      "Invalid HTTP format, parsing fails. Bad headers\nNO_NEWLINE: 10\rContent-Length: 11"
+      "Invalid HTTP format, parsing fails. Bad headers\nhost: test.com\nno-newline: 10\rContent-Length: 11" :
+      "Invalid HTTP format, parsing fails. Bad headers\nHOST: test.com\nNO_NEWLINE: 10\rContent-Length: 11"
 
     assert_invalid request, msg
+  end
+
+  def test_missing_host_http11
+    assert_invalid "GET / HTTP/1.1\r\n\r\n",
+      "Missing Host header",
+      status: 400
+  end
+
+  def test_empty_host_http11
+    assert_invalid "GET / HTTP/1.1\r\nHost:\r\n\r\n",
+      "Invalid Host header",
+      status: 400
+  end
+
+  def test_whitespace_host_http11
+    assert_invalid "GET / HTTP/1.1\r\nHost: \r\n\r\n",
+      "Invalid Host header",
+      status: 400
   end
 end
 
@@ -742,8 +779,8 @@ end
 class TestRequestReset < TestRequestBase
 
   def test_reset_clears_error_status_code
-    first_request = "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\n\r\n"
-    second_request = "GET /next HTTP/1.1\r\n\r\n"
+    first_request = "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: Keep-Alive\r\n\r\n"
+    second_request = "GET /next HTTP/1.1\r\nHost: test.com\r\n\r\n"
 
     create_client("#{first_request}#{second_request}") { |client|
       client.http_content_length_limit = 10
@@ -764,7 +801,7 @@ class TestRequestPeerip < TestRequestBase
 
   def test_peerip_unmaps_ipv4_mapped_ipv6
     peer_addr = -> () { ["AF_INET6", 80, "::ffff:127.0.0.1", "::ffff:127.0.0.1"] }
-    create_client("GET / HTTP/1.1\r\n\r\n", peer_addr: peer_addr)
+    create_client("GET / HTTP/1.1\r\nHost: test.com\r\n\r\n", peer_addr: peer_addr)
 
     assert_equal "127.0.0.1", @client.peerip
     assert_equal "127.0.0.1", @client.env["REMOTE_ADDR"]
@@ -772,7 +809,7 @@ class TestRequestPeerip < TestRequestBase
 
   def test_remote_addr_header_fallback_unmaps_ipv4_mapped_ipv6
     peer_addr = -> () { ["AF_INET6", 80, "::ffff:10.1.2.3", "::ffff:10.1.2.3"] }
-    create_client("GET / HTTP/1.1\r\n\r\n", peer_addr: peer_addr) { |client|
+    create_client("GET / HTTP/1.1\r\nHost: test.com\r\n\r\n", peer_addr: peer_addr) { |client|
       client.remote_addr_header = "HTTP_X_REMOTE_IP"
     }
 
@@ -781,14 +818,14 @@ class TestRequestPeerip < TestRequestBase
   end
 
   def test_peerip_preserves_plain_ipv4
-    create_client("GET / HTTP/1.1\r\n\r\n")
+    create_client("GET / HTTP/1.1\r\nHost: test.com\r\n\r\n")
 
     assert_equal "127.0.0.1", @client.peerip
   end
 
   def test_peerip_preserves_native_ipv6
     peer_addr = -> () { ["AF_INET6", 80, "::1", "::1"] }
-    create_client("GET / HTTP/1.1\r\n\r\n", peer_addr: peer_addr)
+    create_client("GET / HTTP/1.1\r\nHost: test.com\r\n\r\n", peer_addr: peer_addr)
 
     assert_equal "::1", @client.peerip
   end

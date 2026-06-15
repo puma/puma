@@ -117,7 +117,7 @@ class TestPumaServerSSL < PumaTest
     start_server
     @server.app = proc { |env| [200, {}, [env['rack.url_scheme'], "\n", env['rack.input'].read]] }
 
-    req = "POST / HTTP/1.1\r\nContent-Type: text/plain\r\nContent-Length: 7\r\n\r\na=1&b=2"
+    req = "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 7\r\n\r\na=1&b=2"
 
     body = send_http_read_resp_body req, ctx: new_ctx
 
