@@ -38,7 +38,7 @@ jobs:
 
     steps:
       - name: checkout rack-conform
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: socketry/rack-conform
 
