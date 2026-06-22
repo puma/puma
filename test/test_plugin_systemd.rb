@@ -54,6 +54,17 @@ class TestPluginSystemd < TestIntegration
     assert_message "STOPPING=1"
   end
 
+  def test_systemd_watchdog_sends_immediate_ping_after_ready
+    wd_env = @env.merge({"WATCHDOG_USEC" => "1_000_000"})
+    cli_server "test/rackup/hello.ru", env: wd_env
+
+    assert_message "READY=1"
+    assert_message "WATCHDOG=1"
+
+    stop_server
+    assert_message "STOPPING=1"
+  end
+
   def test_systemd_notify
     cli_server "test/rackup/hello.ru", env: @env
     assert_message "READY=1"
