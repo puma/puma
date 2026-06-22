@@ -20,7 +20,7 @@ class TestRequestInvalidMultiple < PumaTest
   include TestPuma
   include TestPuma::PumaSocket
 
-  GET_PREFIX = "GET / HTTP/1.1\r\nconnection: close\r\n"
+  GET_PREFIX = "GET / HTTP/1.1\r\nHost: test.com\r\nconnection: close\r\n"
   CHUNKED = "1\r\nH\r\n4\r\nello\r\n5\r\nWorld\r\n0\r\n\r\n"
 
   HOST = HOST4
@@ -106,6 +106,16 @@ class TestRequestInvalidMultiple < PumaTest
     end
   end
 
+  # ──────────────────────────────────── below are invalid Host header
+
+  def test_missing_host_http11
+    assert_status "GET / HTTP/1.1\r\n\r\n", 400
+  end
+
+  def test_empty_host_http11
+    assert_status "GET / HTTP/1.1\r\nHost:\r\n\r\n", 400
+  end
+
   # ──────────────────────────────────── below are oversize path length
 
   def test_oversize_path_keep_alive
@@ -113,9 +123,9 @@ class TestRequestInvalidMultiple < PumaTest
 
     socket = new_socket
 
-    assert_status "GET / HTTP/1.1\r\n\r\n", 200, socket: socket
+    assert_status "GET / HTTP/1.1\r\nHost: test.com\r\n\r\n", 200, socket: socket
 
-    assert_status "GET #{path} HTTP/1.1\r\n\r\n", socket: socket
+    assert_status "GET #{path} HTTP/1.1\r\nHost: test.com\r\n\r\n", socket: socket
     assert_includes @response.body, "lib/puma/client.rb"
   end
 
@@ -124,7 +134,7 @@ class TestRequestInvalidMultiple < PumaTest
   def test_content_length_bad_characters_1_keep_alive
     socket = new_socket
 
-    assert_status "GET / HTTP/1.1\r\n\r\n", 200, socket: socket
+    assert_status "GET / HTTP/1.1\r\nHost: test.com\r\n\r\n", 200, socket: socket
 
     cl = 'Content-Length: 5.01'
 
@@ -148,7 +158,7 @@ class TestRequestInvalidMultiple < PumaTest
     long_string = 'a' * 200_000
     server_run(http_content_length_limit: 190_000, lowlevel_error_handler: lleh) { [200, {}, ['Hello World']] }
 
-    socket = send_http "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\nContent-Length: 200000\r\n\r\n" \
+    socket = send_http "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: Keep-Alive\r\nContent-Length: 200000\r\n\r\n" \
       "#{long_string}"
 
     unless Puma::IS_WINDOWS
@@ -186,7 +196,7 @@ class TestRequestInvalidMultiple < PumaTest
       lowlevel_error_handler: lleh
     ) { [200, {}, ['Hello World']] }
 
-    socket = send_http "GET / HTTP/1.1\r\nConnection: Keep-Alive\r\n" \
+    socket = send_http "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: Keep-Alive\r\n" \
       "Transfer-Encoding: chunked\r\n\r\n#{long_chunked}"
 
     unless Puma::IS_WINDOWS
