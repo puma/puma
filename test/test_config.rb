@@ -442,6 +442,18 @@ class TestConfigFile < PumaTest
     assert_equal 150, conf.options[:worker_shutdown_timeout]
   end
 
+  def test_worker_check_interval_accepts_float
+    conf = Puma::Configuration.new { |c| c.worker_check_interval 0.1 }
+    conf.clamp
+    assert_equal 0.1, conf.options[:worker_check_interval]
+  end
+
+  def test_worker_check_interval_accepts_float_string
+    conf = Puma::Configuration.new { |c| c.worker_check_interval "0.5" }
+    conf.clamp
+    assert_equal 0.5, conf.options[:worker_check_interval]
+  end
+
   def test_config_files_max_keep_alive_infinity
     conf = Puma::Configuration.new(config_files: ['test/config/max_keep_alive_infinity.rb']) do
     end
