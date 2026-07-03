@@ -1176,7 +1176,7 @@ module Puma
     # @see Puma::Cluster#check_workers
     #
     def worker_check_interval(interval)
-      @options[:worker_check_interval] = Integer(interval)
+      @options[:worker_check_interval] = Float(interval)
     end
 
     # Verifies that all workers have checked in to the master process within
