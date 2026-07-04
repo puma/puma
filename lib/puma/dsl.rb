@@ -1321,7 +1321,13 @@ module Puma
     # If `on_force` is true, the backtraces will be written only
     # when the shutdown is forced i.e. not graceful.
     #
+    # The default is +nil+.
+    #
+    # @example
+    #   shutdown_debug
+    #
     # @see force_shutdown_after
+    #
     def shutdown_debug(val = true, on_force: false)
       @options[:shutdown_debug] = val && on_force ? :on_force : val
     end
