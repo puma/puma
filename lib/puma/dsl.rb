@@ -944,7 +944,7 @@ module Puma
 
     alias_method :on_booted, :after_booted
 
-    # Code to run after puma is stopped (works for both single and cluster modes).
+    # Code to run after Puma is stopped (works for both single and cluster modes).
     #
     # @example
     #   after_stopped do
