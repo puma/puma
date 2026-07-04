@@ -1450,12 +1450,14 @@ module Puma
 
     # The number of requests a keep-alive client can submit before being closed.
     # Note that some applications (server to server) may benefit from a very high
-    # number or Float::INFINITY.
+    # number or +Float::INFINITY+.
     #
-    # The default is 999.
+    # The default is +999+.
     #
     # @example
     #   max_keep_alive 20
+    #
+    # @see enable_keep_alives
     #
     def max_keep_alive(num_of_requests)
       @options[:max_keep_alive] = Float(num_of_requests) unless num_of_requests.nil?
