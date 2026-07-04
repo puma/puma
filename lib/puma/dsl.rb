@@ -1033,8 +1033,8 @@ module Puma
     alias_method :on_thread_start, :before_thread_start
 
     # Provide a block to be executed after a thread is trimmed from the thread
-    # pool. Be careful: while this block executes, Puma's main loop is
-    # blocked, so no new requests will be picked up.
+    # pool. Note that while this block executes, Puma's main loop is blocked,
+    # so no new requests will be picked up.
     #
     # This hook only runs when a thread in the threadpool is trimmed by Puma.
     # It does not run when a thread dies due to exceptions or any other cause.
