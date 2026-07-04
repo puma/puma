@@ -929,7 +929,7 @@ module Puma
       process_hook :after_worker_shutdown, nil, block, cluster_only: true
     end
 
-    # Code to run after puma is booted (works for both single and cluster modes).
+    # Code to run after Puma is booted (works for both single and cluster modes).
     #
     # @example
     #   after_booted do
