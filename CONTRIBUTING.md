@@ -226,15 +226,15 @@ Puma uses [GitHub Actions](https://docs.github.com/en/actions) for CI testing. P
 
 CI runs against the latest patch release of each supported Ruby minor version. When reporting bugs or reproducing issues, please use the latest patch release for your Ruby minor version so your environment matches CI coverage.
 
-If changes are suggested, and you agree with the changes, please use a separate commit
-for them.  We can always squash commits when merging the commit.
+If changes are suggested, and you agree with them, please use a separate commit
+for them.  We can always squash commits when merging.
 
 ## Pull requests - bug fixes
 
-If your PR is a 'bug fix', please consider having your PR be at least two commits.
+If your PR is a 'bug fix', please consider having it be at least two commits.
 
-The first commit(s) should be the tests, which should fail when run on master.
-The second set of commits (maybe single) should be the fixes.
+The first commit(s) should be the tests, which should fail when run on main.
+The second set of commits (maybe a single one) should be the fixes.
 
 This allows maintainers to check out the tests commit and run them, verifying that
 the bug exists.
