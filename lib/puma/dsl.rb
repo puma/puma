@@ -400,7 +400,7 @@ module Puma
       @options[:drain_on_shutdown] = which
     end
 
-    # Set the environment in which the rack's app will run. The value must be
+    # Set the environment in which the Rack app will run. The value must be
     # a string.
     #
     # The default is "development".
