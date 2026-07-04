@@ -1508,6 +1508,9 @@ module Puma
     #
     # The default is +:auto+.
     #
+    # @example
+    #   io_selector_backend :epoll
+    #
     # @see https://github.com/socketry/nio4r/blob/main/lib/nio/selector.rb
     #
     def io_selector_backend(backend)
