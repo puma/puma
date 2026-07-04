@@ -1517,8 +1517,8 @@ module Puma
       @options[:io_selector_backend] = backend.to_sym
     end
 
-    # Ensures +STDOUT+ and +STDERR+ is immediately flushed to the underlying
-    # operating system and is not buffered internally
+    # Ensures +STDOUT+ and +STDERR+ are immediately flushed to the underlying
+    # operating system and are not buffered internally.
     #
     # The default is +true+.
     #
