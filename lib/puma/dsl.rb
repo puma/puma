@@ -590,10 +590,10 @@ module Puma
     #
     # It can be a single fixed number, or a +min+ and a +max+.
     #
-    # The default is the environment variables +PUMA_MIN_THREADS+ / +PUMA_MAX_THREADS+
-    # (or +MIN_THREADS+ / +MAX_THREADS+ if the +PUMA_+ variables aren't set).
-    #
-    # If these environment variables aren't set, the default is "0, 5" in MRI or "0, 16" for other interpreters.
+    # The default is taken from the +PUMA_MIN_THREADS+ / +PUMA_MAX_THREADS+
+    # environment variables (or +MIN_THREADS+ / +MAX_THREADS+ if the +PUMA_+
+    # variables are not set). If those environment variables are also unset,
+    # the default is `0, 5` in MRI or `0, 16` for other interpreters.
     #
     # @example
     #   threads 5
