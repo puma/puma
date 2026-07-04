@@ -562,9 +562,7 @@ module Puma
     end
 
     # Redirect +STDOUT+ and +STDERR+ to files specified. The +append+ parameter
-    # specifies whether the output is appended.
-    #
-    # The default is +false+.
+    # specifies whether the output is appended, and defaults to +false+.
     #
     # @example
     #   stdout_redirect '/app/lolcat/log/stdout', '/app/lolcat/log/stderr'
