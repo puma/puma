@@ -1008,9 +1008,9 @@ module Puma
     end
 
     # Provide a block to be executed just before a thread is added to the thread
-    # pool. Be careful: while the block executes, thread creation is delayed, and
-    # probably a request will have to wait too! The new thread will not be added to
-    # the threadpool until the provided block returns.
+    # pool. Note that while the block executes, thread creation is delayed, and
+    # a request may have to wait. The new thread will not be added to the
+    # threadpool until the provided block returns.
     #
     # Return values are ignored.
     # Raising an exception will log a warning.
