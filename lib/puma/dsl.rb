@@ -1375,7 +1375,7 @@ module Puma
     #    HAproxy PROXY protocol, version 1. If the request does not have the PROXY
     #    protocol attached to it, will fall back to :socket
     # 5. **\<Any string\>** - this allows you to hardcode remote address to any value
-    #    you wish. Because Puma never uses this field anyway, it's format is
+    #    you wish. Because Puma never uses this field anyway, its format is
     #    entirely in your hands.
     #
     # The default is +:socket+.
