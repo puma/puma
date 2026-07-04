@@ -500,6 +500,8 @@ module Puma
     # @example
     #   log_requests
     #
+    # @see quiet
+    #
     def log_requests(which=true)
       @options[:log_requests] = which
     end
