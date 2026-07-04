@@ -832,8 +832,8 @@ module Puma
       process_hook :before_fork, nil, block, cluster_only: true
     end
 
-    # Code to run in a worker when it boots to setup
-    # the process before booting the app.
+    # Code to run in a worker on boot to set up the process before
+    # the app is loaded. The worker's index is passed as an argument.
     #
     # This can be called multiple times to add several hooks.
     #
