@@ -211,6 +211,7 @@ module Puma
                 processor.marked_as_io_thread = false
               else
                 # We're already at max threads, so we exit the extra io thread.
+                @spawned -= 1
                 @processors.delete(processor)
                 trigger_before_thread_exit_hooks
                 Thread.exit
