@@ -332,7 +332,7 @@ module Puma
       bind URI::Generic.build(scheme: 'tcp', host: host, port: Integer(port)).to_s
     end
 
-    # Define how long the tcp socket stays open, if no data has been received.
+    # Define how long the TCP socket stays open when no data has been received.
     #
     # The default is 30 seconds.
     #
