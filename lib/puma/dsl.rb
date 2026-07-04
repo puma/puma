@@ -482,10 +482,12 @@ module Puma
 
     # Disable request logging, the inverse of `log_requests`.
     #
-    # The default is +true+.
+    # The default is +false+.
     #
     # @example
     #   quiet
+    #
+    # @see log_requests
     #
     def quiet(which=true)
       @options[:log_requests] = !which
