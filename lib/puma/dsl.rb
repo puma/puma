@@ -1422,8 +1422,13 @@ module Puma
     # A refork will automatically trigger once after the specified number of requests
     # (default 1000), or pass 0 to disable auto refork.
     #
+    # The default is +nil+.
+    #
     # @note This is experimental.
     # @note Cluster mode only.
+    #
+    # @example
+    #   fork_worker
     #
     def fork_worker(after_requests=1000)
       @options[:fork_worker] = Integer(after_requests)
