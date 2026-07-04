@@ -1125,9 +1125,14 @@ module Puma
     # new Bundler context and thus can float around as the release
     # dictates.
     #
+    # The default is +false+.
+    #
     # @note Cluster mode only.
     # @note This is incompatible with +preload_app!+.
-    # @note This is only supported for RubyGems 2.2+
+    # @note This is only supported for RubyGems 2.2+.
+    #
+    # @example
+    #   prune_bundler
     #
     # @see extra_runtime_dependencies
     #
