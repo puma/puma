@@ -1215,9 +1215,9 @@ module Puma
     end
 
     # Verifies that all workers have checked in to the master process within
-    # the given timeout. If not the worker process will be restarted. This is
-    # not a request timeout, it is to protect against a hung or dead process.
-    # Setting this value will not protect against slow requests.
+    # the given timeout. If not, the worker process will be restarted. This
+    # is not a request timeout, it is to protect against a hung or dead
+    # process. Setting this value will not protect against slow requests.
     #
     # This value must be greater than worker_check_interval.
     #
