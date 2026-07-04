@@ -891,7 +891,7 @@ module Puma
     # Code to run in the master after a worker has been started. The worker's
     # index is passed as an argument.
     #
-    # This is called everytime a worker is to be started.
+    # This is called every time a worker is to be started.
     #
     # @note Cluster mode only.
     #
