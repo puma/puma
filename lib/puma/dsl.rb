@@ -390,8 +390,12 @@ module Puma
     alias clean_thread_locals fiber_per_request
 
     # When shutting down, drain the accept socket of pending connections and
-    # process them. This loops over the accept socket until there are no more
-    # read events and then stops looking and waits for the requests to finish.
+    # process them before waiting for in-flight requests to finish.
+    #
+    # The default is +nil+.
+    #
+    # @example
+    #   drain_on_shutdown
     #
     # @see Puma::Server#graceful_shutdown
     #
