@@ -906,8 +906,10 @@ module Puma
 
     alias_method :after_worker_boot, :after_worker_fork
 
-    # Code to run in the master right after a worker has stopped. The worker's
-    # index and Process::Status are passed as arguments.
+    # Code to run in the master right after a worker has stopped. A
+    # `Puma::Cluster::WorkerHandle` is passed as an argument.
+    #
+    # This can be called multiple times to add several hooks.
     #
     # @note Cluster mode only.
     #
