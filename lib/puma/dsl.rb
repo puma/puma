@@ -1264,23 +1264,28 @@ module Puma
       @options[:worker_culling_strategy] = strategy
     end
 
-    # When set to true, workers accept all requests
-    # and queue them before passing them to the handlers.
-    # When set to false, each worker process accepts exactly as
-    # many requests as it is configured to simultaneously handle.
+    # When `true`, a worker thread that receives a client with an
+    # incomplete request body hands the client to a Reactor thread
+    # and returns to the pool. The Reactor re-enqueues the client
+    # once the body has been received. This frees workers from
+    # blocking on slow client sends and enables HTTP keep-alive. A
+    # worker must still receive each client first, so this does
+    # not queue new connections when the pool is saturated.
     #
-    # Queueing requests generally improves performance. In some
-    # cases, such as a single threaded application, it may be
-    # better to ensure requests get balanced across workers.
-    #
-    # Note that setting this to false disables HTTP keepalive and
-    # slow clients will occupy a handler thread while the request
-    # is being sent. A reverse proxy, such as nginx, can handle
-    # slow clients and queue requests before they reach Puma.
+    # When `false`, no Reactor runs. A worker thread reads each
+    # request synchronously and remains occupied for the duration
+    # of the client's request send, and HTTP keep-alive is
+    # disabled. Consider running Puma behind a reverse proxy such
+    # as nginx that can buffer requests and protect Puma from slow
+    # clients.
     #
     # The default is +true+.
     #
+    # @example
+    #   queue_requests false
+    #
     # @see Puma::Server
+    # @see Puma::Reactor
     #
     def queue_requests(answer=true)
       @options[:queue_requests] = answer
