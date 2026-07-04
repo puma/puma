@@ -757,7 +757,7 @@ module Puma
     # @note Cluster mode only.
     #
     # @example
-    #  silence_single_worker_warning
+    #   silence_single_worker_warning
     #
     def silence_single_worker_warning
       @options[:silence_single_worker_warning] = true
