@@ -1482,9 +1482,11 @@ module Puma
 
     # When +false+, request headers with underscores in their names are discarded.
     # When such headers are present, their names are exposed in
-    # +env["puma.underscore_headers"]+ for auditing. This value is client-triggerable;
-    # rate-limit or sample external reporting. The default is +true+, but will change
-    # to +false+ in a future major version, when this env metadata will be removed.
+    # +env["puma.underscore_headers"]+ for auditing. This value is
+    # client-triggerable, so rate-limit or sample external reporting.
+    #
+    # The default is +true+, but will change to +false+ in a future major
+    # version, when this env metadata will be removed.
     #
     # @example
     #   allow_underscore_headers false
