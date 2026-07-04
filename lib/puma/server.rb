@@ -389,13 +389,16 @@ module Puma
                 # clients until the code is finished.
                 pool.wait_while_out_of_band_running
 
-                # A well rested herd (cluster) runs faster
-                if @cluster_accept_loop_delay.on? && (busy_threads_plus_todo = pool.busy_threads) > 0
-                  delay = @cluster_accept_loop_delay.calculate(
-                    max_threads: @max_threads,
-                    busy_threads_plus_todo: busy_threads_plus_todo
-                  )
-                  sleep(delay)
+                if @queue_requests
+                  if @cluster_accept_loop_delay.on? && (busy_threads_plus_todo = pool.busy_threads) > 0
+                    delay = @cluster_accept_loop_delay.calculate(
+                      max_threads: @max_threads,
+                      busy_threads_plus_todo: busy_threads_plus_todo
+                    )
+                    sleep(delay)
+                  end
+                else
+                  pool.wait_until_not_full
                 end
 
                 io = begin

@@ -315,6 +315,17 @@ module Puma
       end
     end
 
+    def wait_until_not_full
+      with_mutex do
+        while true
+          return if @shutdown
+          return if (@spawned - @waiting + @todo.size) < @max
+
+          @not_full.wait @mutex
+        end
+      end
+    end
+
     # @version 5.0.0
     def with_mutex(&block)
       @mutex.owned? ?
