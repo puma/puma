@@ -5,7 +5,7 @@ require_relative 'util'
 
 module Puma
   # The methods that are available for use inside the configuration file.
-  # These same methods are used in Puma cli and the rack handler
+  # These same methods are used in Puma CLI and the Rack handler
   # internally.
   #
   # Used manually (via CLI class):
@@ -33,12 +33,12 @@ module Puma
   # +test/config+.
   #
   # Puma v6 adds the option to specify a key name (String or Symbol) to the
-  # hooks that run inside the forked workers.  All the hooks run inside the
+  # hooks that run inside the forked workers. All the hooks run inside the
   # {Puma::Cluster::Worker#run} method.
   #
   # Previously, the worker index and the LogWriter instance were passed to the
-  # hook blocks/procs.  If a key name is specified, a hash is passed as the last
-  # parameter.  This allows storage of data, typically objects that are created
+  # hook blocks/procs. If a key name is specified, a hash is passed as the last
+  # parameter. This allows storage of data, typically objects that are created
   # before the worker that need to be passed to the hook when the worker is shutdown.
   #
   # The following hooks have been updated:
