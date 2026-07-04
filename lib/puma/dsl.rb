@@ -1063,6 +1063,11 @@ module Puma
     #
     # This can be called multiple times to add several hooks.
     #
+    # @example
+    #   out_of_band do
+    #     GC.start
+    #   end
+    #
     def out_of_band(&block)
       process_hook :out_of_band, nil, block
     end
