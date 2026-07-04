@@ -468,7 +468,7 @@ module Puma
       @options[:restart_cmd] = cmd.to_s
     end
 
-    # Store the pid of the server in the file at "path".
+    # Store the PID of the server in the file at +path+.
     #
     # @example
     #   pidfile '/u/apps/lolcat/tmp/pids/puma.pid'
