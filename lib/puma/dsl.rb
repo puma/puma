@@ -416,13 +416,16 @@ module Puma
     end
 
     # How long to wait for threads to stop when shutting them down.
-    # Specifying :immediately will cause Puma to kill the threads immediately.
+    # Specifying `:immediately` will cause Puma to kill the threads immediately.
     # Otherwise the value is the number of seconds to wait.
     #
     # Puma always waits a few seconds after killing a thread for it to try
-    # to finish up it's work, even in :immediately mode.
+    # to finish up its work, even in `:immediately` mode.
     #
     # The default is +:forever+.
+    #
+    # @example
+    #   force_shutdown_after 30
     #
     # @see Puma::Server#graceful_shutdown
     #
