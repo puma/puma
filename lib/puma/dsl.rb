@@ -639,7 +639,7 @@ module Puma
     #
     #    bind 'ssl://127.0.0.1:9292?key=key_path&cert=cert_path'
     #
-    # you can use the this method.
+    # you can use this method.
     #
     # When binding on localhost you don't need to specify +cert+ and +key+,
     # Puma will assume you are using the +localhost+ gem and try to load the
@@ -652,8 +652,8 @@ module Puma
     # The `cert:` options hash parameter can be the path to a certificate
     # file including all intermediate certificates in PEM format.
     #
-    # The `cert_pem:` options hash parameter can be String containing the
-    # cerificate and all intermediate certificates in PEM format.
+    # The `cert_pem:` options hash parameter can be a String containing the
+    # certificate and all intermediate certificates in PEM format.
     #
     # @example
     #   ssl_bind '127.0.0.1', '9292', {
