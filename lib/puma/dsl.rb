@@ -503,7 +503,7 @@ module Puma
       @options[:log_requests] = which
     end
 
-    # Pass in a custom logging class instance
+    # Pass in a custom logging class instance.
     #
     # @example
     #   custom_logger Logger.new('t.log')
