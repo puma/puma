@@ -443,9 +443,7 @@ class TestThreadPool < PumaTest
     queue = Queue.new
     concurrent_threads = []
     pool = new_pool(0, 4, max_io_threads: 4) do |processor, io_bound_thread|
-      if io_bound_thread
-        processor.mark_as_io_thread!
-      end
+      processor.mark_as_io_thread! if io_bound_thread
       queue << Thread.current
       mutex.synchronize { }
     end
@@ -467,9 +465,7 @@ class TestThreadPool < PumaTest
     queue = Queue.new
     concurrent_threads = []
     pool = new_pool(0, 2, max_io_threads: 2) do |processor, io_bound_thread|
-      if io_bound_thread
-        processor.mark_as_io_thread!
-      end
+      processor.mark_as_io_thread! if io_bound_thread
       queue << Thread.current
       mutex.synchronize { }
     end
@@ -482,6 +478,30 @@ class TestThreadPool < PumaTest
     refute_predicate pool, :can_spawn_processor?
   ensure
     mutex.unlock
+    pool.shutdown(1)
+  end
+
+  def test_extra_io_threads_release_spawned_count_on_exit
+    mutex = Mutex.new
+    mutex.lock
+    queue = Queue.new
+    pool = new_pool(0, 2, max_io_threads: 2) do |processor, io_bound_thread|
+      processor.mark_as_io_thread! if io_bound_thread
+      queue << Thread.current
+      mutex.synchronize { }
+    end
+
+    4.times { pool << true }
+    4.times { queue.pop }
+    assert_equal 4, pool.spawned
+
+    mutex.unlock
+
+    Timeout.timeout(1) { sleep 0.01 until pool.spawned == 2 }
+    assert_equal 2, pool.spawned
+    assert_equal 2, pool.pool_capacity
+  ensure
+    mutex.unlock if mutex.owned?
     pool.shutdown(1)
   end
 end
