@@ -512,7 +512,7 @@ module Puma
       @options[:custom_logger] = custom_logger
     end
 
-    # Show debugging info
+    # Show debugging info.
     #
     # The default is +false+.
     #
