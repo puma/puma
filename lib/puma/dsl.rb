@@ -763,7 +763,7 @@ module Puma
       @options[:silence_single_worker_warning] = true
     end
 
-    # Disable warning message when running single mode with callback hook defined.
+    # Disable the warning when running in single mode with a cluster-only callback hook defined.
     #
     # The default is +false+.
     #
