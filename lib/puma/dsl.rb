@@ -572,6 +572,16 @@ module Puma
       @options[:redirect_append] = append
     end
 
+    # Provide a block to format log messages. The block receives the message
+    # string and should return the formatted string.
+    #
+    # @example
+    #   log_formatter do |str|
+    #     "[#{Time.now}] #{str}"
+    #   end
+    #
+    # @see Puma::LogWriter
+    #
     def log_formatter(&block)
       @options[:log_formatter] = block
     end
