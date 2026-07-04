@@ -1241,7 +1241,7 @@ module Puma
       @options[:worker_timeout] = timeout
     end
 
-    # Change the default worker timeout for booting.
+    # Set the worker timeout for booting.
     #
     # The default is 60 seconds.
     #
