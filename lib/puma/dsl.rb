@@ -1547,15 +1547,15 @@ module Puma
     end
 
     # Supported http methods, which will replace `Puma::Const::SUPPORTED_HTTP_METHODS`.
-    # The value of `:any` will allows all methods, otherwise, the value must be
-    # an array of strings.  Note that methods are all uppercase.
+    # The value of `:any` will allow all methods, otherwise, the value must be
+    # an array of strings. Note that methods are all uppercase.
     #
     # `Puma::Const::SUPPORTED_HTTP_METHODS` is conservative, if you want a
     # complete set of methods, the methods defined by the
     # [IANA Method Registry](https://www.iana.org/assignments/http-methods/http-methods.xhtml)
     # are pre-defined as the constant `Puma::Const::IANA_HTTP_METHODS`.
     #
-    # @note If the `methods` value is `:any`, no method check with be performed,
+    # @note If the `methods` value is `:any`, no method check will be performed,
     #   similar to Puma v5 and earlier.
     #
     # @example Adds 'PROPFIND' to existing supported methods
