@@ -1199,7 +1199,7 @@ module Puma
       @options[:tag] = string.to_s
     end
 
-    # Change the default interval for checking workers.
+    # Set the interval for checking workers.
     #
     # The default is 5 seconds.
     #
