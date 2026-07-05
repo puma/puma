@@ -408,7 +408,7 @@ class TestIntegrationCluster < TestIntegration
 
     get_worker_pids 1, worker_count
 
-    refute @server_log[/.*Terminating timed out worker.*/]
+    refute_includes @server_log, 'Terminating timed out worker.'
   end
 
   def test_refork_phased_restart_with_fork_worker_and_high_worker_count
