@@ -159,6 +159,16 @@ module TestSkips
   HAS_FORK = ::Process.respond_to? :fork
   UNIX_SKT_EXIST = Object.const_defined?(:UNIXSocket) && !Puma::IS_WINDOWS
 
+  if ENV['ImageOS']&.start_with?('ubuntu') || RUBY_PLATFORM.include?('linux')
+    gcc_first = %x[gcc --version].split("\n").first
+    puts gcc_first
+    GCC_VERSION    = gcc_first[/Ubuntu (\d{1,2})/, 1].to_i
+    UBUNTU_VERSION = gcc_first[/ubuntu1~(\d{2})/, 1].to_i
+  else
+    GCC_VERSION    = nil
+    UBUNTU_VERSION = nil
+  end
+
   MSG_FORK = "Kernel.fork isn't available on #{RUBY_ENGINE} on #{RUBY_PLATFORM}"
   MSG_UNIX = "UNIXSockets aren't available on the #{RUBY_PLATFORM} platform"
   MSG_AUNIX = "Abstract UNIXSockets aren't available on the #{RUBY_PLATFORM} platform"

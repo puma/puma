@@ -635,7 +635,7 @@ class TestIntegration < PumaTest
     reset   = replies[:reset]
 
     # started intermittently failing on ubuntu22, May-2026
-    assert_operator_equal = ENV['ImageOS'].start_with?('ubuntu22') ? 1 : 2
+    assert_operator_equal = UBUNTU_VERSION && UBUNTU_VERSION <= 22 ? 1 : 2
 
     assert_operator restart_count, :>=, assert_operator_equal, msg
 
