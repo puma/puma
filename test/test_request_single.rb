@@ -92,6 +92,12 @@ class TestRequestLineValid < TestRequestBase
     assert_equal 'GET', @client.env[REQUEST_METHOD]
   end
 
+  def test_query_method
+    create_client "QUERY / HTTP/1.1\r\nHost: test.com\r\n\r\nContent-Type: application/json\r\nContent-Length: 2\r\n\r\n{}"
+
+    assert_equal 'QUERY', @client.env[REQUEST_METHOD]
+  end
+
   def test_path_plain
     create_client "GET /puma/request HTTP/1.1\r\nHost: test.com\r\n\r\n"
 
