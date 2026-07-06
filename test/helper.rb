@@ -159,11 +159,12 @@ module TestSkips
   HAS_FORK = ::Process.respond_to? :fork
   UNIX_SKT_EXIST = Object.const_defined?(:UNIXSocket) && !Puma::IS_WINDOWS
 
+  # GCC_VERSION and UBUNTU_VERSION are both integer 'major' version constants on
+  # Ubuntu/linux systems, nil for other OS's
   if ENV['ImageOS']&.start_with?('ubuntu') || RUBY_PLATFORM.include?('linux')
     gcc_first = %x[gcc --version].split("\n").first
-    puts gcc_first
     GCC_VERSION    = gcc_first[/Ubuntu (\d{1,2})/, 1].to_i
-    UBUNTU_VERSION = gcc_first[/ubuntu1~(\d{2})/, 1].to_i
+    UBUNTU_VERSION = gcc_first[/ubuntu1~(\d{1,2})/, 1].to_i
   else
     GCC_VERSION    = nil
     UBUNTU_VERSION = nil
