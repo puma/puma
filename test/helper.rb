@@ -164,7 +164,7 @@ module TestSkips
   if ENV['ImageOS']&.start_with?('ubuntu') || RUBY_PLATFORM.include?('linux')
     gcc_first = %x[gcc --version].split("\n").first
     GCC_VERSION    = gcc_first[/Ubuntu (\d{1,2})/, 1].to_i
-    UBUNTU_VERSION = gcc_first[/ubuntu1~(\d{1,2})/, 1].to_i
+    UBUNTU_VERSION = gcc_first[/ubuntu\d~(\d{1,2})/, 1].to_i
   else
     GCC_VERSION    = nil
     UBUNTU_VERSION = nil
