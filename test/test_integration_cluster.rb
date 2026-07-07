@@ -295,6 +295,27 @@ class TestIntegrationCluster < TestIntegration
     assert true
   end
 
+  def test_queue_requests_disabled_does_not_pin_new_requests_to_busy_worker
+    cli_server "-w #{workers} -t 1:1 test/rackup/sleep_pid.ru", config: "queue_requests false"
+
+    get_worker_pids # wait for workers to boot
+
+    slow = Thread.new { read_body(fast_connect("sleep2"), 5).split.last.to_i }
+    sleep 0.5
+
+    mutex = Mutex.new
+    fast_pids = []
+    Array.new(8) do
+      Thread.new do
+        pid = read_body(fast_connect("sleep0"), 3).split.last.to_i
+        mutex.synchronize { fast_pids << pid }
+      end
+    end.each(&:join)
+
+    assert_equal 1, fast_pids.uniq.size
+    refute_equal slow.value, fast_pids.first
+  end
+
   def test_worker_index_is_with_in_options_limit
     cli_server "-C test/config/t3_conf.rb test/rackup/hello.ru"
 
