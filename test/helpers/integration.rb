@@ -230,7 +230,7 @@ class TestIntegration < PumaTest
   def restart_server(connection, log: false)
     Process.kill :USR2, @pid
     wait_for_server_to_include 'Restarting', log: log
-    connection.write "GET / HTTP/1.1\r\n\r\n" # trigger it to start by sending a new request
+    connection.write "GET / HTTP/1.1\r\nHost: test.com\r\n\r\n" # trigger it to start by sending a new request
     wait_for_server_to_boot log: log
   end
 
@@ -307,7 +307,7 @@ class TestIntegration < PumaTest
   def connect(path = nil, unix: false)
     s = open_client_socket(unix: unix)
     @ios_to_close << s
-    s << "GET /#{path} HTTP/1.1\r\n\r\n"
+    s << "GET /#{path} HTTP/1.1\r\nHost: test.com\r\n\r\n"
     s
   end
 
@@ -316,7 +316,7 @@ class TestIntegration < PumaTest
   def fast_connect(path = nil, unix: false)
     s = open_client_socket(unix: unix)
     @ios_to_close << s
-    fast_write s, "GET /#{path} HTTP/1.1\r\n\r\n"
+    fast_write s, "GET /#{path} HTTP/1.1\r\nHost: test.com\r\n\r\n"
     s
   end
 
@@ -523,7 +523,7 @@ class TestIntegration < PumaTest
           begin
             begin
               socket = open_client_socket(unix: unix)
-              fast_write socket, "POST / HTTP/1.1\r\nContent-Length: #{message.bytesize}\r\n\r\n#{message}"
+              fast_write socket, "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: #{message.bytesize}\r\n\r\n#{message}"
             rescue => e
               replies[:write_error] += 1
               raise e
