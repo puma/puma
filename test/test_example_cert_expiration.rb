@@ -4,7 +4,7 @@ require_relative 'helper'
 require 'openssl'
 
 #
-# Thes are tests to ensure that the checked in certs in the ./examples/
+# These are tests to ensure that the checked in certs in the ./examples/
 # directory are valid and work as expected.
 #
 # These tests will start to fail 1 month before the certs expire

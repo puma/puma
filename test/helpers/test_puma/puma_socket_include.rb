@@ -175,7 +175,7 @@ module TestPuma
     end
 
     # Uses a single `sysread` statement to read the socket.  Reads `len` bytes
-    # from the socket.  A `wait_readable` call using `timeout:` preceeds it.
+    # from the socket.  A `wait_readable` call using `timeout:` precedes it.
     # @param len [Integer] the number of bytes to read
     # @param timeout: [Float, Integer] `wait_readable` timeout
     # @return [String]
