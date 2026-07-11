@@ -147,12 +147,12 @@ module Puma
     REQUEST_METHOD = "REQUEST_METHOD"
     HEAD = "HEAD"
 
-    # based on https://www.rfc-editor.org/rfc/rfc9110.html#name-overview,
-    # with CONNECT removed, and PATCH added
-    SUPPORTED_HTTP_METHODS = %w[HEAD GET POST PUT DELETE OPTIONS TRACE PATCH].freeze
+    # based on https://www.rfc-editor.org/rfc/rfc9110.html#name-overview and https://www.rfc-editor.org/rfc/rfc10008.html,
+    # with CONNECT removed, and PATCH & QUERY added
+    SUPPORTED_HTTP_METHODS = %w[HEAD GET POST PUT DELETE OPTIONS TRACE PATCH QUERY].freeze
 
     # list from https://www.iana.org/assignments/http-methods/http-methods.xhtml
-    # as of 04-May-23
+    # as of 17-Jun-26, with QUERY added based on https://www.rfc-editor.org/rfc/rfc10008.html
     IANA_HTTP_METHODS = %w[
       ACL
       BASELINE-CONTROL
@@ -182,6 +182,7 @@ module Puma
       PROPFIND
       PROPPATCH
       PUT
+      QUERY
       REBIND
       REPORT
       SEARCH
