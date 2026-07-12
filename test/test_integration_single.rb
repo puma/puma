@@ -49,8 +49,7 @@ class TestIntegrationSingle < TestIntegration
     cli_server "test/rackup/hello.ru"
     _, status = stop_server
 
-    status = status.exitstatus % 128 if ::Puma::IS_JRUBY
-    assert_equal 15, status
+    assert_equal 0, status.exitstatus
   end
 
   def test_after_booted_and_after_stopped
@@ -62,7 +61,7 @@ class TestIntegrationSingle < TestIntegration
     assert wait_for_server_to_include('after_booted called')
     assert wait_for_server_to_include('after_stopped called')
 
-    wait_server 15
+    wait_server
   end
 
   def test_term_suppress
@@ -133,7 +132,7 @@ class TestIntegrationSingle < TestIntegration
     assert_match(/Slept 10/, curl_stdout.read)
     assert_match(re_curl_error, rejected_curl_stderr.read)
 
-    wait_server 15
+    wait_server
   end
 
   def test_int_refuse
