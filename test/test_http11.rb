@@ -128,6 +128,51 @@ class Http11ParserTest < TestIntegration
     assert_equal '/forums/1/path;stillpath/2375', req['REQUEST_PATH']
   end
 
+  # RFC 2396 section 2.4.3 'unwise' characters. Puma already rejects other
+  # invalid URI characters (e.g. '"', '<', '>') via the `unsafe` grammar rule,
+  # but these fall through to the `national` catch-all and are silently
+  # accepted. See https://github.com/puma/puma/issues/3396.
+  UNWISE_URI_CHARS = ['{', '}', '|', '\\', '^', '[', ']', '`']
+
+  def test_rejects_unwise_characters_in_path
+    parser = Puma::HttpParser.new
+
+    UNWISE_URI_CHARS.each do |char|
+      get = "GET /path#{char}here HTTP/1.1\r\n\r\n"
+
+      assert_raises(Puma::HttpParserError, "expected #{char.inspect} in path to be rejected") do
+        parser.execute({}, get, 0)
+      end
+      parser.reset
+    end
+  end
+
+  def test_rejects_unwise_characters_in_query
+    parser = Puma::HttpParser.new
+
+    UNWISE_URI_CHARS.each do |char|
+      get = "GET /path?a#{char}b HTTP/1.1\r\n\r\n"
+
+      assert_raises(Puma::HttpParserError, "expected #{char.inspect} in query to be rejected") do
+        parser.execute({}, get, 0)
+      end
+      parser.reset
+    end
+  end
+
+  def test_rejects_unwise_characters_in_fragment
+    parser = Puma::HttpParser.new
+
+    UNWISE_URI_CHARS.each do |char|
+      get = "GET /path#a#{char}b HTTP/1.1\r\n\r\n"
+
+      assert_raises(Puma::HttpParserError, "expected #{char.inspect} in fragment to be rejected") do
+        parser.execute({}, get, 0)
+      end
+      parser.reset
+    end
+  end
+
   # lame random garbage maker
   def rand_data(min, max, readable=true)
     count = min + ((rand(max)+1) *10).to_i

@@ -116,6 +116,19 @@ class TestRequestInvalidMultiple < PumaTest
     assert_status "GET / HTTP/1.1\r\nHost:\r\n\r\n", 400
   end
 
+  # ──────────────────────────────────── below are invalid (unwise) URI characters
+  # RFC 2396 section 2.4.3 'unwise' characters. Puma already rejects other
+  # invalid URI characters (e.g. '"', '<', '>'), but these were silently
+  # accepted. See https://github.com/puma/puma/issues/3396.
+
+  UNWISE_URI_CHARS = ['{', '}', '|', '\\', '^', '[', ']', '`']
+
+  def test_rejects_unwise_characters_in_request_uri
+    UNWISE_URI_CHARS.each do |char|
+      assert_status "GET /path#{char}here HTTP/1.1\r\nHost: test.com\r\n\r\n", 400
+    end
+  end
+
   # ──────────────────────────────────── below are oversize path length
 
   def test_oversize_path_keep_alive
