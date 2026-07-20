@@ -11,9 +11,7 @@
   safe = ("$" | "-" | "_" | ".");
   extra = ("!" | "*" | "'" | "(" | ")" | ",");
   reserved = (";" | "/" | "?" | ":" | "@" | "&" | "=" | "+");
-  # RFC 2396 section 2.4.3 'unwise' characters. Previously omitted, so they
-  # fell through to the `national` catch-all and were silently accepted,
-  # unlike the rest of `unsafe`. See https://github.com/puma/puma/issues/3396.
+  # RFC 2396 section 2.4.3 'unwise' characters.
   unwise = ("{" | "}" | "|" | "\\" | "^" | "[" | "]" | "`");
   unsafe = (CTL | " " | "\"" | "#" | "%" | "<" | ">" | unwise);
   national = any -- (alpha | digit | reserved | extra | safe | unsafe);

@@ -117,9 +117,6 @@ class TestRequestInvalidMultiple < PumaTest
   end
 
   # ──────────────────────────────────── below are invalid (unwise) URI characters
-  # RFC 2396 section 2.4.3 'unwise' characters. Puma already rejects other
-  # invalid URI characters (e.g. '"', '<', '>'), but these were silently
-  # accepted. See https://github.com/puma/puma/issues/3396.
 
   UNWISE_URI_CHARS = ['{', '}', '|', '\\', '^', '[', ']', '`']
 

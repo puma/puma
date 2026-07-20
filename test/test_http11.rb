@@ -128,10 +128,7 @@ class Http11ParserTest < TestIntegration
     assert_equal '/forums/1/path;stillpath/2375', req['REQUEST_PATH']
   end
 
-  # RFC 2396 section 2.4.3 'unwise' characters. Puma already rejects other
-  # invalid URI characters (e.g. '"', '<', '>') via the `unsafe` grammar rule,
-  # but these fall through to the `national` catch-all and are silently
-  # accepted. See https://github.com/puma/puma/issues/3396.
+  # RFC 2396 section 2.4.3 'unwise' characters.
   UNWISE_URI_CHARS = ['{', '}', '|', '\\', '^', '[', ']', '`']
 
   def test_rejects_unwise_characters_in_path
