@@ -94,7 +94,7 @@ module Puma
             # It would make more sense to let @socket.read_nonblock raise
             # EAGAIN if necessary but it seems like it'll misbehave on Windows.
             # I don't have a Windows machine to debug this so I can't explain
-            # exactly whats happening in that OS. Please let me know if you
+            # exactly what's happening in that OS. Please let me know if you
             # find out!
             #
             # In the meantime, we can emulate the correct behavior by
