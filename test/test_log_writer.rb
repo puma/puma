@@ -141,7 +141,7 @@ class TestLogWriter < PumaTest
     sock.read
     sleep 0.1 # important so that the previous data is sent as a packet
     assert_match %r!HTTP parse error, malformed request!, log_writer.stderr.string
-    assert_match %r!\("GET #{path}" - \(-\)\)!, log_writer.stderr.string
+    assert_match %r!\("GET #{path}" - \(127\.0\.0\.1\)\)!, log_writer.stderr.string
   ensure
     sock.close if sock && !sock.closed?
     server&.stop(true)
