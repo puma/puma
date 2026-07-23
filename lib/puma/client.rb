@@ -619,6 +619,8 @@ module Puma
     end
 
     def decode_chunk(chunk)
+      return finish_last_chunk(@prev_chunk + chunk) if @in_last_chunk
+
       if @partial_part_left > 0
         if @partial_part_left <= chunk.size
           if @partial_part_left > 2
@@ -665,24 +667,7 @@ module Puma
           if len == 0
             @in_last_chunk = true
             @body.rewind
-            rest = io.read
-            if rest.bytesize < CHUNK_VALID_ENDING_SIZE
-              @buffer = nil
-              @partial_part_left = CHUNK_VALID_ENDING_SIZE - rest.bytesize
-              return false
-            else
-              # if the next character is a CRLF, set buffer to everything after that CRLF
-              start_of_rest = if rest.start_with?(CHUNK_VALID_ENDING)
-                CHUNK_VALID_ENDING_SIZE
-              else # we have started a trailer section, which we do not support. skip it!
-                rest.index(CHUNK_VALID_ENDING*2) + CHUNK_VALID_ENDING_SIZE*2
-              end
-
-              @buffer = rest[start_of_rest..-1]
-              @buffer = nil if @buffer.empty?
-              set_ready
-              return true
-            end
+            return finish_last_chunk(io.read)
           end
 
           # Track the excess as a function of the size of the
@@ -735,12 +720,28 @@ module Puma
         end
       end
 
-      if @in_last_chunk
-        set_ready
-        true
+      false
+    end
+
+    # Consume the terminator that ends a chunked body. Per RFC 9112 §7.1.2
+    # this is either a bare CRLF or an optional trailer section ending in
+    # CRLF*2. Puma does not surface trailers, so we skip past them. Bytes
+    # past the terminator belong to the next pipelined request.
+    def finish_last_chunk(rest)
+      if rest.start_with?(CHUNK_VALID_ENDING)
+        trailer_end = CHUNK_VALID_ENDING_SIZE
+      elsif idx = rest.index(CHUNK_VALID_ENDING * 2)
+        trailer_end = idx + CHUNK_VALID_ENDING_SIZE * 2
       else
-        false
+        @prev_chunk = rest
+        return false
       end
+
+      @prev_chunk = ""
+      @buffer = rest[trailer_end..-1]
+      @buffer = nil if @buffer.empty?
+      set_ready
+      true
     end
 
     def set_ready

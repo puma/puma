@@ -1216,6 +1216,28 @@ class TestPumaServer < PumaTest
     assert_equal "5", content_length
   end
 
+  def test_chunked_request_pause_after_last_chunk
+    body = nil
+    content_length = nil
+    server_run { |env|
+      body = env["rack.input"].read
+      content_length = env["CONTENT_LENGTH"]
+      [200, {}, [""]]
+    }
+
+    socket = send_http "GET / HTTP/1.1\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n"
+
+    sleep 1
+
+    socket << "X-Trailer: value\r\n\r\n"
+
+    response = socket.read_response
+
+    assert_equal "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
+    assert_equal "", body
+    assert_equal "0", content_length
+  end
+
   # See https://github.com/puma/puma/issues/3337 & https://github.com/puma/puma/pull/3338
   #
   def test_chunked_body_pause_within_chunk_size_hex
