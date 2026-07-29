@@ -99,7 +99,7 @@ class TestPumaServerSSL < PumaTest
   end
 
   def test_very_large_return
-    # This test frequently fails on Darwin TruffleRuby, 512k was used chosen
+    # This test frequently fails on Darwin TruffleRuby, 512k was used
     # because 1mb also failed
     # failure is OpenSSL::SSL::SSLError: SSL_read: record layer failure
     body_size = Puma::IS_OSX && TRUFFLE ? 512 * 1_024 : 2_056_610
