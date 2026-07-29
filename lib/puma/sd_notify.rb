@@ -49,12 +49,11 @@ module Puma
     WATCHDOG  = "WATCHDOG=1"
     FDSTORE   = "FDSTORE=1"
 
-    # @note If watchdog notifications are enabled, this also emits an
-    # immediate `WATCHDOG=1` ping to avoid a watchdog timeout window between
-    # startup completion and the first periodic watchdog loop tick.
+    # @note When the service manager expects watchdog pings, this sends an
+    #   immediate `WATCHDOG=1` in the same datagram, which closes the watchdog
+    #   timeout window between startup and the first periodic watchdog tick.
     def self.ready(unset_env=false)
-      notify(READY, unset_env)
-      watchdog(unset_env) if watchdog?
+      notify(watchdog? ? "#{READY}\n#{WATCHDOG}" : READY, unset_env)
     end
 
     def self.reloading(unset_env=false)
