@@ -127,7 +127,7 @@ class TestPluginSystemd < TestIntegration
       @messages.shift while drop_status && @messages.first&.start_with?('STATUS=')
       break if @messages.any?
       break unless @socket.wait_readable 1
-      @messages.concat @socket.sysread(1_024).split("\n")
+      @messages.concat @socket.sysread(512).split("\n")
     end
 
     assert_equal msg, @messages.shift
