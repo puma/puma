@@ -116,13 +116,7 @@ class TestIntegrationSSL < TestIntegration
         c.cert = ::OpenSSL::X509::Certificate.new client_cert
         c.key  = ::OpenSSL::PKey::RSA.new File.read(key)
         c.verify_mode = ::OpenSSL::SSL::VERIFY_PEER
-        if tls1_2
-          if c.respond_to? :max_version=
-            c.max_version = :TLS1_2
-          else
-            c.ssl_version = :TLSv1_2
-          end
-        end
+        c.max_version = :TLS1_2 if tls1_2
       }
 
     assert_equal client_cert, body
