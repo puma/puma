@@ -9,6 +9,9 @@ class TestSdNotify < PumaTest
   include TmpPath
 
   def setup
+    # JRuby and Windows both implement AF_UNIX for stream sockets only
+    skip_if :jruby, :windows
+
     @sockaddr = tmp_path '.systemd'
     @socket = Socket.new(:UNIX, :DGRAM, 0)
     @socket.bind Addrinfo.unix(@sockaddr)

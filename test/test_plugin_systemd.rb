@@ -121,12 +121,17 @@ class TestPluginSystemd < TestIntegration
   # than the datagram holds discards the remainder.
   def assert_message(msg)
     drop_status = !msg.start_with?('STATUS=')
+    # a hot restart execs the process, so allow it the same time to report as
+    # the wait_for_server_to_* helpers allow a boot
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + LOG_TIMEOUT
 
     loop do
       # the plugin's status loop interleaves STATUS= messages every second
       @messages.shift while drop_status && @messages.first&.start_with?('STATUS=')
       break if @messages.any?
-      break unless @socket.wait_readable 1
+      wait = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      break if wait <= 0
+      break unless @socket.wait_readable wait
       @messages.concat @socket.sysread(512).split("\n")
     end
 
