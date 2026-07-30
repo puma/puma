@@ -174,7 +174,7 @@ module TestPuma
     end
 
     # Sends a request and returns the socket
-    # @param req [String, nil] The request stirng.
+    # @param req [String, nil] The request string.
     # @!macro req
     # @!macro skt
     # @return [PumaSSLSocket, PumaTCPSocket, PumaUNIXSocket] the created socket
