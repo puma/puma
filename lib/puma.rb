@@ -76,6 +76,28 @@ module Puma
     Thread.current.name = "puma #{name}"
   end
 
+  # The pid of the process that supervises workers, recorded before any
+  # forking happens.  Used to tell master from worker at runtime, which the
+  # hook name alone cannot do -- under `fork_worker`, worker 0 runs the
+  # `before_worker_fork` and `after_worker_fork` hooks that the master
+  # normally runs.
+  #
+  # In single mode nothing is ever forked, so this stays the only pid.
+  #
+  # @!attribute [rw] master_pid
+  # @version 8.0.3
+  class << self
+    attr_accessor :master_pid
+  end
+
+  # Whether the calling process supervises workers.  True in single mode and
+  # in the cluster master, false in a forked worker.
+  #
+  # @version 8.0.3
+  def self.master?
+    @master_pid.nil? || @master_pid == Process.pid
+  end
+
   # Shows deprecated warning for renamed methods.
   # @example
   #   Puma.deprecate_method_change :on_booted, __callee__, __method__
