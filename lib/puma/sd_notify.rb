@@ -53,8 +53,12 @@ module Puma
     # immediate `WATCHDOG=1` ping to avoid a watchdog timeout window between
     # startup completion and the first periodic watchdog loop tick.
     def self.ready(unset_env=false)
-      notify(READY, unset_env)
-      watchdog(unset_env) if watchdog?
+      if watchdog?
+        notify(READY)
+        watchdog(unset_env)
+      else
+        notify(READY, unset_env)
+      end
     end
 
     def self.reloading(unset_env=false)

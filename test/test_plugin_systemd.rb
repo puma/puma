@@ -55,7 +55,7 @@ class TestPluginSystemd < TestIntegration
   end
 
   def test_systemd_watchdog_sends_immediate_ping_after_ready
-    wd_env = @env.merge({"WATCHDOG_USEC" => "1_000_000"})
+    wd_env = @env.merge({"WATCHDOG_USEC" => "10_000_000"})
     cli_server "test/rackup/hello.ru", env: wd_env
 
     assert_message "READY=1"
