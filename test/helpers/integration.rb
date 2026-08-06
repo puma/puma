@@ -656,4 +656,175 @@ class TestIntegration < PumaTest
       end
     end
   end
+
+  # Hot restarts the server `restarts` times while `num_threads` client threads
+  # keep sending requests.
+  #
+  # Unlike `restart_does_not_drop_connections`, the number of restarts is a loop
+  # bound rather than however many happen to fit inside a fixed number of
+  # requests.  Client threads run until told to stop, and each restart waits for
+  # `replies_per_gate` further successful responses before the next signal is
+  # sent, so traffic is known to be flowing across every restart.  A fast server
+  # or a slow machine changes how long the test takes, not whether it passes.
+  def hot_restarts_do_not_drop_connections(
+      restarts: 3,
+      num_threads: 5,
+      replies_per_gate: 100,
+      gate_timeout: 20,
+      pause: 0.002,
+      log: nil
+    )
+    skipped = true
+    skip_if :jruby, suffix: ' - file descriptors are not preserved on exec on JRuby; ' \
+      'connection reset errors are expected during restarts'
+    skip_if :truffleruby, suffix: ' - Undiagnosed failures on TruffleRuby'
+    skipped = nil
+
+    args = '-t 5:5 -q test/rackup/hello_with_delay.ru'
+    if Puma.windows?
+      cli_server "#{set_pumactl_args} #{args}", log: log
+    else
+      cli_server args, log: log
+    end
+
+    replies = Hash.new 0
+    refused = thread_run_refused unix: false
+    message = 'A' * 16_256  # 2^14 - 128
+
+    mutex = Mutex.new
+    restart_count = 0
+    running = true
+    client_threads = []
+
+    num_threads.times do
+      client_threads << Thread.new do
+        while running
+          begin
+            mutex.synchronize { replies[:attempts] += 1 }
+            begin
+              socket = open_client_socket
+              fast_write socket, "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: #{message.bytesize}\r\n\r\n#{message}"
+            rescue => e
+              mutex.synchronize { replies[:write_error] += 1 }
+              raise e
+            end
+            body = read_body(socket, 10)
+            if body == 'Hello World'
+              mutex.synchronize { replies[:success] += 1 }
+            else
+              mutex.synchronize { replies[:unexpected_response] += 1 }
+            end
+          rescue Errno::ECONNRESET, Errno::EBADF, Errno::ENOTCONN, Errno::ENOTSOCK
+            # connection was accepted but then closed
+            mutex.synchronize { replies[:reset] += 1 }
+          rescue *refused, IOError
+            mutex.synchronize { replies[:refused] += 1 }
+          rescue ::Timeout::Error
+            mutex.synchronize { replies[:read_timeout] += 1 }
+          ensure
+            if socket.is_a?(IO) && !socket.closed?
+              begin
+                socket.close
+              rescue Errno::EBADF
+              end
+            end
+          end
+          # client threads are not capped by a request count, so they are paced
+          # instead - without this they exhaust ephemeral ports
+          sleep pause
+        end
+      end
+    end
+
+    begin
+      wait_for_replies replies, replies_per_gate, mutex: mutex,
+        timeout: gate_timeout, what: 'before the first restart'
+
+      restarts.times do |idx|
+        target = mutex.synchronize { replies[:success] } + replies_per_gate
+
+        if Puma.windows?
+          cli_pumactl 'restart'
+        else
+          Process.kill :USR2, @pid
+        end
+
+        # not rescued - a boot that never finishes must fail the test loudly
+        wait_for_server_to_boot timeout: 30, log: log
+        restart_count += 1
+
+        wait_for_replies replies, target, mutex: mutex, timeout: gate_timeout,
+          what: "after restart #{idx + 1} of #{restarts}"
+      end
+    ensure
+      running = false
+    end
+
+    until client_threads.empty?
+      client_threads.each_with_index do |t, i|
+        client_threads[i] = nil if t.join(1)
+      end
+      client_threads.compact!
+    end
+
+    if Puma.windows?
+      cli_pumactl 'stop'
+      wait_server
+    else
+      stop_server
+    end
+    @server = nil
+
+    msg = ("   %4d attempts\n"              % replies.fetch(:attempts,0)).dup
+    msg << "   %4d success\n"               % replies.fetch(:success,0)
+    msg << "   %4d unexpected_response\n"   % replies.fetch(:unexpected_response,0)
+    msg << "   %4d refused\n"               % replies.fetch(:refused,0)
+    msg << "   %4d read timeout\n"          % replies.fetch(:read_timeout,0)
+    msg << "   %4d reset\n"                 % replies.fetch(:reset,0)
+    msg << "   %4d write_errors\n"          % replies.fetch(:write_error,0)
+    msg << "   %4d restart count\n"         % restart_count
+
+    assert_equal restarts, restart_count, msg
+
+    assert_equal 0, replies[:read_timeout], msg
+    assert_equal 0, replies[:write_error], msg
+    assert_equal 0, replies[:unexpected_response], msg
+
+    if Puma.windows?
+      # Windows resets and refusals during restart are long-standing behavior,
+      # see `restart_does_not_drop_connections`
+      assert_equal replies[:attempts] - replies[:reset] - replies[:refused],
+        replies[:success], msg
+    else
+      assert_equal 0, replies[:reset], msg
+      assert_equal 0, replies[:refused], msg
+      assert_equal replies[:attempts], replies[:success], msg
+    end
+
+  ensure
+    unless skipped
+      running = false
+      client_threads.each { |thr| thr.kill if thr.is_a? Thread } unless passed?
+      $debugging_info << "#{full_name}\n    #{restart_count} restarts, " \
+        "#{replies[:attempts]} attempts, #{replies[:success]} success, " \
+        "#{replies[:reset]} resets, #{replies[:refused]} refused, " \
+        "#{replies[:write_error]} write error\n"
+    end
+  end
+
+  # Blocks until `replies[:success]` reaches `target`.  Fails the test if that
+  # does not happen within `timeout` seconds, rather than passing quietly on a
+  # server that has stopped answering.
+  def wait_for_replies(replies, target, mutex:, timeout: 20, what: nil)
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+    loop do
+      count = mutex.synchronize { replies[:success] }
+      return count if count >= target
+      if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+        flunk "Only #{count} successful requests #{what}, " \
+          "expected #{target} within #{timeout} seconds"
+      end
+      sleep 0.01
+    end
+  end
 end
