@@ -494,11 +494,7 @@ class TestIntegration < PumaTest
   # flowing across every restart.  A fast server or a slow machine changes how
   # long the test takes, not whether it passes.
   def restart_does_not_drop_connections(
-      restarts: 3,
       num_threads: 1,
-      replies_per_gate: 100,
-      gate_timeout: 20,
-      pause: 0.002,
       config: nil,
       unix: nil,
       signal: nil,
@@ -509,6 +505,11 @@ class TestIntegration < PumaTest
       'connection reset errors are expected during restarts'
     skip_if :truffleruby, suffix: ' - Undiagnosed failures on TruffleRuby'
     skipped = nil
+
+    restarts         = 3     # loop bound - the count the test asserts it got
+    replies_per_gate = 100   # successful responses to wait for before signaling again
+    gate_timeout     = 20    # seconds to wait for those responses
+    pause            = 0.002 # seconds each client waits between requests
 
     clustered = (workers || 0) >= 2
 
