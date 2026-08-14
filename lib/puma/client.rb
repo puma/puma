@@ -312,7 +312,10 @@ module Puma
       raise e unless HttpParserError === e && e.message.include?('non-SSL')
 
       req, _ = @buffer.split "\r\n\r\n"
-      request_line, headers = req.split "\r\n", 2
+      request_line, headers = req.to_s.split "\r\n", 2
+
+      # no request line to enrich the error message with
+      raise e if request_line.nil?
 
       # below checks for request issues and changes error message accordingly
       if !@env.key? REQUEST_METHOD
