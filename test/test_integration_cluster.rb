@@ -23,33 +23,31 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_hot_restart_does_not_drop_connections_threads
-    restart_does_not_drop_connections num_threads: 10, total_requests: 3_000,
-      signal: :USR2
+    restart_does_not_drop_connections num_threads: 10, signal: :USR2
   end
 
   def test_hot_restart_does_not_drop_connections
-    restart_does_not_drop_connections num_threads: 1, total_requests: 1_000,
-      signal: :USR2
+    restart_does_not_drop_connections num_threads: 1, signal: :USR2
   end
 
   def test_phased_restart_does_not_drop_connections_threads
-    restart_does_not_drop_connections num_threads: 10, total_requests: 3_000,
-      signal: :USR1, config: "preload_app! false"
+    restart_does_not_drop_connections num_threads: 10, signal: :USR1,
+      config: "preload_app! false"
   end
 
   def test_phased_restart_does_not_drop_connections
-    restart_does_not_drop_connections num_threads: 1, total_requests: 1_000,
-      signal: :USR1, config: "preload_app! false"
+    restart_does_not_drop_connections num_threads: 1, signal: :USR1,
+      config: "preload_app! false"
   end
 
   def test_phased_restart_does_not_drop_connections_threads_fork_worker
-    restart_does_not_drop_connections num_threads: 10, total_requests: 3_000,
-      signal: :USR1, config: "fork_worker; preload_app! false"
+    restart_does_not_drop_connections num_threads: 10, signal: :USR1,
+      config: "fork_worker; preload_app! false"
   end
 
   def test_phased_restart_does_not_drop_connections_unix
-    restart_does_not_drop_connections num_threads: 1, total_requests: 1_000,
-      signal: :USR1, unix: true, config: "preload_app! false"
+    restart_does_not_drop_connections num_threads: 1, signal: :USR1, unix: true,
+      config: "preload_app! false"
   end
 
   def test_pre_existing_unix
