@@ -212,6 +212,11 @@ class TestRequestLineInvalid < TestRequestBase
     assert_invalid "GET /test?a=1 HTTP/1.a\r\n\r\n",
       "Invalid HTTP format, parsing fails. Bad protocol HTTP/1.a"
   end
+
+  def test_bare_crlf_request
+    assert_invalid "\r\n\r\n",
+      "Invalid HTTP format, parsing fails. Are you trying to open an SSL connection to a non-SSL Puma?"
+  end
 end
 
 # Tests limits set in `ext/puma_http11/puma_http11.c`
