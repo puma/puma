@@ -33,7 +33,6 @@ class TestIntegration < PumaTest
     @pid = nil
 
     @ios_to_close = Queue.new
-    @ios_to_close = []
     @bind_path    = nil
     @bind_port    = nil
     @control_path = nil
@@ -295,7 +294,9 @@ class TestIntegration < PumaTest
     deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
     retries = 0
     begin
-      unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, bind_port)
+      skt = unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, bind_port)
+      @ios_to_close << skt
+      skt
     rescue Errno::EADDRNOTAVAIL => e
       raise e if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
       retries += 1
@@ -507,9 +508,13 @@ class TestIntegration < PumaTest
     skipped = nil
 
     restarts         = 3     # loop bound - the count the test asserts it got
-    replies_per_gate = 100   # successful responses to wait for before signaling again
+
     gate_timeout     = 20    # seconds to wait for those responses
-    pause            = 0.002 # seconds each client waits between requests
+
+    # successful responses to wait for before signaling again
+    replies_per_gate = Puma::IS_WINDOWS ? 100 : 200
+    # seconds each client waits between requests
+    pause = Puma::IS_WINDOWS ? 0.002 : 0.001
 
     clustered = (workers || 0) >= 2
 
@@ -524,6 +529,9 @@ class TestIntegration < PumaTest
     refused = thread_run_refused unix: false
     message = 'A' * 16_256  # 2^14 - 128
 
+    request_text = "POST / HTTP/1.1\r\nHost: test.com\r\n" \
+      "Content-Length: #{message.bytesize}\r\n\r\n#{message}"
+
     mutex = Mutex.new
     restart_count = 0
     running = true
@@ -536,7 +544,7 @@ class TestIntegration < PumaTest
             mutex.synchronize { replies[:attempts] += 1 }
             begin
               socket = open_client_socket(unix: unix)
-              fast_write socket, "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: #{message.bytesize}\r\n\r\n#{message}"
+              fast_write socket, request_text
             rescue => e
               mutex.synchronize { replies[:write_error] += 1 }
               raise e
@@ -563,6 +571,8 @@ class TestIntegration < PumaTest
           rescue ::Timeout::Error
             mutex.synchronize { replies[:read_timeout] += 1 }
           ensure
+            # this generates a lot of sockets, clear here, rather than using
+            # teardown
             if socket.is_a?(IO) && !socket.closed?
               begin
                 socket.close
@@ -619,15 +629,15 @@ class TestIntegration < PumaTest
     end
     @server = nil
 
-    msg = ("   %4d attempts\n"              % replies.fetch(:attempts,0)).dup
-    msg << "   %4d unexpected_response\n"   % replies.fetch(:unexpected_response,0)
-    msg << "   %4d refused\n"               % replies.fetch(:refused,0)
-    msg << "   %4d read timeout\n"          % replies.fetch(:read_timeout,0)
-    msg << "   %4d reset\n"                 % replies.fetch(:reset,0)
-    msg << "   %4d write_errors\n"          % replies.fetch(:write_error,0)
-    msg << "   %4d success\n"               % replies.fetch(:success,0)
-    msg << "   %4d success after restart\n" % replies.fetch(:restart,0)
-    msg << "   %4d restart count\n"         % restart_count
+    msg = +("   %4d attempts\n"              % replies.fetch(:attempts,0))
+    msg <<  "   %4d unexpected_response\n"   % replies.fetch(:unexpected_response,0)
+    msg <<  "   %4d refused\n"               % replies.fetch(:refused,0)
+    msg <<  "   %4d read timeout\n"          % replies.fetch(:read_timeout,0)
+    msg <<  "   %4d reset\n"                 % replies.fetch(:reset,0)
+    msg <<  "   %4d write_errors\n"          % replies.fetch(:write_error,0)
+    msg <<  "   %4d success\n"               % replies.fetch(:success,0)
+    msg <<  "   %4d success after restart\n" % replies.fetch(:restart,0)
+    msg <<  "   %4d restart count\n"         % restart_count
 
     attempts = replies[:attempts]
     allowed_errors = (attempts * 0.002).round
