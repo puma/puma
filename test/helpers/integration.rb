@@ -307,7 +307,6 @@ class TestIntegration < PumaTest
 
   def connect(path = nil, unix: false)
     s = open_client_socket(unix: unix)
-    @ios_to_close << s
     s << "GET /#{path} HTTP/1.1\r\nHost: test.com\r\n\r\n"
     s
   end
@@ -316,7 +315,6 @@ class TestIntegration < PumaTest
   # does not wait for a read
   def fast_connect(path = nil, unix: false)
     s = open_client_socket(unix: unix)
-    @ios_to_close << s
     fast_write s, "GET /#{path} HTTP/1.1\r\nHost: test.com\r\n\r\n"
     s
   end
