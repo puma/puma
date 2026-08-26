@@ -638,7 +638,7 @@ class TestIntegration < PumaTest
     msg <<  "   %4d restart count\n"         % restart_count
 
     attempts = replies[:attempts]
-    allowed_errors = (attempts * 0.002).round
+    allowed_errors = restarts * num_threads
 
     assert_equal restarts, restart_count, msg
 
