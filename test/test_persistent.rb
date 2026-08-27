@@ -174,9 +174,10 @@ class TestPersistent < PumaTest
 
     sleep 2
 
-    assert_raises EOFError do
-      socket.read_nonblock(1)
-    end
+    # windows Errno::ECONNABORTED, macOS Truffle Errno::ECONNRESET
+    assert_raises(EOFError, Errno::ECONNABORTED, Errno::ECONNRESET) {
+      socket.send_http_read_response
+    }
   end
 
   def test_app_sets_content_length
