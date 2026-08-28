@@ -280,8 +280,8 @@ module Puma
     end
 
     def do_graceful_stop
-      @events.fire_after_stopped!
       @runner.stop_blocked
+      @events.fire_after_stopped!
     end
 
     def do_restart(previous_env)

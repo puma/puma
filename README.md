@@ -225,8 +225,8 @@ before_restart do
 end
 
 after_stopped do
-  # Add code to run in the Puma master process when it receives
-  # a stop command but before it shuts down.
+  # Add code to run in the Puma master process after outstanding
+  # requests have finished and Puma has stopped.
 end
 ```
 
