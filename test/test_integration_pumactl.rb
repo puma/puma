@@ -4,8 +4,10 @@ require_relative "helper"
 require_relative "helpers/integration"
 
 class TestIntegrationPumactl < TestIntegration
-  include TmpPath
   parallelize_me!
+
+  include TmpPath
+  include TestPuma
 
   def workers ; 2 ; end
 
@@ -163,31 +165,36 @@ class TestIntegrationPumactl < TestIntegration
   # puma files are required, see https://github.com/puma/puma/issues/3186
   def test_require_dependencies
     skip_if :jruby
-    conf_path = tmp_path '.config.rb'
 
-    File.write conf_path , <<~CONF
+    warning = 'Warning: The code in the `before_fork` block will not execute'
+    warning_msg = "Server did not log '#{warning}"
+
+    cli_server "-q", no_bind: true, merge_err: true, config: <<~CONFIG
       state_path "#{@state_path}"
-      bind "tcp://127.0.0.1:#{bind_port}"
+      bind "tcp://#{HOST}:#{bind_port}"
 
       workers 0
+      threads 1
 
-      before_fork do
-      end
+      before_fork { }  # should generate a warning
 
       #{set_pumactl_config}
 
       app do |env|
         [200, {}, ["Hello World"]]
       end
-    CONF
+    CONFIG
 
-    cli_server "-q -C #{conf_path}", no_bind: true, merge_err: true
+    assert_includes @server_log, warning, warning_msg
 
-    out = cli_pumactl_spawn "-F #{conf_path} restart", no_bind: true
+    out = cli_pumactl_spawn "-F #{@config_file.path} restart", no_bind: true
 
     assert_includes out.read, "Command restart sent success"
 
-    sleep 0.5 # give some time to restart
+    assert wait_for_server_to_include(warning), warning_msg
+
+    wait_for_server_to_boot
+
     read_response connect
 
     out = cli_pumactl_spawn "-S #{@state_path} status", no_bind: true
