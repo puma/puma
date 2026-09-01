@@ -363,8 +363,8 @@ module Puma
     def run
       @status = :run
 
-      # Recorded before any forking so hooks can tell which process they ran
-      # in.  See Configuration#run_hooks.
+      # Record the pid before any forking, so hooks can tell which process
+      # they ran in.  See Configuration#run_hooks.
       Puma.master_pid = Process.pid
 
       output_header "cluster"

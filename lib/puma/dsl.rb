@@ -1119,22 +1119,23 @@ module Puma
       @options[:lowlevel_error_handler] = obj
     end
 
-    # Use +obj+ or +block+ to handle exceptions raised by configuration hooks
-    # such as +before_worker_boot+.  By default Puma logs a warning and runs
-    # the next hook, which can leave a worker serving requests with only part
-    # of its setup done.  Setting a handler replaces that logging entirely.
+    # Use +obj+ or +block+ to handle exceptions that configuration hooks such
+    # as +before_worker_boot+ raise.  By default Puma logs a warning and runs
+    # the next hook, which can leave a worker serving requests when only part
+    # of its setup ran.  Setting a handler replaces that logging entirely.
     #
-    # The handler is called with the exception, the hook name, and a Hash of
+    # Puma calls the handler with the exception, the hook name, and a Hash of
     # +:process+ (+:master+ or +:worker+), +:arg+ (whatever Puma passed to the
     # hook -- the worker index for +before_worker_boot+, the Launcher for
     # +before_restart+, +nil+ for several others), and +:hook_data+ (the Hash
-    # given to hooks registered with a key, otherwise +nil+).  Handlers taking
-    # fewer arguments receive only the leading ones.
+    # Puma passes to hooks you register with a key, otherwise +nil+).  Handlers
+    # taking fewer arguments receive only the leading ones.
     #
-    # Exceptions raised by the handler are not caught, so +raise+ is the way
-    # to fail fast.  Beware that the blast radius differs by process: raising
-    # in a worker kills that worker and the master respawns it, but raising in
-    # the master takes down the whole server, since nothing supervises it.
+    # Puma does not catch the exceptions your handler raises, so +raise+ is the
+    # way to fail fast.  Beware that raising costs more in the master than in a
+    # worker: raising in a worker kills that worker and the master respawns it,
+    # but raising in the master takes down the whole server, since nothing
+    # supervises it.
     # Branch on +:process+ rather than on the hook name -- under
     # +fork_worker+, worker 0 runs +before_worker_fork+ and
     # +after_worker_fork+ itself.

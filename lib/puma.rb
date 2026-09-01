@@ -76,13 +76,13 @@ module Puma
     Thread.current.name = "puma #{name}"
   end
 
-  # The pid of the process that supervises workers, recorded before any
-  # forking happens.  Used to tell master from worker at runtime, which the
-  # hook name alone cannot do -- under `fork_worker`, worker 0 runs the
+  # The pid of the process that supervises workers.  Puma records it before
+  # any forking happens, so it tells master from worker at runtime.  The hook
+  # name alone cannot do that -- under `fork_worker`, worker 0 runs the
   # `before_worker_fork` and `after_worker_fork` hooks that the master
   # normally runs.
   #
-  # In single mode nothing is ever forked, so this stays the only pid.
+  # Single mode never forks anything, so this stays the only pid.
   #
   # @!attribute [rw] master_pid
   # @version 8.0.3

@@ -134,8 +134,8 @@ class TestIntegrationCluster < TestIntegration
   end
 
   # A `hook_error_handler` that re-raises must let the exception escape
-  # `run_hooks`, killing the worker, rather than being swallowed as it is by
-  # default.  See https://github.com/puma/puma/issues/3628
+  # `run_hooks`, killing the worker, rather than letting `run_hooks` swallow
+  # it, which is the default.  See https://github.com/puma/puma/issues/3628
   def test_hook_error_handler_raise_crashes_worker
     cli_server "-w 1 test/rackup/hello.ru",
       config: <<~'CONFIG',

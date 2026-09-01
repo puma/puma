@@ -403,10 +403,10 @@ module Puma
 
     private
 
-    # Called when a hook block raises.  Hands the exception to the configured
-    # `hook_error_handler`, if any, otherwise logs it as before.  Exceptions
-    # from the handler itself are deliberately not caught, so a handler can
-    # `raise` to fail fast.  See DSL#hook_error_handler.
+    # Runs when a hook block raises.  Hands the exception to the configured
+    # `hook_error_handler`, if any, otherwise logs it as before.  Puma
+    # deliberately does not catch exceptions from the handler itself, so a
+    # handler can `raise` to fail fast.  See DSL#hook_error_handler.
     #
     def handle_hook_error(e, key, arg, hook_options, hook_data, log_writer)
       handler = options[:hook_error_handler]
