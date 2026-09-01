@@ -440,6 +440,13 @@ module Puma
       spawn_workers
 
       Signal.trap "SIGINT" do
+        # setting the below to allow Ctrl-C to shutdown Puma, especially with
+        # hijacked responses.  See https://github.com/puma/puma/issues/3569
+        @options[:worker_shutdown_timeout] = 2
+        if @options.fetch(:force_shutdown_after, -1) < 0
+          @options[:force_shutdown_after]    = 0.5
+          log "- Setting 'force_shutdown_after' to 0.5"
+        end
         stop
       end
 
