@@ -745,7 +745,7 @@ class TestConfigFile < PumaTest
     assert_equal [['Error from hook', :before_restart, 'ARG']], seen
   end
 
-  # optional and splat params report negative arity, which must still get the
+  # Optional and splat params report negative arity, which must still get the
   # full set of arguments rather than raising ArgumentError
   def test_hook_error_handler_negative_arity
     seen = []
