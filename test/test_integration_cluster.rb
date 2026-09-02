@@ -135,7 +135,7 @@ class TestIntegrationCluster < TestIntegration
 
   # A `hook_error_handler` that re-raises must let the exception escape
   # `run_hooks`, killing the worker, rather than letting `run_hooks` swallow
-  # it, which is the default.  See https://github.com/puma/puma/issues/3628
+  # it, which is the default. See https://github.com/puma/puma/issues/3628
   def test_hook_error_handler_raise_crashes_worker
     cli_server "-w 1 test/rackup/hello.ru",
       config: <<~'CONFIG',
@@ -153,10 +153,10 @@ class TestIntegrationCluster < TestIntegration
       CONFIG
       merge_err: true, no_wait: true
 
-    # the handler runs in place of Puma's default WARNING logging
+    # The handler runs in place of Puma's default WARNING logging
     assert wait_for_server_to_include('handler saw before_worker_boot in worker')
 
-    # re-raising kills the worker, so the master respawns it.  A second
+    # Re-raising kills the worker, so the master respawns it. A second
     # occurrence proves the worker died rather than carrying on booting.
     assert wait_for_server_to_include('handler saw before_worker_boot in worker')
 

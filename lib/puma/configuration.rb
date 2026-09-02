@@ -403,10 +403,10 @@ module Puma
 
     private
 
-    # Runs when a hook block raises.  Hands the exception to the configured
-    # `hook_error_handler`, if any, otherwise logs it as before.  Puma
+    # Runs when a hook block raises. Hands the exception to the configured
+    # `hook_error_handler`, if any; otherwise logs it as before. Puma
     # deliberately does not catch exceptions from the handler itself, so a
-    # handler can `raise` to fail fast.  See DSL#hook_error_handler.
+    # handler can `raise` to fail fast. See DSL#hook_error_handler.
     #
     def handle_hook_error(e, key, arg, hook_options, hook_data, log_writer)
       handler = options[:hook_error_handler]
@@ -424,7 +424,7 @@ module Puma
       id = hook_options[:id]
 
       # Negative arity means optional or splat params, so the handler accepts
-      # at least this many.  Everything else gets the full set.
+      # at least this many. Everything else gets the full set.
       handler.call e, key, {
         process:   Puma.master? ? :master : :worker,
         arg:       arg,

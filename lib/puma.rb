@@ -76,24 +76,20 @@ module Puma
     Thread.current.name = "puma #{name}"
   end
 
-  # The pid of the process that supervises workers.  Puma records it before
-  # any forking happens, so it tells master from worker at runtime.  The hook
-  # name alone cannot do that -- under `fork_worker`, worker 0 runs the
-  # `before_worker_fork` and `after_worker_fork` hooks that the master
-  # normally runs.
+  # `master_pid` is the pid of the process that supervises workers. Puma
+  # records it before any forking happens, so it differentiates master
+  # from worker at runtime.
   #
   # Single mode never forks anything, so this stays the only pid.
   #
   # @!attribute [rw] master_pid
-  # @version 8.0.3
   class << self
     attr_accessor :master_pid
   end
 
-  # Whether the calling process supervises workers.  True in single mode and
-  # in the cluster master, false in a forked worker.
+  # `master?` indicates whether the calling process supervises workers. True
+  # in single mode and in the cluster master, false in a forked worker.
   #
-  # @version 8.0.3
   def self.master?
     @master_pid.nil? || @master_pid == Process.pid
   end
