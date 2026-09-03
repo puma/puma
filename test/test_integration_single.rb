@@ -2,9 +2,13 @@
 
 require_relative "helper"
 require_relative "helpers/integration"
+require_relative "helpers/test_puma/puma_socket"
 
 class TestIntegrationSingle < TestIntegration
   parallelize_me!
+
+  include TestPuma
+  include TestPuma::PumaSocket
 
   def workers ; 0 ; end
 
@@ -236,11 +240,18 @@ class TestIntegrationSingle < TestIntegration
     skip_unless_signal_exist? :TERM
 
     cli_server "test/rackup/close_listeners.ru", merge_err: true
-    connection = fast_connect
+    skt = send_http
 
     begin
-      read_body connection
+      if Puma::IS_JRUBY
+        # for JRuby, added a `sleep` command in the ru file, it generated
+        # an 'ObjectSpace is disabled' error?
+        assert_equal "", skt.read_body
+      else
+        assert_equal "[#<TCPServer:(closed)>]\n", skt.read_body
+      end
     rescue EOFError
+      fail "EOFError raised"
     end
 
     begin

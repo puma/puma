@@ -80,6 +80,7 @@ module TestPuma
           self.to_io.wait_readable timeout
           time_read ||= Process.clock_gettime(Process::CLOCK_MONOTONIC)
           part = self.read_nonblock(read_len, exception: false)
+
           case part
           when String
             times << (Process.clock_gettime(Process::CLOCK_MONOTONIC) - time_read).round(4)
@@ -87,18 +88,23 @@ module TestPuma
             if status
               no_body ||= NO_ENTITY_BODY.key?(status.to_i) || status.to_i < 200
             end
+
             if no_body && part.end_with?(RESP_SPLIT)
               response.times = times
               return response << part
             end
 
             unless content_length || chunked
-              chunked ||= part.downcase.include? "\r\ntransfer-encoding: chunked\r\n"
-              content_length = (t = part[/^Content-Length: (\d+)/i , 1]) ? t.to_i : nil
+              chunked ||= part.include? "\r\ntransfer-encoding: chunked\r\n"
+              content_length = (t = part[/^content-length: (\d+)/i , 1]) ? t.to_i : nil
+            end
+
+            if part.end_with?(RESP_SPLIT) && !content_length && !chunked
+              return response << part
             end
             response << part
             hdrs, body = response.split RESP_SPLIT, 2
-            unless body.nil?
+            unless body.nil? || body.empty?
               # below could be simplified, but allows for debugging...
               finished =
                 if content_length

@@ -102,7 +102,7 @@ class TestResponseHeader < PumaTest
     server_run app: ->(env) { [200, {'teapot-status' => 'Boiling'}, []] }
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
-    assert_match(/HTTP\/1.0 200 OK\r\nteapot-status: Boiling\r\ncontent-length: 0\r\n\r\n/, data)
+    assert_match(/HTTP\/1.0 200 OK\r\nteapot-status: Boiling\r\n\r\n/, data)
   end
 
   # Special headers starting “rack.” are for communicating with the server, and must not be sent back to the client.
@@ -115,7 +115,7 @@ class TestResponseHeader < PumaTest
     server_run app: ->(env) { [200, {'Racket' => 'Bouncy'}, []] }
     data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
 
-    assert_match(/HTTP\/1.0 200 OK\r\nracket: Bouncy\r\ncontent-length: 0\r\n\r\n/, data)
+    assert_match(/HTTP\/1.0 200 OK\r\nracket: Bouncy\r\n\r\n/, data)
   end
 
   # testing header key must conform rfc token specification

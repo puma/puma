@@ -210,11 +210,11 @@ module Puma
         # 101 (Switching Protocols) doesn't return here or have content_length,
         # it should be using `response_hijack`
         unless status == 101
-          if content_length && status != 204
+          if content_length && !content_length.zero? && status != 204
             io_buffer.append CONTENT_LENGTH_S, content_length.to_s, line_ending
           end
 
-          io_buffer << LINE_END
+          io_buffer << line_ending
           fast_write_str socket, io_buffer.read_and_reset
 
           uncork_socket socket.flush
@@ -222,7 +222,9 @@ module Puma
         end
       else
         if content_length
-          io_buffer.append CONTENT_LENGTH_S, content_length.to_s, line_ending
+          unless content_length.zero?
+            io_buffer.append CONTENT_LENGTH_S, content_length.to_s, line_ending
+          end
           chunked = false
         elsif !response_hijack && resp_info[:allow_chunked]
           io_buffer << TRANSFER_ENCODING_CHUNKED

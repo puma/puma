@@ -2,10 +2,14 @@
 
 require_relative "helper"
 require_relative "helpers/integration"
+require_relative "helpers/test_puma/puma_socket"
 
 require "puma/plugin"
 
 class TestPluginSystemdJruby < TestIntegration
+
+  include TestPuma
+  include TestPuma::PumaSocket
 
   def setup
     skip_unless :linux
@@ -26,7 +30,7 @@ class TestPluginSystemdJruby < TestIntegration
       end
     CONFIG
 
-    assert_empty read_body(connect)
+    assert_empty send_http_read_body
 
     stop_server
   end
