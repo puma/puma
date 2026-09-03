@@ -23,6 +23,10 @@ class TestThreadPool < PumaTest
     @pool = Puma::ThreadPool.new("tst", options, &block)
   end
 
+  def wait_until(timeout = 1)
+    Timeout.timeout(timeout) { sleep 0.01 until yield }
+  end
+
   def mutex_pool(min, max, pool_shutdown_grace_time: nil, &block)
     block = proc { } unless block
     options = {
@@ -249,6 +253,64 @@ class TestThreadPool < PumaTest
 
     assert_equal 2, pool.spawned
     assert_equal 0, pool.trim_requested
+  end
+
+  def test_force_trim_is_honored_while_pool_is_busy
+    release = Queue.new
+    pool = new_pool(0, 3) { release.pop }
+    4.times { |i| pool << i } # 4 because 3 threads busy, 1 item queued
+
+    wait_until do
+      pool.instance_variable_get(:@processors).map(&:thread).count(&:stop?) == 3
+    end
+
+    assert_equal 3, pool.spawned
+    assert_equal 1, pool.backlog
+
+    pool.max = 2
+    pool.trim(true)
+
+    assert_equal 1, pool.trim_requested
+
+    release << true
+    wait_until { pool.spawned == 2 }
+
+    assert_equal 2, pool.spawned
+    assert_equal 0, pool.trim_requested
+  ensure
+    3.times { release << true }
+  end
+
+  def test_shutdown_with_pending_trims_processes_all_queued_work
+    release = Queue.new
+    processed = Queue.new
+
+    pool = new_pool(0, 3) do
+      release.pop
+      processed << true
+    end
+
+    request_size = 9
+    request_size.times { |i| pool << i } # 6 because 3 threads busy, 3 item queued
+
+    wait_until do
+      pool.instance_variable_get(:@processors).map(&:thread).count(&:stop?) == 3
+    end
+
+    assert_equal 3, pool.spawned
+
+    shutdown_thread = Thread.new { pool.shutdown(-1) }
+    6.times { release << true }
+    wait_until { processed.size == 6 }
+
+    assert_equal 3, pool.spawned
+
+    3.times { release << true }
+    shutdown_thread.join
+
+    assert_equal request_size, processed.size
+  ensure
+    (request_size - release.size).times { release << true }
   end
 
   def test_trim_thread_exit_hook
