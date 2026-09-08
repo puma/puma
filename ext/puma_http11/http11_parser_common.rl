@@ -11,7 +11,9 @@
   safe = ("$" | "-" | "_" | ".");
   extra = ("!" | "*" | "'" | "(" | ")" | ",");
   reserved = (";" | "/" | "?" | ":" | "@" | "&" | "=" | "+");
-  unsafe = (CTL | " " | "\"" | "#" | "%" | "<" | ">");
+  # RFC 2396 section 2.4.3 'unwise' characters.
+  unwise = ("{" | "}" | "|" | "\\" | "^" | "[" | "]" | "`");
+  unsafe = (CTL | " " | "\"" | "#" | "%" | "<" | ">" | unwise);
   national = any -- (alpha | digit | reserved | extra | safe | unsafe);
   unreserved = (alpha | digit | safe | extra | national);
   escape = ("%" xdigit xdigit);
