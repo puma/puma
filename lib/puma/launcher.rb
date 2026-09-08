@@ -447,7 +447,10 @@ module Puma
           # Shortcut the control flow in case raise_exception_on_sigterm is true
           do_graceful_stop
 
-          raise(SignalException, "SIGTERM") if @options[:raise_exception_on_sigterm]
+          # Only raise in cluster mode — master needs it to break out of its
+          # monitoring loop. In single mode the raise serves no purpose and
+          # produces exit code 1 on Ruby < 3.3 / JRuby (signal-kill semantics).
+          raise(SignalException, "SIGTERM") if @options[:raise_exception_on_sigterm] && clustered?
         end
       rescue Exception
         log "*** SIGTERM not implemented, signal based gracefully stopping unavailable!"
