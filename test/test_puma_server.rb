@@ -1847,6 +1847,54 @@ class TestPumaServer < PumaTest
     end
   end
 
+  def test_shutdown_with_buffered_keep_alive_request
+    assert_keep_alive_request_closed_during_shutdown(:stop, true)
+  end
+
+  def test_shutdown_with_late_keep_alive_request
+    assert_keep_alive_request_closed_during_shutdown(:stop, false)
+  end
+
+  def test_restart_with_buffered_keep_alive_request
+    assert_keep_alive_request_closed_during_shutdown(:begin_restart, true)
+  end
+
+  def test_restart_with_late_keep_alive_request
+    assert_keep_alive_request_closed_during_shutdown(:begin_restart, false)
+  end
+
+  def assert_keep_alive_request_closed_during_shutdown(command, buffered)
+    response_ready = Queue.new
+    resume = Queue.new
+    server_run(max_threads: 1) { [200, {}, ["hello"]] }
+    @server.define_singleton_method(:handle_request) do |*args|
+      result = super(*args)
+      response_ready << result
+      resume.pop
+      result
+    end
+
+    socket = new_socket
+    socket.write(buffered ? GET_11 + GET_11 : GET_11)
+    assert_equal :keep_alive, Timeout.timeout(5) { response_ready.pop }
+    socket.write(GET_11) unless buffered
+
+    @server.public_send(command)
+    Timeout.timeout(5) do
+      sleep 0.001 until @pool.with_mutex { @pool.instance_variable_get(:@shutdown) }
+    end
+    resume.close
+
+    response = Timeout.timeout(5) { socket.read }
+    assert_equal ["200"], response.scan(/HTTP\/1\.1 (\d{3})/).flatten
+    assert_includes response, "\r\n\r\nhello"
+    assert_equal 1, @server.requests_count
+    assert_empty @log_writer.stderr.string
+  ensure
+    resume&.close
+    socket&.close
+  end
+
   def test_run_stop_thread_safety
     100.times do
       thread = @server.run
