@@ -1886,6 +1886,7 @@ class TestPumaServer < PumaTest
     resume.close
 
     response = Timeout.timeout(5) { socket.read }
+    assert @server.instance_variable_get(:@thread).join(5), "Server did not stop"
     assert_equal ["200"], response.scan(/HTTP\/1\.1 (\d{3})/).flatten
     assert_includes response, "\r\n\r\nhello"
     assert_equal 1, @server.requests_count
@@ -1893,6 +1894,8 @@ class TestPumaServer < PumaTest
   ensure
     resume&.close
     socket&.close
+    # Restart retains listeners for a successor; this test has none.
+    @server.binder.close_listeners if command == :begin_restart
   end
 
   def test_run_stop_thread_safety
