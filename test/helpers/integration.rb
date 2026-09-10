@@ -676,4 +676,26 @@ class TestIntegration < PumaTest
       sleep 0.01
     end
   end
+
+  # use `PWR` for linux, `:INFO` for mac
+  def thread_log
+    signal =
+      if    RUBY_PLATFORM.include? 'linux'  then :PWR
+      elsif RUBY_PLATFORM.include? 'darwin' then :INFO
+      else ; :PWR
+      end
+
+    skip_unless_signal_exist? signal
+
+    if workers.nil? || workers.zero?
+      cli_server "-t1:1 -q test/rackup/hello.ru"
+      Process.kill signal, @pid
+    else
+      cli_server "-w#{workers} -t1:1 -q test/rackup/hello.ru"
+      Process.kill signal, get_worker_pids.first
+    end
+
+    assert wait_for_server_to_include('Thread: TID-')
+  end
+
 end

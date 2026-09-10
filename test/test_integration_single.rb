@@ -146,17 +146,9 @@ class TestIntegrationSingle < TestIntegration
     assert_raises(Errno::ECONNREFUSED) { TCPSocket.new(HOST, @bind_port) }
   end
 
-  def test_siginfo_thread_print
-    skip_unless_signal_exist? :INFO
-
-    cli_server 'test/rackup/hello.ru'
-    output = []
-    t = Thread.new { output << @server.readlines }
-    Process.kill :INFO, @pid
-    Process.kill :INT , @pid
-    t.join
-
-    assert_match "Thread: TID", output.join
+  # uses `:PWR` for linux, `:INFO` for mac
+  def test_thread_log
+    thread_log
   end
 
   def test_write_to_log
