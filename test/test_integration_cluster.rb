@@ -124,6 +124,37 @@ class TestIntegrationCluster < TestIntegration
     assert_equal 0, status
   end
 
+  # A `hook_error_handler` that re-raises must let the exception escape
+  # `run_hooks`, killing the worker, rather than letting `run_hooks` swallow
+  # it, which is the default. See https://github.com/puma/puma/issues/3628
+  def test_hook_error_handler_raise_crashes_worker
+    cli_server "-w 1 test/rackup/hello.ru",
+      config: <<~'CONFIG',
+        worker_check_interval 1
+
+        before_worker_boot do
+          raise "hook_error_handler test failure"
+        end
+
+        hook_error_handler do |e, key, opts|
+          $stdout.puts "handler saw #{key} in #{opts[:process]}"
+          $stdout.flush
+          raise e
+        end
+      CONFIG
+      merge_err: true, no_wait: true
+
+    # The handler runs in place of Puma's default WARNING logging
+    assert wait_for_server_to_include('handler saw before_worker_boot in worker')
+
+    # Re-raising kills the worker, so the master respawns it. A second
+    # occurrence proves the worker died rather than carrying on booting.
+    assert wait_for_server_to_include('handler saw before_worker_boot in worker')
+
+    refute_includes @server_log, 'booted in',
+      'worker should never finish booting when the hook error is re-raised'
+  end
+
   def test_after_booted_and_after_stopped
     skip_unless_signal_exist? :TERM
     cli_server "-w #{workers} " \

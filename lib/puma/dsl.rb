@@ -1119,6 +1119,38 @@ module Puma
       @options[:lowlevel_error_handler] = obj
     end
 
+    # Use +obj+ or +block+ to handle exceptions that configuration hooks such
+    # as +before_worker_boot+ raise. By default, Puma logs a warning and runs
+    # the next hook, which can leave a worker serving requests when only part
+    # of its setup ran. Setting a handler replaces that logging! It means your
+    # handler takes on its own logging.
+    #
+    # Puma calls the handler with the exception, the hook name, and a Hash of
+    # +:process+ (+:master+ or +:worker+), +:arg+ (whatever Puma passed to the
+    # hook -- the worker index for +before_worker_boot+, the Launcher for
+    # +before_restart+, +nil+ for several others), and +:hook_data+ (the Hash
+    # Puma passes to hooks you register with a key, otherwise +nil+). Handlers
+    # which take fewer arguments receive only the leading ones.
+    #
+    # Puma does not catch the exceptions your handler raises, so +raise+ is the
+    # way to fail fast. Be aware that raising has different effects in the master
+    # thread than in a worker: raising in a worker kills that worker and the
+    # master respawns it, but raising in the master takes down the whole server,
+    # since nothing supervises it.
+    #
+    # @example Crash workers instead of booting them half-configured
+    #   hook_error_handler do |err, hook, opts|
+    #     raise err if opts[:process] == :worker
+    #   end
+    #
+    # @version 8.0.3
+    #
+    def hook_error_handler(obj=nil, &block)
+      obj ||= block
+      raise "Provide either a #call'able or a block" unless obj
+      @options[:hook_error_handler] = obj
+    end
+
     # This option is used to allow your app and its gems to be
     # properly reloaded when not using preload.
     #
