@@ -87,18 +87,9 @@ class TestIntegrationCluster < TestIntegration
     end
   end
 
-  def test_siginfo_thread_print
-    skip_unless_signal_exist? :INFO
-
-    cli_server "-w #{workers} -q test/rackup/hello.ru"
-    worker_pids = get_worker_pids
-    output = []
-    t = Thread.new { output << @server.readlines }
-    Process.kill :INFO, worker_pids.first
-    Process.kill :INT , @pid
-    t.join
-
-    assert_match "Thread: TID", output.join
+  # uses `:PWR` for linux, `:INFO` for mac
+  def test_thread_log
+    thread_log
   end
 
   def test_usr2_restart
@@ -582,14 +573,14 @@ class TestIntegrationCluster < TestIntegration
     cli_server "-w 1 test/rackup/hello.ru", env: { 'RUBY_MN_THREADS' => '1' }
 
     assert wait_for_server_to_include('Worker 0 (PID')
-    assert_match(/WARNING: Detected `RUBY_MN_THREADS/, @server_log)
+    assert_includes @server_log, 'WARNING: Detected `RUBY_MN_THREADS'
   end
 
   def test_warning_message_not_outputted_when_single_worker_silenced
     cli_server "-w 1 test/rackup/hello.ru", config: "silence_single_worker_warning"
 
     assert wait_for_server_to_include('Worker 0 (PID')
-    refute_match(/WARNING: Detected running cluster mode with 1 worker/, @server_log)
+    refute_includes @server_log, 'WARNING: Detected running cluster mode with 1 worker'
   end
 
   def test_signal_ttin
