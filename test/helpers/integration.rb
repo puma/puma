@@ -21,6 +21,8 @@ class TestIntegration < PumaTest
   LOG_ERROR_SLEEP = 0.2
   LOG_ERROR_QTY   = 5
 
+  PROC_CLK_MONO = Process::CLOCK_MONOTONIC
+
   # rubyopt requires bundler/setup, so we don't need it here
   BASE = "#{Gem.ruby} -Ilib"
 
@@ -261,15 +263,15 @@ class TestIntegration < PumaTest
   end
 
   def server_gets(match_obj, timeout = nil, log: false)
-    time_timeout = Process.clock_gettime(Process::CLOCK_MONOTONIC) +
+    time_timeout = Process.clock_gettime(PROC_CLK_MONO) +
       (timeout || LOG_TIMEOUT)
     error_retries = 0
     line = ''
 
-    sleep 0.05 until @server.is_a?(IO) || Process.clock_gettime(Process::CLOCK_MONOTONIC) > time_timeout
+    sleep 0.05 until @server.is_a?(IO) || Process.clock_gettime(PROC_CLK_MONO) > time_timeout
 
     raise Minitest::Assertion,  "@server is not an IO" unless @server.is_a?(IO)
-    if Process.clock_gettime(Process::CLOCK_MONOTONIC) > time_timeout
+    if Process.clock_gettime(PROC_CLK_MONO) > time_timeout
       raise Minitest::Assertion, "Timeout waiting for server be be an IOto log #{match_obj.inspect}"
     end
 
@@ -284,7 +286,7 @@ class TestIntegration < PumaTest
       sleep LOG_ERROR_SLEEP
       retry
     end
-    if Process.clock_gettime(Process::CLOCK_MONOTONIC) > time_timeout
+    if Process.clock_gettime(PROC_CLK_MONO) > time_timeout
       raise Minitest::Assertion, "Timeout waiting for server to log #{match_obj.inspect}"
     end
     line
@@ -303,14 +305,14 @@ class TestIntegration < PumaTest
   end
 
   def open_client_socket(unix: false, timeout: 3)
-    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+    deadline = Process.clock_gettime(PROC_CLK_MONO) + timeout
     retries = 0
     begin
       skt = unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, bind_port)
       @ios_to_close << skt
       skt
     rescue Errno::EADDRNOTAVAIL => e
-      raise e if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+      raise e if Process.clock_gettime(PROC_CLK_MONO) >= deadline
       retries += 1
       sleep 0.01 * retries.clamp(0, 10)
       retry
@@ -360,7 +362,7 @@ class TestIntegration < PumaTest
     content_length = nil
     chunked = nil
     response = +''
-    t_st = Process.clock_gettime Process::CLOCK_MONOTONIC
+    t_st = Process.clock_gettime PROC_CLK_MONO
     if connection.to_io.wait_readable timeout
       loop do
         begin
@@ -396,7 +398,7 @@ class TestIntegration < PumaTest
           when nil
             raise EOFError
           end
-          if timeout < Process.clock_gettime(Process::CLOCK_MONOTONIC) - t_st
+          if timeout < Process.clock_gettime(PROC_CLK_MONO) - t_st
             raise Timeout::Error, 'Client Read Timeout'
           end
         end
@@ -494,6 +496,7 @@ class TestIntegration < PumaTest
   # long the test takes, not whether it passes.
   def restart_does_not_drop_connections(
       num_threads: 1,
+      restarts: 5,
       config: nil,
       unix: nil,
       signal: nil,
@@ -505,14 +508,9 @@ class TestIntegration < PumaTest
     skip_if :truffleruby, suffix: ' - Undiagnosed failures on TruffleRuby'
     skipped = nil
 
-    restarts         = 3     # loop bound - the count the test asserts it got
-
-    gate_timeout     = 20    # seconds to wait for those responses
-
-    # successful responses to wait for before signaling again
-    replies_per_gate = Puma::IS_WINDOWS ? 100 : 200
-    # seconds each client waits between requests
-    pause = Puma::IS_WINDOWS ? 0.002 : 0.001
+    replies_per_gate = 100   # successful responses to wait for before signaling again
+    gate_timeout     = 15    # seconds to wait for those responses
+    pause            = 0.001 # seconds each client waits between requests
 
     clustered = (workers || 0) >= 2
 
@@ -601,7 +599,7 @@ class TestIntegration < PumaTest
 
         # none of these are rescued - a wait that never finishes must fail the
         # test loudly, rather than quietly ending the restart loop
-        wait_for_server_to_boot timeout: 30, log: log if signal == :USR2
+        wait_for_server_to_boot(timeout: 30, log: log) if signal == :USR2
         get_worker_pids(signal == :USR2 ? 0 : restart_count, log: log) if clustered
 
         wait_for_replies replies, target, mutex: mutex, timeout: gate_timeout,
@@ -638,7 +636,7 @@ class TestIntegration < PumaTest
     msg <<  "   %4d restart count\n"         % restart_count
 
     attempts = replies[:attempts]
-    allowed_errors = restarts * num_threads
+    allowed_errors = restarts
 
     assert_equal restarts, restart_count, msg
 
@@ -664,17 +662,19 @@ class TestIntegration < PumaTest
   # Blocks until `replies[:success]` reaches `target`.  Fails the test if that
   # does not happen within `timeout` seconds, rather than passing quietly on a
   # server that has stopped answering.
-  def wait_for_replies(replies, target, mutex:, timeout: 20, what: nil)
-    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+  def wait_for_replies(replies, target, mutex:, timeout: 15, what: nil)
+    deadline = Process.clock_gettime(PROC_CLK_MONO) + timeout
+    count = 0
     loop do
       count = mutex.synchronize { replies[:success] }
-      return count if count >= target
-      if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+      break if count >= target
+      if Process.clock_gettime(PROC_CLK_MONO) > deadline
         flunk "Only #{count} successful requests #{what}, " \
           "expected #{target} within #{timeout} seconds"
       end
-      sleep 0.01
+      sleep 0.05
     end
+    count
   end
 
   # use `PWR` for linux, `:INFO` for mac
