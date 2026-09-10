@@ -429,10 +429,8 @@ class TestIntegration < PumaTest
 
   def set_pumactl_config(unix: false)
     if unix
-      @control_path = tmp_path('.cntl_sock')
       "activate_control_app 'unix://#{control_path}', { auth_token: '#{TOKEN}' }"
     else
-      @control_port = UniquePort.call
       "activate_control_app 'tcp://#{HOST}:#{control_port}', { auth_token: '#{TOKEN}' }"
     end
   end
@@ -446,7 +444,7 @@ class TestIntegration < PumaTest
       elsif @control_port && !@control_path
         %W[-C tcp://#{HOST}:#{@control_port} -T #{TOKEN} #{argv}]
       else
-        flunk 'Both @control_path and @control_port esist?'
+        flunk 'Both @control_path and @control_port exist?'
       end
 
     r, w = IO.pipe

@@ -24,11 +24,6 @@ class TestIntegrationSSL < TestIntegration
 
   include TestPuma::PumaSocket
 
-  def bind_port
-    @bind_port ||= UniquePort.call
-    @tcp_port = @bind_port
-  end
-
   def with_server(config)
     cli_server "-t1:1", config: config, no_bind: true
 

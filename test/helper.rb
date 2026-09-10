@@ -87,7 +87,7 @@ module UniquePort
     # sock.ipv6only! if addr_info.ipv6?
     sock.setsockopt :SOCKET, :REUSEADDR, 0
     sock.bind addr_info
-    sock.connect_address.ip_port
+    sock.local_address.ip_port
   rescue Exception => e
     raise e
   ensure
