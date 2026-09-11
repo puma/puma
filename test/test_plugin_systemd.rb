@@ -54,6 +54,14 @@ class TestPluginSystemd < TestIntegration
     assert_message "STOPPING=1"
   end
 
+  def test_systemd_watchdog_on_ready
+    wd_env = @env.merge({"WATCHDOG_USEC" => "10_000_000"})
+    cli_server "test/rackup/hello.ru", env: wd_env
+    assert_message "READY=1"
+    assert_message "WATCHDOG=1", wait: false
+    stop_server
+  end
+
   def test_systemd_notify
     cli_server "test/rackup/hello.ru", env: @env
     assert_message "READY=1"
@@ -103,12 +111,12 @@ class TestPluginSystemd < TestIntegration
     assert_message 'STOPPING=1'
   end
 
-  def assert_message(msg)
+  def assert_message(msg, wait: true)
     @socket.wait_readable 1
     @message << @socket.sysread(msg.bytesize)
     # below is kind of hacky, but seems to work correctly when slow CI systems
     # write partial status messages
-    if @message.start_with?('STATUS=') && !msg.start_with?('STATUS=')
+    if wait && @message.start_with?('STATUS=') && !msg.start_with?('STATUS=')
       @message << @socket.sysread(512) while @socket.wait_readable(1) && !@message.include?(msg)
       assert_includes @message, msg
       @message = @message.split(msg, 2).last
