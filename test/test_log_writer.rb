@@ -141,7 +141,32 @@ class TestLogWriter < PumaTest
     sock.read
     sleep 0.1 # important so that the previous data is sent as a packet
     assert_match %r!HTTP parse error, malformed request!, log_writer.stderr.string
-    assert_match %r!\("GET #{path}" - \(-\)\)!, log_writer.stderr.string
+    assert_match %r!\("GET #{path}" - \(127\.0\.0\.1\)\)!, log_writer.stderr.string
+  ensure
+    sock.close if sock && !sock.closed?
+    server&.stop(true)
+  end
+
+  def test_parse_error_ipv6
+    skip "No IPv6 loopback available" unless Socket.ip_address_list.any?(&:ipv6_loopback?)
+
+    app = proc { |_env| [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
+    log_writer = Puma::LogWriter.strings
+    server = Puma::Server.new app, nil, {log_writer: log_writer}
+
+    host = '::1'
+    port = (server.add_tcp_listener host, 0).addr[1]
+    server.run
+
+    sock = TCPSocket.new host, port
+    path = "/"
+    params = "a"*1024*10
+
+    sock << "GET #{path}?a=#{params} HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\n\r\n"
+    sock.read
+    sleep 0.1 # important so that the previous data is sent as a packet
+    assert_match %r!HTTP parse error, malformed request!, log_writer.stderr.string
+    assert_match %r!\("GET #{path}" - \(::1\)\)!, log_writer.stderr.string
   ensure
     sock.close if sock && !sock.closed?
     server&.stop(true)
