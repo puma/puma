@@ -174,6 +174,17 @@ class TestRequestLineInvalid < TestRequestBase
       "Invalid HTTP format, parsing fails. Are you trying to open an SSL connection to a non-SSL Puma?"
   end
 
+  # request with no request line, the parser error cannot be enriched
+  def test_no_request_line
+    assert_invalid "\r\n\r\n",
+      "Invalid HTTP format, parsing fails. Are you trying to open an SSL connection to a non-SSL Puma?"
+  end
+
+  def test_no_request_line_with_body
+    assert_invalid "\r\n\r\nfoo",
+      "Invalid HTTP format, parsing fails. Are you trying to open an SSL connection to a non-SSL Puma?"
+  end
+
   def test_method_lower_case
     assert_invalid "GEt /?a=1 HTTP/1.1\r\nHost: test.com\r\n\r\n",
       "Invalid HTTP format, parsing fails. Bad method GEt"
