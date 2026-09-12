@@ -230,6 +230,7 @@ module TestSkips
       when :unix    then MSG_UNIX                       unless Puma::HAS_UNIX_SOCKET
       when :aunix   then MSG_AUNIX                      unless Puma.abstract_unix_socket?
       when :rack3   then "Skipped unless Rack >= 3.x"   unless ::Rack.release >= '3'
+      when :closed_socket then "Skipped unless closed socket is supported" unless Puma::Server.send(:closed_socket_supported?)
       else false
     end
     skip skip_msg, bt if skip_msg

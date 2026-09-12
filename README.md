@@ -258,6 +258,8 @@ Bind Puma to a socket with the `-b` (or `--bind`) flag:
 $ puma -b tcp://127.0.0.1:9292
 ```
 
+When using a TCP socket on Linux, Puma will automatically skip requests who's connection has closed by the time it's taken from the queue. If you'd like to avoid wasting time on connections that are closing after your app starts handling them, you can check `Puma::Client.connection_closed?` at any time during the lifecycle of a request. Puma cannot check this for you during a request: it is waiting for your app to return a response.
+
 To use a UNIX Socket instead of TCP:
 
 ```

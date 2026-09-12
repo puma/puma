@@ -3,6 +3,8 @@
 module Puma
   #———————————————————————— DO NOT USE — this class is for internal use only ———
 
+  # Add `Thread#puma_client` and `Thread#puma_client=`
+  Thread.attr_accessor(:puma_client)
 
   # The methods here are included in Server, but are separated into this file.
   # All the methods here pertain to passing the request to the app, then
@@ -57,6 +59,8 @@ module Puma
       app_body = nil
       error = nil
 
+      Thread.current.puma_client = client
+
       return :close if closed_socket?(socket)
 
       if @early_hints
@@ -107,6 +111,7 @@ module Puma
       end
       prepare_response(status, headers, res_body, requests, client)
     ensure
+      Thread.current.puma_client = nil
       io_buffer.reset
       app_body.close if app_body.respond_to? :close
       client&.tempfile_close
