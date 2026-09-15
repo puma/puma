@@ -38,6 +38,9 @@ development files are installed on the system.
 If the system does not have OpenSSL development files installed, Puma will
 install/compile, but it will not allow ssl connections.
 
+See also the [SSL / HTTPS guide](docs/ssl.md) for configuring Puma with a
+reverse proxy, `ssl_bind`, and `verify_mode`.
+
 ## Frameworks
 
 ### Rails
@@ -275,6 +278,9 @@ Need a bit of security? Use SSL sockets:
 ```
 $ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert'
 ```
+
+More detail (including HTTPS behind a reverse proxy): [docs/ssl.md](docs/ssl.md).
+
 #### Self-signed SSL certificates (via the [`localhost`] gem, for development use):
 
 Puma supports the [`localhost`] gem for self-signed certificates. This is particularly useful if you want to use Puma with SSL locally, and self-signed certificates will work for your use-case. Currently, the integration can only be used in MRI.
