@@ -209,6 +209,13 @@ class TestRequestInvalidMultiple < PumaTest
 
     refute lleh_err
     sleep 0.1
-    assert_raises(*ERROR_ON_CLOSED) { socket << GET_11 }
+    # Linux raises on the first write to the closed socket. BSD buffers that
+    # write and only reports the error on a later one, so write again after a
+    # short pause; back-to-back writes both land in the buffer first.
+    assert_raises(*ERROR_ON_CLOSED) do
+      socket << GET_11
+      sleep 0.05
+      socket << GET_11
+    end
   end
 end
