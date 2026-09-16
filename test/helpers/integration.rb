@@ -312,7 +312,7 @@ class TestIntegration < PumaTest
       @ios_to_close << skt
       skt
     rescue Errno::EADDRNOTAVAIL, Errno::ETIMEDOUT => e
-      raise e if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+      raise e if Process.clock_gettime(PROC_CLK_MONO) >= deadline
       retries += 1
       sleep 0.01 * retries.clamp(0, 10)
       retry
