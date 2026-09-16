@@ -93,11 +93,11 @@ file "lib/puma/puma_http11.rb" do |t|
   end
 end
 
-Rake::TestTask.new(:test)
+require_relative "test/categories"
 
 # tests require extension be compiled, but depend on the platform
 if Puma.jruby?
-  task :test => [:java]
+  test_prereq = :java
 else
   task :compile_for_test do
     original_makeflags = ENV["MAKEFLAGS"]
@@ -107,7 +107,29 @@ else
     ENV["MAKEFLAGS"] = original_makeflags
   end
 
-  task :test => [:compile_for_test]
+  test_prereq = :compile_for_test
 end
+
+# Integration = process-spawn / TestIntegration. Unit = in-process complement.
+# See test/categories.rb and CONTRIBUTING.md ("Running tests").
+namespace :test do
+  Rake::TestTask.new(:unit) do |t|
+    t.description = "Run in-process (unit) tests"
+    t.test_files = PumaTestCategories.unit_paths
+  end
+
+  Rake::TestTask.new(:integration) do |t|
+    t.description = "Run process-spawn (integration) tests"
+    t.test_files = PumaTestCategories.integration_paths
+  end
+end
+
+Rake::TestTask.new(:test) do |t|
+  t.description = "Run the full test suite"
+end
+
+task "test:unit" => test_prereq
+task "test:integration" => test_prereq
+task :test => test_prereq
 
 task :default => [:rubocop, :test]

@@ -8,6 +8,10 @@ It can also be passed a glob or test file names.  If multiple test file names
 are used, separate them by the File::PATH_SEPARATOR character with no spaces.
 The file extension is optional.
 
+Category filters (mutually exclusive with each other; may combine with -v/-w):
+  --unit         in-process tests (see test/categories.rb)
+  --integration  process-spawn / TestIntegration tests
+
 If arguments are used that take values (eg seed), use the 'no space' version,
 like -s33388 or --seed=33388
 
@@ -22,6 +26,8 @@ filtering it will either error or run minitest with no tests loaded
 Examples, run from the top Puma repo folder:
 test/runner
 test/runner -v
+test/runner --unit
+test/runner --integration
 test/runner -v test_puma_server
 test/runner --verbose test_puma_server*
 test/runner --verbose test_integration_cluster:test_integration_single
@@ -33,6 +39,7 @@ test/runner -v 'test_integration_*.rb'
 
 require 'bundler/setup'
 require 'stringio'
+require_relative 'categories'
 
 if ARGV.delete '-z'
   show_warnings = true
@@ -46,6 +53,17 @@ else
   show_warnings = nil
 end
 
+unit = ARGV.delete('--unit')
+integration = ARGV.delete('--integration')
+if unit && integration
+  STDERR.puts 'test/runner: use only one of --unit or --integration'
+  exit 1
+end
+if (unit || integration) && !(ARGV.empty? || ARGV.all? { |a| a.start_with?('-') })
+  STDERR.puts 'test/runner: --unit/--integration cannot be combined with file name arguments'
+  exit 1
+end
+
 if show_warnings
   stderr, $stderr = STDERR, StringIO.new
   $VERBOSE = true
@@ -53,7 +71,11 @@ end
 
 require 'minitest'
 
-if ARGV.empty? || ARGV.last.start_with?('-')
+if unit
+  PumaTestCategories.unit_basenames(__dir__).each { |tf| require_relative tf }
+elsif integration
+  PumaTestCategories.integration_basenames.each { |tf| require_relative tf }
+elsif ARGV.empty? || ARGV.last.start_with?('-')
   Dir['test_*.rb', base: __dir__].sort.each { |tf| require_relative tf }
 else
   file_arg = ARGV.pop.delete_suffix('.rb')
