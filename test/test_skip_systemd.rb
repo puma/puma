@@ -2,10 +2,14 @@
 
 require_relative "helper"
 require_relative "helpers/integration"
+require_relative "helpers/test_puma/puma_socket"
 
 require "puma/plugin"
 
 class TestSkipSystemd < TestIntegration
+
+  include TestPuma
+  include TestPuma::PumaSocket
 
   def setup
     skip_unless :linux
@@ -19,14 +23,14 @@ class TestSkipSystemd < TestIntegration
   end
 
   def test_systemd_plugin_not_loaded
-    cli_server "test/rackup/hello.ru",
+    cli_server "",
                env: { 'PUMA_SKIP_SYSTEMD' => 'true', 'NOTIFY_SOCKET' => '/tmp/doesntmatter' }, config: <<~CONFIG
       app do |_|
         [200, {}, [Puma::Plugins.instance_variable_get(:@plugins)['systemd'].to_s]]
       end
     CONFIG
 
-    assert_empty read_body(connect)
+    assert_empty send_http_read_body
 
     stop_server
   end
