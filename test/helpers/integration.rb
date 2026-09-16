@@ -311,8 +311,8 @@ class TestIntegration < PumaTest
       skt = unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, bind_port)
       @ios_to_close << skt
       skt
-    rescue Errno::EADDRNOTAVAIL => e
-      raise e if Process.clock_gettime(PROC_CLK_MONO) >= deadline
+    rescue Errno::EADDRNOTAVAIL, Errno::ETIMEDOUT => e
+      raise e if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
       retries += 1
       sleep 0.01 * retries.clamp(0, 10)
       retry
@@ -552,6 +552,8 @@ class TestIntegration < PumaTest
             else
               mutex.synchronize { replies[:unexpected_response] += 1 }
             end
+          rescue Errno::EADDRNOTAVAIL, Errno::ETIMEDOUT
+            # open_client_socket (Socket.new) error
           rescue Errno::ECONNRESET, Errno::EBADF, Errno::ENOTCONN, Errno::ENOTSOCK
             # connection was accepted but then closed
             # client would see an empty response
@@ -565,11 +567,12 @@ class TestIntegration < PumaTest
           rescue ::Timeout::Error
             mutex.synchronize { replies[:read_timeout] += 1 }
           ensure
-            # this generates a lot of sockets, clear here, rather than using
-            # teardown
+            # this generates a lot of sockets, clear here,
+            # rather than using teardown
             if socket.is_a?(IO) && !socket.closed?
               begin
                 socket.close
+                socket = nil
               rescue Errno::EBADF
               end
             end
