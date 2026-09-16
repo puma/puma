@@ -13,7 +13,8 @@ class TestIntegrationSingle < TestIntegration
   end
 
   def test_hot_restart_does_not_drop_connections
-    restart_does_not_drop_connections signal: :USR2
+    restart_does_not_drop_connections signal: :USR2,
+      restarts: Puma::IS_WINDOWS ? 4 : 5
   end
 
   def test_usr2_restart
