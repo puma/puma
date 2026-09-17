@@ -10,6 +10,8 @@ class TestIntegrationHelpers < PumaTest
     @integration = TestIntegration.new('helper_probe')
     @integration.setup
     @reader, @writer = IO.pipe
+    @reader.binmode
+    @writer.binmode
     @integration.instance_variable_set(:@server, @reader)
   end
 
@@ -81,6 +83,20 @@ class TestIntegrationHelpers < PumaTest
     @writer.write 'ready'
     @writer.close
     assert_equal 'ready', wait_for_match(/ready/)
+  end
+
+  def test_crlf_lines_match_end_anchored_patterns
+    @writer.write "*          PID: 123\r\nready\r\n"
+    assert_equal '123', @integration.send(:wait_for_server_to_match, /PID: (\d+)$/, 1, timeout: 0.1)
+    assert_equal "ready\n", wait_for_match(/^ready$/, timeout: 0.1)
+  end
+
+  def test_crlf_split_across_reads_is_normalized
+    @writer.write "ready\r"
+    writer = Thread.new { sleep 0.01; @writer.write "\n" }
+    assert_equal "ready\n", wait_for_match(/^ready$/, timeout: 1)
+  ensure
+    writer&.join
   end
 
   def test_watchdog_exception_is_not_retried

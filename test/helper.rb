@@ -124,7 +124,8 @@ if ENV['CI']
 
   if Minitest::Retry::GHA_STEP_SUMMARY_FILE && ENV['GITHUB_ACTIONS'] == 'true'
 
-    Minitest::Retry::GHA_STEP_SUMMARY_MUTEX = Mutex.new
+    require_relative 'helpers/github_actions_summary'
+    summary = GithubActionsSummary.new(Minitest::Retry::GHA_STEP_SUMMARY_FILE)
 
     Minitest::Retry.on_failure do |klass, test_name, result|
       full_method = "#{klass}##{test_name}"
@@ -138,18 +139,16 @@ if ENV['CI']
       # remove indent
       result_str.gsub!(/^ +/, '')
       str = "\n**#{full_method}**\n**#{issue}**\n```\n#{result_str.strip}\n```\n"
-      Minitest::Retry::GHA_STEP_SUMMARY_MUTEX.synchronize {
-        retry_cntr = 0
-        begin
-          File.write Minitest::Retry::GHA_STEP_SUMMARY_FILE, str, mode: 'a+'
-        rescue IOError # can't write to file, retry once
-          if retry_cntr == 0
-            retry_cntr += 1
-            sleep 0.2
-            retry
-          end
+      retry_cntr = 0
+      begin
+        summary.append(str)
+      rescue IOError # can't write to file, retry once
+        if retry_cntr == 0
+          retry_cntr += 1
+          sleep 0.2
+          retry
         end
-      }
+      end
     end
   end
 end

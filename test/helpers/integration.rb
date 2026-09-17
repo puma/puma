@@ -306,6 +306,8 @@ class TestIntegration < PumaTest
 
       if index = @server_line_buffer.index("\n")
         line = @server_line_buffer.slice!(0..index)
+        # Nonblocking reads bypass IO#gets' Windows newline conversion.
+        line.sub!(/\r\n\z/, "\n")
         @server_log << line
         puts "    #{line}" if log
         return line
