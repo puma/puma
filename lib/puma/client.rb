@@ -123,6 +123,14 @@ module Puma
       @read_buffer = String.new # rubocop: disable Performance/UnfreezeString
     end
 
+    class << self
+      # Replace `closed?` with this?
+      def connection_closed?
+        io = Thread.current.puma_client&.io
+        io && Server.current.closed_socket?(io)
+      end
+    end
+
     # Remove in Puma 7?
     def closed?
       @to_io.closed?
