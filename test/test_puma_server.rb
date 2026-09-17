@@ -2221,6 +2221,61 @@ class TestPumaServer < PumaTest
     assert_equal 1, response.scan("HTTP/1.1 200 OK").size
   end
 
+  queue_request_options = [true, false]
+  {'content_length' => 'Content_Length: 0', 'transfer_encoding' => 'Transfer_Encoding: chunked'}.each do |name, header|
+    queue_request_options.each do |queue_requests|
+      define_method("test_underscore_framing_#{name}_queue_requests_#{queue_requests}") do
+        requests = Queue.new
+        server_run(queue_requests: queue_requests) do |env|
+          requests << env['PATH_INFO']
+          [200, {}, ['OK']]
+        end
+
+        socket = send_http "POST /invalid HTTP/1.1\r\nHost: test.com\r\n#{header}\r\n\r\n#{GET_11}"
+        response = socket.read_all
+
+        assert_equal ['400'], response.scan(/HTTP\/1\.1 (\d{3})/).flatten
+        assert_predicate requests, :empty?
+        assert_raises(EOFError) { socket.read_response }
+      end
+    end
+
+    define_method("test_underscore_framing_#{name}_pipelined") do
+      requests = Queue.new
+      server_run do |env|
+        requests << env['PATH_INFO']
+        [200, {}, ['OK']]
+      end
+
+      socket = send_http "#{GET_11}POST /invalid HTTP/1.1\r\nHost: test.com\r\n#{header}\r\n\r\n#{GET_11}"
+      response = socket.read_all
+
+      assert_equal ['200', '400'], response.scan(/HTTP\/1\.1 (\d{3})/).flatten
+      assert_equal '/', requests.pop(true)
+      assert_predicate requests, :empty?
+      assert_raises(EOFError) { socket.read_response }
+    end
+
+    define_method("test_underscore_framing_#{name}_keep_alive_fragmented") do
+      requests = Queue.new
+      server_run do |env|
+        requests << env['PATH_INFO']
+        [200, {}, ['OK']]
+      end
+
+      socket = send_http GET_11
+      assert_equal 'HTTP/1.1 200 OK', socket.read_response.status
+      socket << "POST /invalid HTTP/1.1\r\nHost: test.com\r\n#{header}\r\n"
+      socket << "Expect: 100-continue\r\n\r\n"
+      response = socket.read_all
+
+      assert_equal ['400'], response.scan(/HTTP\/1\.1 (\d{3})/).flatten
+      assert_equal '/', requests.pop(true)
+      assert_predicate requests, :empty?
+      assert_raises(EOFError) { socket.read_response }
+    end
+  end
+
   def test_auto_trim_with_variable_pool_size
     server_run(min_threads: 1, max_threads: 2, auto_trim_time: 1)
     assert @pool.instance_variable_get(:@auto_trim)

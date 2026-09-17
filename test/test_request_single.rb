@@ -134,27 +134,6 @@ class TestRequestLineValid < TestRequestBase
     assert_equal 'HTTP/1.1', @client.env[SERVER_PROTOCOL]
   end
 
-  def test_gzip_chunked
-    te = "gzip \t , \t chunked"
-    request = <<~REQ.gsub("\n", "\r\n").rstrip
-      GET / HTTP/1.1
-      Host: test.com
-      Transfer_Encoding: #{te}
-      Content_Length: 11
-
-      Hello World
-    REQ
-
-    create_client request
-
-    if @parser.finished?
-      assert_equal '11', @client.env['HTTP_CONTENT,LENGTH']
-      assert_equal te, @client.env['HTTP_TRANSFER,ENCODING']
-      assert_instance_of Puma::NullIO, @client.body
-    else
-      fail
-    end
-  end
 end
 
 # Tests request start line, which sets `env` values for:
@@ -445,23 +424,6 @@ class TestRequestHeadersValid < TestRequestBase
     assert_equal "Hello", @client.body.string
   end
 
-  def test_unmaskable_headers
-    request = <<~REQ.gsub("\n", "\r\n").rstrip
-      GET / HTTP/1.1
-      Host: test.com
-      Transfer_Encoding: chunked
-      Content_Length: 11
-
-      Hello World
-    REQ
-
-    create_client request
-
-    assert_equal '11', @client.env['HTTP_CONTENT,LENGTH']
-    assert_equal 'chunked', @client.env['HTTP_TRANSFER,ENCODING']
-    assert_instance_of Puma::NullIO, @client.body
-  end
-
   def test_default_port
     request = <<~REQ.gsub("\n", "\r\n")
       GET / HTTP/1.0
@@ -590,6 +552,35 @@ end
 
 # Tests the headers section of the request
 class TestRequestHeadersInvalid < TestRequestBase
+
+  UNDERSCORE_FRAMING_ERROR = 'Underscores are not allowed in HTTP framing headers'
+
+  %w[Content_Length content_length CONTENT_LENGTH Transfer_Encoding transfer_encoding TRANSFER_ENCODING].product([true, false]).each do |header, allowed|
+    define_method("test_underscore_framing_#{header}_allowed_#{allowed}") do
+      assert_invalid("#{GET_PREFIX}#{header}: 0\r\n\r\n", UNDERSCORE_FRAMING_ERROR, status: 400) do |client|
+        client.allow_underscore_headers = allowed
+      end
+    end
+  end
+
+  {
+    both: "Content_Length: 11\r\nTransfer_Encoding: chunked",
+    transfer_encoding_list: "Transfer_Encoding: gzip \t , \t chunked",
+    empty_content_length: 'Content_Length:',
+    empty_transfer_encoding: 'Transfer_Encoding:',
+    duplicate_content_length: "Content_Length: 0\r\nContent_Length: 11",
+    duplicate_transfer_encoding: "Transfer_Encoding: chunked\r\nTransfer_Encoding: identity",
+    standard_content_length_first: "Content-Length: 11\r\nContent_Length: 0",
+    standard_content_length_last: "Content_Length: 0\r\nContent-Length: 11",
+    standard_content_length_with_transfer_encoding: "Content-Length: 11\r\nTransfer_Encoding: chunked",
+    standard_transfer_encoding_first: "Transfer-Encoding: chunked\r\nTransfer_Encoding: identity",
+    standard_transfer_encoding_last: "Transfer_Encoding: identity\r\nTransfer-Encoding: chunked",
+    standard_transfer_encoding_with_content_length: "Transfer-Encoding: chunked\r\nContent_Length: 0",
+  }.each do |name, headers|
+    define_method("test_underscore_framing_#{name}") do
+      assert_invalid "#{GET_PREFIX}#{headers}\r\n\r\nHello World", UNDERSCORE_FRAMING_ERROR, status: 400
+    end
+  end
 
   def test_malformed_headers_no_return
     request = "GET / HTTP/1.1\r\nHost: test.com\r\nno-return: 10\nContent-Length: 11\r\n\r\nHello World"
