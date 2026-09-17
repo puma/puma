@@ -27,6 +27,7 @@ class TestIntegrationHelpers < PumaTest
   end
 
   def test_unmatched_lines_do_not_reset_deadline
+    @writer.write "still starting\n"
     writer = Thread.new do
       loop do
         @writer.write "still starting\n"

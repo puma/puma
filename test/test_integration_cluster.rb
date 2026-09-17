@@ -136,7 +136,7 @@ class TestIntegrationCluster < TestIntegration
     assert wait_for_server_to_include('after_booted called')
     assert wait_for_server_to_include('Goodbye!')
     # below logged after workers are stopped
-    assert wait_for_server_to_include('after_stopped called')
+    assert wait_for_server_to_include('after_stopped called', timeout: STOP_TIMEOUT)
     wait_server 15
   end
 
