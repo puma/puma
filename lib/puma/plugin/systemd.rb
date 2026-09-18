@@ -5,7 +5,7 @@ require_relative '../plugin'
 # Puma's systemd integration allows Puma to inform systemd:
 #  1. when it has successfully started
 #  2. when it is starting shutdown
-#  3. periodically for a liveness check with a watchdog thread
+#  3. at startup and then periodically for a liveness check with a watchdog thread
 #  4. periodically set the status
 Puma::Plugin.create do
   def start(launcher)

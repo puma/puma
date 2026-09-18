@@ -30,6 +30,8 @@ After=network.target
 Type=notify
 
 # If your Puma process locks up, systemd's watchdog will restart it within seconds.
+# Puma pings the watchdog as soon as it reports readiness, and every
+# WatchdogSec/2 after that.
 WatchdogSec=10
 
 # Preferably configure a non-privileged user
