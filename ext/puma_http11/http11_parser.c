@@ -502,12 +502,19 @@ case 20:
 		case 32: goto tr31;
 		case 60: goto st0;
 		case 62: goto st0;
+		case 96: goto st0;
 		case 127: goto st0;
 	}
-	if ( (*p) > 31 ) {
-		if ( 34 <= (*p) && (*p) <= 35 )
+	if ( (*p) < 34 ) {
+		if ( 0 <= (*p) && (*p) <= 31 )
 			goto st0;
-	} else if ( (*p) >= 0 )
+	} else if ( (*p) > 35 ) {
+		if ( (*p) > 94 ) {
+			if ( 123 <= (*p) && (*p) <= 125 )
+				goto st0;
+		} else if ( (*p) >= 91 )
+			goto st0;
+	} else
 		goto st0;
 	goto tr30;
 tr30:
@@ -518,17 +525,24 @@ st21:
 	if ( ++p == pe )
 		goto _test_eof21;
 case 21:
-#line 522 "ext/puma_http11/http11_parser.c"
+#line 529 "ext/puma_http11/http11_parser.c"
 	switch( (*p) ) {
 		case 32: goto tr33;
 		case 60: goto st0;
 		case 62: goto st0;
+		case 96: goto st0;
 		case 127: goto st0;
 	}
-	if ( (*p) > 31 ) {
-		if ( 34 <= (*p) && (*p) <= 35 )
+	if ( (*p) < 34 ) {
+		if ( 0 <= (*p) && (*p) <= 31 )
 			goto st0;
-	} else if ( (*p) >= 0 )
+	} else if ( (*p) > 35 ) {
+		if ( (*p) > 94 ) {
+			if ( 123 <= (*p) && (*p) <= 125 )
+				goto st0;
+		} else if ( (*p) >= 91 )
+			goto st0;
+	} else
 		goto st0;
 	goto st21;
 tr5:
@@ -539,7 +553,7 @@ st22:
 	if ( ++p == pe )
 		goto _test_eof22;
 case 22:
-#line 543 "ext/puma_http11/http11_parser.c"
+#line 557 "ext/puma_http11/http11_parser.c"
 	switch( (*p) ) {
 		case 43: goto st22;
 		case 58: goto st23;
@@ -564,16 +578,23 @@ st23:
 	if ( ++p == pe )
 		goto _test_eof23;
 case 23:
-#line 568 "ext/puma_http11/http11_parser.c"
+#line 582 "ext/puma_http11/http11_parser.c"
 	switch( (*p) ) {
 		case 32: goto tr8;
 		case 34: goto st0;
 		case 35: goto tr9;
 		case 60: goto st0;
 		case 62: goto st0;
+		case 96: goto st0;
 		case 127: goto st0;
 	}
-	if ( 0 <= (*p) && (*p) <= 31 )
+	if ( (*p) < 91 ) {
+		if ( 0 <= (*p) && (*p) <= 31 )
+			goto st0;
+	} else if ( (*p) > 94 ) {
+		if ( 123 <= (*p) && (*p) <= 125 )
+			goto st0;
+	} else
 		goto st0;
 	goto st23;
 tr6:
@@ -584,7 +605,7 @@ st24:
 	if ( ++p == pe )
 		goto _test_eof24;
 case 24:
-#line 588 "ext/puma_http11/http11_parser.c"
+#line 609 "ext/puma_http11/http11_parser.c"
 	switch( (*p) ) {
 		case 32: goto tr37;
 		case 34: goto st0;
@@ -592,9 +613,16 @@ case 24:
 		case 60: goto st0;
 		case 62: goto st0;
 		case 63: goto tr39;
+		case 96: goto st0;
 		case 127: goto st0;
 	}
-	if ( 0 <= (*p) && (*p) <= 31 )
+	if ( (*p) < 91 ) {
+		if ( 0 <= (*p) && (*p) <= 31 )
+			goto st0;
+	} else if ( (*p) > 94 ) {
+		if ( 123 <= (*p) && (*p) <= 125 )
+			goto st0;
+	} else
 		goto st0;
 	goto st24;
 tr39:
@@ -607,16 +635,23 @@ st25:
 	if ( ++p == pe )
 		goto _test_eof25;
 case 25:
-#line 611 "ext/puma_http11/http11_parser.c"
+#line 639 "ext/puma_http11/http11_parser.c"
 	switch( (*p) ) {
 		case 32: goto tr41;
 		case 34: goto st0;
 		case 35: goto tr42;
 		case 60: goto st0;
 		case 62: goto st0;
+		case 96: goto st0;
 		case 127: goto st0;
 	}
-	if ( 0 <= (*p) && (*p) <= 31 )
+	if ( (*p) < 91 ) {
+		if ( 0 <= (*p) && (*p) <= 31 )
+			goto st0;
+	} else if ( (*p) > 94 ) {
+		if ( 123 <= (*p) && (*p) <= 125 )
+			goto st0;
+	} else
 		goto st0;
 	goto tr40;
 tr40:
@@ -627,16 +662,23 @@ st26:
 	if ( ++p == pe )
 		goto _test_eof26;
 case 26:
-#line 631 "ext/puma_http11/http11_parser.c"
+#line 666 "ext/puma_http11/http11_parser.c"
 	switch( (*p) ) {
 		case 32: goto tr44;
 		case 34: goto st0;
 		case 35: goto tr45;
 		case 60: goto st0;
 		case 62: goto st0;
+		case 96: goto st0;
 		case 127: goto st0;
 	}
-	if ( 0 <= (*p) && (*p) <= 31 )
+	if ( (*p) < 91 ) {
+		if ( 0 <= (*p) && (*p) <= 31 )
+			goto st0;
+	} else if ( (*p) > 94 ) {
+		if ( 123 <= (*p) && (*p) <= 125 )
+			goto st0;
+	} else
 		goto st0;
 	goto st26;
 st27:
