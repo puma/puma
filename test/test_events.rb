@@ -78,6 +78,19 @@ class TestEvents < PumaTest
     assert res
   end
 
+  def test_before_restart_callback_receives_refork_flag
+    received = []
+
+    events = Puma::Events.new
+
+    events.before_restart { |refork| received << refork }
+
+    events.fire_before_restart!
+    events.fire_before_restart!(true)
+
+    assert_equal [false, true], received
+  end
+
   def test_after_stopped_callback
     res = false
 

@@ -16,7 +16,11 @@ Puma::Plugin.create do
     # hook_events
     launcher.events.after_booted { Puma::SdNotify.ready }
     launcher.events.after_stopped { Puma::SdNotify.stopping }
-    launcher.events.before_restart { Puma::SdNotify.reloading }
+    # A `fork_worker` refork doesn't restart the app (only worker 0 is
+    # respawned from its already-booted template), so it shouldn't flip
+    # systemd's Active status to "reloading" — nothing tells it "ready"
+    # again afterwards, leaving the status stuck.
+    launcher.events.before_restart { |refork| Puma::SdNotify.reloading unless refork }
 
     # start watchdog
     if Puma::SdNotify.watchdog?

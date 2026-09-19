@@ -61,8 +61,12 @@ module Puma
       fire(:after_booted)
     end
 
-    def fire_before_restart!
-      fire(:before_restart)
+    # @param refork [Boolean] whether this restart is a `fork_worker` refork
+    #   rather than a full app restart — the app itself isn't reloading, so
+    #   listeners that treat every `:before_restart` firing as "the app is
+    #   about to reload" (e.g. the systemd plugin) can use this to skip
+    def fire_before_restart!(refork = false)
+      fire(:before_restart, refork)
     end
 
     def fire_after_stopped!
