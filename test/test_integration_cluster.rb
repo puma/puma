@@ -155,6 +155,30 @@ class TestIntegrationCluster < TestIntegration
     assert_empty zombies, "Process ids #{zombies} became zombies"
   end
 
+  # IO.pipe sets O_NONBLOCK on both ends in MRI Ruby. If the wakeup pipe fills
+  # during worker drain (stop_workers does not read from it), wakeup! previously
+  # blocked forever in ppoll(POLLOUT) instead of returning immediately.
+  def test_term_does_not_deadlock_on_full_wakeup_pipe
+    r, w = IO.pipe
+
+    # Fill the pipe to capacity, simulating worker ping messages accumulating
+    # while stop_workers loops without reading from the pipe.
+    begin
+      loop { w.write_nonblock("x" * 512) }
+    rescue IO::EAGAINWaitWritable
+    end
+
+    runner = Puma::Runner.allocate
+    runner.instance_variable_set(:@wakeup, w)
+  
+    t = Thread.new { runner.wakeup! }
+    assert t.join(2.0), "wakeup! deadlocked — blocked >2s on a full pipe"
+  ensure
+    t&.kill
+    r&.close
+    w&.close
+  end
+
   # mimicking stuck workers, test respawn with external TERM
   def test_stuck_external_term_spawn
     worker_respawn(0) do |phase0_worker_pids|
