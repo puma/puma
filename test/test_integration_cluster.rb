@@ -170,7 +170,7 @@ class TestIntegrationCluster < TestIntegration
 
     runner = Puma::Runner.allocate
     runner.instance_variable_set(:@wakeup, w)
-  
+
     t = Thread.new { runner.wakeup! }
     assert t.join(2.0), "wakeup! deadlocked — blocked >2s on a full pipe"
   ensure
