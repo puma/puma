@@ -228,7 +228,7 @@ sslctx_alloc(VALUE klass) {
 VALUE
 sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
   SSL_CTX* ctx;
-  int ssl_options;
+  int ssl_options, private_key_result;
   VALUE key, cert, ca, verify_mode, ssl_cipher_filter, ssl_ciphersuites, no_tlsv1, no_tlsv1_1,
     verification_flags, session_id_bytes, cert_pem, key_pem, key_password_command, key_password;
   BIO *bio;
@@ -292,15 +292,19 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
           StringValue(key_password);
           password_cb = password_callback;
           password = RSTRING_PTR(key_password);
-          SSL_CTX_set_default_passwd_cb(ctx, password_cb);
-          SSL_CTX_set_default_passwd_cb_userdata(ctx, (void *) password);
       }
   }
 
   if (!NIL_P(key)) {
     StringValue(key);
 
-    if (SSL_CTX_use_PrivateKey_file(ctx, RSTRING_PTR(key), SSL_FILETYPE_PEM) != 1) {
+    SSL_CTX_set_default_passwd_cb(ctx, password_cb);
+    SSL_CTX_set_default_passwd_cb_userdata(ctx, (void *) password);
+    private_key_result = SSL_CTX_use_PrivateKey_file(ctx, RSTRING_PTR(key), SSL_FILETYPE_PEM);
+    SSL_CTX_set_default_passwd_cb(ctx, NULL);
+    SSL_CTX_set_default_passwd_cb_userdata(ctx, NULL);
+
+    if (private_key_result != 1) {
       raise_file_error("SSL_CTX_use_PrivateKey_file", RSTRING_PTR(key));
     }
   }
