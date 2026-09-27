@@ -835,3 +835,12 @@ class TestRequestPeerip < TestRequestBase
     assert_equal "::1", @client.peerip
   end
 end
+
+class TestRequestClientRequire < PumaTest
+  def test_require_puma_client_after_puma
+    lib = File.expand_path "../lib", __dir__
+    output = IO.popen([RbConfig.ruby, "-I#{lib}", "-e", 'require "puma"; require "puma/client"'], err: [:child, :out], &:read)
+
+    assert $?.success?, output
+  end
+end
