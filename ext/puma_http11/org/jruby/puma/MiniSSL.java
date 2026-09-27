@@ -482,14 +482,23 @@ public class MiniSSL extends RubyObject { // MiniSSL::Engine
 
   @JRubyMethod
   public IRubyObject shutdown() {
-    if (closed || engine.isInboundDone() && engine.isOutboundDone()) {
-      if (engine.isOutboundDone()) {
-        engine.closeOutbound();
-      }
+    // Like the C extension, send nothing on a connection whose handshake never
+    // finished: the peer may not be speaking TLS at all.
+    if (closed || !handshake || engine.isInboundDone() && engine.isOutboundDone()) {
       return getRuntime().getTrue();
-    } else {
-      return getRuntime().getFalse();
     }
+
+    // Queue our close_notify, as OpenSSL's SSL_shutdown does, so that
+    // MiniSSL::Socket#close can #extract and send it. Without it the peer sees
+    // the connection end mid-stream, which OpenSSL (and jruby-openssl since
+    // 0.19.2) reports as an error.
+    engine.closeOutbound();
+    try {
+      doOp(SSLOperation.WRAP, outboundAppData, outboundNetData);
+    } catch (SSLException e) {
+      return getRuntime().getTrue();
+    }
+    return getRuntime().getFalse();
   }
 
   private static RubyClass getSSLError(Ruby runtime) {
