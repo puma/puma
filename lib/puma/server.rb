@@ -535,7 +535,6 @@ module Puma
               if @thread_pool.waiting > 0
                 can_loop = true
               else
-                # Serialize the shutdown check with closing the pool.
                 @thread_pool.with_mutex do
                   unless shutting_down?
                     @thread_pool << client
