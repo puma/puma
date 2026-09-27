@@ -1119,6 +1119,43 @@ module Puma
       @options[:lowlevel_error_handler] = obj
     end
 
+    # Use +obj+ or +block+ to decide how to answer a request that sends
+    # <tt>Expect: 100-continue</tt>, before Puma replies +100 Continue+ and
+    # before any of the request body is read.
+    #
+    # It receives the Rack env, which has the request line and headers but no
+    # body. Return +false+ (or +nil+) to carry on as usual: Puma sends
+    # +100 Continue+ and the request reaches your app. Return a Rack response,
+    # typically a 3xx or 4xx, to send that instead: the body is never read,
+    # your app is not called, and the connection is closed afterwards, since
+    # the client may already be sending a body Puma will not read.
+    #
+    # Without this option Puma always sends +100 Continue+, as before.
+    #
+    # The callback can run on the reactor thread, which services every
+    # connection still waiting for its request, so it must return quickly.
+    # Decide from the headers alone; do not perform I/O in it.
+    #
+    # @example Redirect uploads before the client sends the body
+    #   continue_callback do |env|
+    #     if env['PATH_INFO'] == '/upload'
+    #       [307, { 'location' => 'https://uploads.example.com/' }, []]
+    #     else
+    #       false
+    #     end
+    #   end
+    #
+    # @example Refuse oversized uploads without receiving them
+    #   continue_callback do |env|
+    #     env['CONTENT_LENGTH'].to_i > 10_000_000 ? [413, {}, []] : false
+    #   end
+    #
+    def continue_callback(obj=nil, &block)
+      obj ||= block
+      raise "Provide either a #call'able or a block" unless obj
+      @options[:continue_callback] = obj
+    end
+
     # This option is used to allow your app and its gems to be
     # properly reloaded when not using preload.
     #

@@ -19,6 +19,17 @@ module Puma
 
   class HttpParserError501 < IOError; end
 
+  # Raised when a +continue_callback+ answers an <tt>Expect: 100-continue</tt>
+  # request itself, so the request body is never read.
+  class ContinueRejected < StandardError
+    attr_reader :response
+
+    def initialize(response)
+      super("Expect: 100-continue answered by continue_callback")
+      @response = response
+    end
+  end
+
   #———————————————————————— DO NOT USE — this class is for internal use only ———
 
 
@@ -78,7 +89,7 @@ module Puma
                 :requests_served, :error_status_code
 
     attr_writer :peerip, :http_content_length_limit, :supported_http_methods,
-                :allow_underscore_headers
+                :allow_underscore_headers, :continue_callback
 
     attr_accessor :remote_addr_header, :listener, :env_set_http_version
 
@@ -108,6 +119,7 @@ module Puma
       @http_content_length_limit = nil
       @http_content_length_limit_exceeded = nil
       @allow_underscore_headers = true
+      @continue_callback = nil
       @error_status_code = nil
 
       @peerip = nil
@@ -438,7 +450,9 @@ module Puma
       @body_read_start = Process.clock_gettime(Process::CLOCK_MONOTONIC, :float_millisecond)
 
       if @env[HTTP_EXPECT] == CONTINUE
-        # TODO allow a hook here to check the headers before going forward
+        if @continue_callback && (response = @continue_callback.call(@env))
+          reject_continue response
+        end
         @io << HTTP_11_100
         @io.flush
       end
@@ -760,6 +774,13 @@ module Puma
       end
       @requests_served += 1
       @ready = true
+    end
+
+    def reject_continue(response)
+      @buffer = nil
+      @body = EmptyBody
+      @env[HTTP_CONNECTION] = 'close'
+      raise ContinueRejected, response
     end
 
     def raise_above_http_content_limit
