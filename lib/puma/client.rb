@@ -124,10 +124,17 @@ module Puma
     end
 
     class << self
-      # Replace `closed?` with this?
+      # Returns true if the current request's connection is closed. Useful for calling within your app to avoid
+      # expensive computation for a response that couldn't be written to the client.
+      # False is not a guarantee the connection will remain open.
+      # Always returns false outside of a request, or if the system does not support detecting closed sockets.
       def connection_closed?
         io = Thread.current.puma_client&.io
-        io && Server.current.closed_socket?(io)
+        if io
+          Server.current.closed_socket?(io)
+        else
+          false
+        end
       end
     end
 
