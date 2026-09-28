@@ -11,14 +11,15 @@
   safe = ("$" | "-" | "_" | ".");
   extra = ("!" | "*" | "'" | "(" | ")" | ",");
   reserved = (";" | "/" | "?" | ":" | "@" | "&" | "=" | "+");
-  # RFC 2396 section 2.4.3 'unwise' characters.
-  unwise = ("{" | "}" | "|" | "\\" | "^" | "[" | "]" | "`");
-  unsafe = (CTL | " " | "\"" | "#" | "%" | "<" | ">" | unwise);
+  unsafe = (CTL | " " | "\"" | "#" | "%" | "<" | ">");
   national = any -- (alpha | digit | reserved | extra | safe | unsafe);
   unreserved = (alpha | digit | safe | extra | national);
   escape = ("%" xdigit xdigit);
   uchar = (unreserved | escape | "%");
   pchar = (uchar | ":" | "@" | "&" | "=" | "+" | ";");
+  # RFC 3986 disallows these in paths; browsers never send them unescaped there.
+  path_unwise = ("{" | "}" | "`" | "\\");
+  path_char = pchar -- path_unwise;
   tspecials = ("(" | ")" | "<" | ">" | "@" | "," | ";" | ":" | "\\" | "\"" | "/" | "[" | "]" | "?" | "=" | "{" | "}" | " " | "\t");
 
 # elements
@@ -28,7 +29,7 @@
   scheme = ( alpha | digit | "+" | "-" | "." )* ;
   absolute_uri = (scheme ":" (uchar | reserved )*);
 
-  path = ( pchar+ ( "/" pchar* )* ) ;
+  path = ( path_char+ ( "/" path_char* )* ) ;
   query = ( uchar | reserved )* %query_string ;
   param = ( pchar | "/" )* ;
   params = ( param ( ";" param )* ) ;
