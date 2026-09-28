@@ -2,8 +2,8 @@
 
 require_relative "helper"
 
-# Runs Puma in a subprocess with its puma_http11 extension hidden, as if it
-# could not be built, to check what still works without it.
+# Runs Puma in a subprocess with its puma_http11 extension hidden,
+# as if it could not be built, to check what still works without it.
 class TestWithoutPumaHttp11 < PumaTest
   LIB = File.expand_path "../lib", __dir__
   HIDE_EXTENSION = File.expand_path "without_puma_http11", __dir__

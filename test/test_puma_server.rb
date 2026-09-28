@@ -58,8 +58,8 @@ class TestPumaServer < PumaTest
     server&.stop(true)
   end
 
-  # Wraps the default parser, and marks each env it fills, so a test can tell
-  # which parser handled a request.
+  # Wraps the default parser, and marks each env it fills,
+  # so a test can tell which parser handled a request.
   class MarkingHttpParser
     def initialize
       @parser = Puma::HttpParser.new
