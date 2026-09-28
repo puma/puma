@@ -73,7 +73,7 @@ module Puma
         env[SERVER_PROTOCOL],
         now - began_at ]
 
-      write(msg)
+      write(env, msg)
     end
 
     def log(env, status, header, began_at)
@@ -92,10 +92,10 @@ module Puma
         length,
         now - began_at ]
 
-      write(msg)
+      write(env, msg)
     end
 
-    def write(msg)
+    def write(env, msg)
       logger = @logger || env['rack.errors']
 
       # Standard library logger doesn't support write but it supports << which actually

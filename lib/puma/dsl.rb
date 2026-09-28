@@ -1499,6 +1499,10 @@ module Puma
     # +env["puma.underscore_headers"]+ for auditing. This value is
     # client-triggerable, so rate-limit or sample external reporting.
     #
+    # Requests containing +Content_Length+ or +Transfer_Encoding+ are always
+    # rejected with 400 and the connection is closed, regardless of this option.
+    # Clients must use the standard +Content-Length+ and +Transfer-Encoding+ names.
+    #
     # The default is +true+, but will change to +false+ in a future major
     # version, when this env metadata will be removed.
     #

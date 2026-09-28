@@ -4,6 +4,7 @@ require_relative 'detect'
 require_relative 'io_buffer'
 require_relative 'client_env'
 require_relative 'http_parser_error'
+require_relative 'null_io'
 require 'tempfile'
 
 if Puma::IS_JRUBY
@@ -426,6 +427,15 @@ module Puma
     # @return [Boolean] true if the body can be completely read, false otherwise
     #
     def setup_body
+      # The parsers preserve underscores as commas to distinguish these aliases
+      # from real framing headers. Reject them before 100 Continue or body reads,
+      # regardless of allow_underscore_headers, to avoid proxy disagreements.
+      if @env.key?('HTTP_CONTENT,LENGTH') || @env.key?('HTTP_TRANSFER,ENCODING')
+        @error_status_code = 400
+        @env[HTTP_CONNECTION] = CLOSE
+        raise HttpParserError, 'Underscores are not allowed in HTTP framing headers'
+      end
+
       @body_read_start = Process.clock_gettime(Process::CLOCK_MONOTONIC, :float_millisecond)
 
       if @env[HTTP_EXPECT] == CONTINUE

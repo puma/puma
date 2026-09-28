@@ -20,6 +20,8 @@ class TestIntegration < PumaTest
   LOG_WAIT_READ = Puma::IS_JRUBY ? 5 : 2
   LOG_ERROR_SLEEP = 0.2
   LOG_ERROR_QTY   = 5
+  # Puma allows workers 30 seconds to shut down gracefully.
+  STOP_TIMEOUT = 35
 
   PROC_CLK_MONO = Process::CLOCK_MONOTONIC
 
@@ -29,6 +31,8 @@ class TestIntegration < PumaTest
   def setup
     @server = nil
     @server_log = +''
+    @server_line_buffer = +''
+    @server_process_group = nil
     @server_stopped = false
     @config_file = nil
 
@@ -51,14 +55,16 @@ class TestIntegration < PumaTest
         flunk 'Windows must use Puma::ControlCLI to shut down!'
       end
     end
-
+  ensure
     close_ios if @ios_to_close
 
     # wait until the end for OS buffering?
     if @server
       begin
-        @server.close unless @server.closed?
-      rescue
+        Timeout.timeout(LOG_TIMEOUT, TimeoutPrepend::TestTookTooLong) do
+          @server.close unless @server.closed?
+        end
+      rescue IOError, Errno::ECHILD
       ensure
         @server = nil
       end
@@ -175,31 +181,50 @@ class TestIntegration < PumaTest
 
     STDOUT.syswrite "\n#{full_name}\n  #{cmd}\n" if log
 
-    if merge_err
-      @server = IO.popen(env, cmd, :err=>[:child, :out])
-    else
-      @server = IO.popen(env, cmd)
-    end
+    options = Puma::IS_WINDOWS ? {} : {pgroup: true}
+    options[:err] = [:child, :out] if merge_err
+    @server = IO.popen(env, cmd, **options)
+    @server_line_buffer = +''
+    @server_process_group = @server.pid unless Puma::IS_WINDOWS
     @pid = @server.pid
     wait_for_server_to_boot(log: log) unless no_wait
     @server
   end
 
-  # rescue statements are just in case method is called with a server
-  # that is already stopped/killed, especially since Process.wait2 is
-  # blocking
-  def stop_server(pid = @pid, signal: :TERM)
-    ret = nil
+  def stop_server(pid = @pid, signal: :TERM, timeout: STOP_TIMEOUT)
     begin
       Process.kill signal, pid
     rescue Errno::ESRCH
     end
-    begin
-      ret = Process.wait2 pid
-    rescue Errno::ECHILD
+    ret = wait_for_server_exit(pid, timeout)
+    if ret == :timeout
+      # Only cli_server's isolated process group is eligible for group cleanup.
+      target = pid == @pid && @server_process_group ? -@server_process_group : pid
+      Process.kill(:KILL, target) rescue Errno::ESRCH
+      wait_for_server_exit(pid, LOG_TIMEOUT)
+      @server_stopped = true if pid == @pid
+      flunk server_wait_error("Timeout waiting for server PID #{pid} to exit; sent KILL")
     end
-    @server_stopped = true
+    @server_stopped = true if pid == @pid
     ret
+  end
+
+  def wait_for_server_exit(pid, timeout)
+    deadline = Process.clock_gettime(PROC_CLK_MONO) + timeout
+    loop do
+      if pid == @pid && @server && !@server.closed?
+        # Keep a full stdout pipe from blocking the child during shutdown.
+        output = @server.read_nonblock(RESP_READ_LEN, exception: false)
+        @server_line_buffer << output if output.is_a?(String)
+      end
+      result = Process.wait2(pid, Process::WNOHANG)
+      return result if result
+      remaining = deadline - Process.clock_gettime(PROC_CLK_MONO)
+      return :timeout if remaining <= 0
+      sleep [remaining, 0.01].min
+    end
+  rescue Errno::ECHILD
+    nil
   end
 
   # Most integration tests do not stop/shutdown the server, which is handled by
@@ -230,13 +255,12 @@ class TestIntegration < PumaTest
   # reuses an existing connection to make sure that works
   def restart_server(connection, log: false)
     Process.kill :USR2, @pid
-    wait_for_server_to_include 'Restarting', log: log
+    wait_for_server_to_include 'Restarting', timeout: STOP_TIMEOUT, log: log
     connection.write "GET / HTTP/1.1\r\nHost: test.com\r\n\r\n" # trigger it to start by sending a new request
     wait_for_server_to_boot log: log
   end
 
   # wait for server to say it booted
-  # @server and/or @server.gets may be nil on slow CI systems
   def wait_for_server_to_boot(timeout: nil, log: false)
     @puma_pid = wait_for_server_to_match(/(?:Master|      ) PID: (\d+)$/, 1, timeout: timeout, log: log)&.to_i
     @pid = @puma_pid if @pid != @puma_pid
@@ -245,51 +269,73 @@ class TestIntegration < PumaTest
 
   # Returns true if and when server log includes str.  Will timeout otherwise.
   def wait_for_server_to_include(str, timeout: nil, log: false)
-    line = ''
-
     puts "\n——— #{full_name} waiting for '#{str}'" if log
-    line = server_gets(str, timeout, log: log) until line&.include?(str)
+    wait_for_server_log(str, timeout, log: log) { |line| line.include?(str) }
     true
   end
 
   # Returns line if and when server log matches re, unless idx is specified,
   # then returns regex match.  Will timeout otherwise.
   def wait_for_server_to_match(re, idx = nil, timeout: nil, log: false)
-    line = ''
-
     puts "\n——— #{full_name} waiting for '#{re.inspect}'" if log
-    line = server_gets(re, timeout = nil, log: log) until line&.match?(re)
+    line = wait_for_server_log(re, timeout, log: log) { |entry| entry.match?(re) }
     idx ? line[re, idx] : line
   end
 
-  def server_gets(match_obj, timeout = nil, log: false)
-    time_timeout = Process.clock_gettime(PROC_CLK_MONO) +
-      (timeout || LOG_TIMEOUT)
-    error_retries = 0
-    line = ''
-
-    sleep 0.05 until @server.is_a?(IO) || Process.clock_gettime(PROC_CLK_MONO) > time_timeout
-
-    raise Minitest::Assertion,  "@server is not an IO" unless @server.is_a?(IO)
-    if Process.clock_gettime(PROC_CLK_MONO) > time_timeout
-      raise Minitest::Assertion, "Timeout waiting for server be be an IOto log #{match_obj.inspect}"
+  def wait_for_server_log(match_obj, timeout, log: false)
+    deadline = Process.clock_gettime(PROC_CLK_MONO) + (timeout || LOG_TIMEOUT)
+    loop do
+      line = server_gets(match_obj, deadline: deadline, log: log)
+      return line if yield line
     end
+  end
 
-    begin
-      if @server.wait_readable(LOG_WAIT_READ) and line = @server&.gets
+  def server_wait_error(message)
+    output = @server_log + @server_line_buffer
+    "#{message}\nServer output (last 4096 characters):\n#{output[-4096..-1] || output}"
+  end
+
+  def server_gets(match_obj, timeout = nil, log: false, deadline: nil)
+    deadline ||= Process.clock_gettime(PROC_CLK_MONO) + (timeout || LOG_TIMEOUT)
+    error_retries = 0
+    flunk server_wait_error('@server is not an IO') unless @server.is_a?(IO)
+
+    loop do
+      remaining = deadline - Process.clock_gettime(PROC_CLK_MONO)
+      flunk server_wait_error("Timeout waiting for server to log #{match_obj.inspect}") if remaining <= 0
+
+      if index = @server_line_buffer.index("\n")
+        line = @server_line_buffer.slice!(0..index)
+        # Nonblocking reads bypass IO#gets' Windows newline conversion.
+        line.sub!(/\r\n\z/, "\n")
         @server_log << line
         puts "    #{line}" if log
+        return line
       end
-    rescue StandardError => e
-      error_retries += 1
-      raise(Minitest::Assertion,  "Waiting for server to log #{match_obj.inspect},\n  raised #{e.class}") if error_retries >= LOG_ERROR_QTY
-      sleep LOG_ERROR_SLEEP
-      retry
+
+      begin
+        next unless @server.wait_readable([remaining, LOG_WAIT_READ].min)
+        part = @server.read_nonblock(RESP_READ_LEN, exception: false)
+        case part
+        when String
+          @server_line_buffer << part
+        when nil
+          unless @server_line_buffer.empty?
+            line = @server_line_buffer.slice!(0..-1)
+            @server_log << line
+            puts "    #{line}" if log
+            return line
+          end
+          flunk server_wait_error("Server output closed before logging #{match_obj.inspect}")
+        end
+      rescue IOError, SystemCallError => e
+        error_retries += 1
+        if error_retries >= LOG_ERROR_QTY
+          flunk server_wait_error("Waiting for server to log #{match_obj.inspect}, raised #{e.class}: #{e.message}")
+        end
+        sleep [LOG_ERROR_SLEEP, [deadline - Process.clock_gettime(PROC_CLK_MONO), 0].max].min
+      end
     end
-    if Process.clock_gettime(PROC_CLK_MONO) > time_timeout
-      raise Minitest::Assertion, "Timeout waiting for server to log #{match_obj.inspect}"
-    end
-    line
   end
 
   # gets worker pids from @server output

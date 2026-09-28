@@ -29,6 +29,7 @@ Any of the following will cause a Puma server to perform a hot restart:
 
 * The newly started Puma process changes its current working directory to the directory specified by the `directory` option. If `directory` is set to symlink, this is automatically re-evaluated, so this mechanism can be used to upgrade the application.
 * Only one version of the application is running at a time.
+* Under systemd with `WatchdogSec` set, the watchdog timer keeps running across a hot restart. Puma pings the watchdog as soon as the new master reports readiness, so `WatchdogSec` needs to exceed your application's boot time.
 * `before_restart` is invoked just before the server shuts down. This can be used to clean up resources (like long-lived database connections) gracefully. Since Ruby 2.0, it is not typically necessary to explicitly close file descriptors on restart. This is because any file descriptor opened by Ruby will have the `FD_CLOEXEC` flag set, meaning that file descriptors are closed on `exec`. `before_restart` is useful, though, if your application needs to perform any more graceful protocol-specific shutdown procedures before closing connections.
 
 ## Phased restart
