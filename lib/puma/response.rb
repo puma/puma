@@ -416,6 +416,26 @@ module Puma
     end
     private :fetch_status_code
 
+    # Does the request's `Connection` header list the `close` connection option?
+    #
+    # `Connection` is a comma-separated list of connection options (RFC 9110
+    # section 7.6.1) and repeated `Connection` headers are joined with ", " by
+    # the parser, so `close` can be preceded or followed by other options.
+    # Comparing the raw value against `"close"` misses those, and would leave
+    # the connection open even though the client asked for it to be closed.
+    #
+    # @param env [Hash] see Puma::Client#env, from request
+    # @return [Boolean]
+    #
+    def request_has_close?(env)
+      conn = env.fetch(HTTP_CONNECTION, "")
+      # Fast path, avoids splitting in the common cases.
+      return false unless conn.include? CLOSE
+
+      conn.split(',').any? { |option| option.strip == CLOSE }
+    end
+    private :request_has_close?
+
     # Processes and write headers to the IOBuffer.
     # @param env [Hash] see Puma::Client#env, from request
     # @param status [Integer] the status returned by the Rack application
@@ -439,7 +459,7 @@ module Puma
       http_11 = env[SERVER_PROTOCOL] == HTTP_11
       if http_11
         resp_info[:allow_chunked] = true
-        resp_info[:keep_alive] = env.fetch(HTTP_CONNECTION, "").downcase != CLOSE
+        resp_info[:keep_alive] = !request_has_close?(env)
 
         # An optimization. The most common response is 200, so we can
         # reply with the proper 200 status without having to compute

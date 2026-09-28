@@ -804,6 +804,40 @@ class TestPumaServer < PumaTest
     assert_equal "HTTP/1.1 200 OK\r\ncontent-type: plain/text\r\nconnection: close\r\ncontent-length: 5\r\n\r\nhello", response
   end
 
+  # `Connection` is a comma-separated list of connection options, so `close`
+  # must be detected even when combined with other options.
+  def test_http_11_close_with_body_and_other_connection_options
+    server_run { [200, {"Content-Type" => "plain/text"}, ["hello"]] }
+
+    req = "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: upgrade, close\r\n\r\n"
+    response = send_http_read_response req
+
+    assert_equal "HTTP/1.1 200 OK\r\ncontent-type: plain/text\r\nconnection: close\r\ncontent-length: 5\r\n\r\nhello", response
+  end
+
+  # Repeated `Connection` headers are joined with ", " by the parser, which
+  # produces the same list-valued case.
+  def test_http_11_close_with_body_and_repeated_connection_headers
+    server_run { [200, {"Content-Type" => "plain/text"}, ["hello"]] }
+
+    req = "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: keep-alive\r\nConnection: close\r\n\r\n"
+    response = send_http_read_response req
+
+    assert_equal "HTTP/1.1 200 OK\r\ncontent-type: plain/text\r\nconnection: close\r\ncontent-length: 5\r\n\r\nhello", response
+  end
+
+  # A `Connection` option that merely contains "close" as a substring is not
+  # the `close` connection option and must not end the connection.
+  def test_http_11_keep_alive_with_body_and_connection_option_containing_close
+    server_run { [200, {"Content-Type" => "plain/text"}, ["hello"]] }
+
+    req = "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: x-closed-by-client\r\n\r\n"
+    response = send_http_read_response req
+
+    assert_equal ["content-type: plain/text", "content-length: 5"], response.headers
+    assert_equal "hello", response.body
+  end
+
   def test_http_11_keep_alive_without_body
     server_run { [204, {}, []] }
 
