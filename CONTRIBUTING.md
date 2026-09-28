@@ -112,6 +112,24 @@ To run the test suite only:
 bundle exec rake test
 ```
 
+Integration tests spawn a Puma process. Unit tests call Puma in-process
+(including in-process servers that bind a port). Classification follows the
+existing `TestIntegration` helper (see `test/categories.rb`).
+
+To run only the in-process (unit) tests:
+```sh
+bundle exec rake test:unit
+# or
+test/runner --unit
+```
+
+To run only the process-spawn (integration) tests:
+```sh
+bundle exec rake test:integration
+# or
+test/runner --integration
+```
+
 To run a single test file:
 ```sh
 bundle exec ruby test/test_binder.rb

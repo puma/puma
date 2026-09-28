@@ -30,7 +30,7 @@ module Puma
     def wakeup!
       return unless @wakeup
 
-      @wakeup.write PIPE_WAKEUP unless @wakeup.closed?
+      @wakeup.write_nonblock(PIPE_WAKEUP) unless @wakeup.closed?
 
     rescue SystemCallError, IOError
     end
