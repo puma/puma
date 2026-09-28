@@ -482,14 +482,19 @@ public class MiniSSL extends RubyObject { // MiniSSL::Engine
 
   @JRubyMethod
   public IRubyObject shutdown() {
-    if (closed || engine.isInboundDone() && engine.isOutboundDone()) {
-      if (engine.isOutboundDone()) {
-        engine.closeOutbound();
-      }
+    // The peer may be speaking plain HTTP if the handshake did not finish.
+    if (closed || !handshake || engine.isInboundDone() && engine.isOutboundDone()) {
       return getRuntime().getTrue();
-    } else {
-      return getRuntime().getFalse();
     }
+
+    // Generate close_notify for MiniSSL::Socket#close to send.
+    engine.closeOutbound();
+    try {
+      doOp(SSLOperation.WRAP, outboundAppData, outboundNetData);
+    } catch (SSLException e) {
+      return getRuntime().getTrue();
+    }
+    return getRuntime().getFalse();
   }
 
   private static RubyClass getSSLError(Ruby runtime) {
