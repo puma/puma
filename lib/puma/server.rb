@@ -535,8 +535,12 @@ module Puma
               if @thread_pool.waiting > 0
                 can_loop = true
               else
-                @thread_pool << client
-                close_socket = false
+                @thread_pool.with_mutex do
+                  unless shutting_down?
+                    @thread_pool << client
+                    close_socket = false
+                  end
+                end
               end
             elsif @queue_requests
               client.set_timeout @persistent_timeout

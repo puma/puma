@@ -1,6 +1,6 @@
-require:
-  - rubocop-performance
-  - ./cops/tests_puma.rb
+require: ./cops/tests_puma.rb
+
+plugins: rubocop-performance
 
 AllCops:
   DisabledByDefault: true

@@ -20,6 +20,10 @@ class TestIntegration < PumaTest
   LOG_WAIT_READ = Puma::IS_JRUBY ? 5 : 2
   LOG_ERROR_SLEEP = 0.2
   LOG_ERROR_QTY   = 5
+  # Puma allows workers 30 seconds to shut down gracefully.
+  STOP_TIMEOUT = 35
+
+  PROC_CLK_MONO = Process::CLOCK_MONOTONIC
 
   # rubyopt requires bundler/setup, so we don't need it here
   BASE = "#{Gem.ruby} -Ilib"
@@ -27,13 +31,14 @@ class TestIntegration < PumaTest
   def setup
     @server = nil
     @server_log = +''
+    @server_line_buffer = +''
+    @server_process_group = nil
     @server_stopped = false
     @config_file = nil
 
     @pid = nil
 
     @ios_to_close = Queue.new
-    @ios_to_close = []
     @bind_path    = nil
     @bind_port    = nil
     @control_path = nil
@@ -50,14 +55,16 @@ class TestIntegration < PumaTest
         flunk 'Windows must use Puma::ControlCLI to shut down!'
       end
     end
-
+  ensure
     close_ios if @ios_to_close
 
     # wait until the end for OS buffering?
     if @server
       begin
-        @server.close unless @server.closed?
-      rescue
+        Timeout.timeout(LOG_TIMEOUT, TimeoutPrepend::TestTookTooLong) do
+          @server.close unless @server.closed?
+        end
+      rescue IOError, Errno::ECHILD
       ensure
         @server = nil
       end
@@ -174,31 +181,50 @@ class TestIntegration < PumaTest
 
     STDOUT.syswrite "\n#{full_name}\n  #{cmd}\n" if log
 
-    if merge_err
-      @server = IO.popen(env, cmd, :err=>[:child, :out])
-    else
-      @server = IO.popen(env, cmd)
-    end
+    options = Puma::IS_WINDOWS ? {} : {pgroup: true}
+    options[:err] = [:child, :out] if merge_err
+    @server = IO.popen(env, cmd, **options)
+    @server_line_buffer = +''
+    @server_process_group = @server.pid unless Puma::IS_WINDOWS
     @pid = @server.pid
     wait_for_server_to_boot(log: log) unless no_wait
     @server
   end
 
-  # rescue statements are just in case method is called with a server
-  # that is already stopped/killed, especially since Process.wait2 is
-  # blocking
-  def stop_server(pid = @pid, signal: :TERM)
-    ret = nil
+  def stop_server(pid = @pid, signal: :TERM, timeout: STOP_TIMEOUT)
     begin
       Process.kill signal, pid
     rescue Errno::ESRCH
     end
-    begin
-      ret = Process.wait2 pid
-    rescue Errno::ECHILD
+    ret = wait_for_server_exit(pid, timeout)
+    if ret == :timeout
+      # Only cli_server's isolated process group is eligible for group cleanup.
+      target = pid == @pid && @server_process_group ? -@server_process_group : pid
+      Process.kill(:KILL, target) rescue Errno::ESRCH
+      wait_for_server_exit(pid, LOG_TIMEOUT)
+      @server_stopped = true if pid == @pid
+      flunk server_wait_error("Timeout waiting for server PID #{pid} to exit; sent KILL")
     end
-    @server_stopped = true
+    @server_stopped = true if pid == @pid
     ret
+  end
+
+  def wait_for_server_exit(pid, timeout)
+    deadline = Process.clock_gettime(PROC_CLK_MONO) + timeout
+    loop do
+      if pid == @pid && @server && !@server.closed?
+        # Keep a full stdout pipe from blocking the child during shutdown.
+        output = @server.read_nonblock(RESP_READ_LEN, exception: false)
+        @server_line_buffer << output if output.is_a?(String)
+      end
+      result = Process.wait2(pid, Process::WNOHANG)
+      return result if result
+      remaining = deadline - Process.clock_gettime(PROC_CLK_MONO)
+      return :timeout if remaining <= 0
+      sleep [remaining, 0.01].min
+    end
+  rescue Errno::ECHILD
+    nil
   end
 
   # Most integration tests do not stop/shutdown the server, which is handled by
@@ -229,75 +255,110 @@ class TestIntegration < PumaTest
   # reuses an existing connection to make sure that works
   def restart_server(connection, log: false)
     Process.kill :USR2, @pid
-    wait_for_server_to_include 'Restarting', log: log
+    wait_for_server_to_include 'Restarting', timeout: STOP_TIMEOUT, log: log
     connection.write "GET / HTTP/1.1\r\nHost: test.com\r\n\r\n" # trigger it to start by sending a new request
     wait_for_server_to_boot log: log
   end
 
   # wait for server to say it booted
-  # @server and/or @server.gets may be nil on slow CI systems
-  def wait_for_server_to_boot(timeout: LOG_TIMEOUT, log: false)
+  def wait_for_server_to_boot(timeout: nil, log: false)
     @puma_pid = wait_for_server_to_match(/(?:Master|      ) PID: (\d+)$/, 1, timeout: timeout, log: log)&.to_i
     @pid = @puma_pid if @pid != @puma_pid
     wait_for_server_to_include 'Ctrl-C', timeout: timeout, log: log
   end
 
   # Returns true if and when server log includes str.  Will timeout otherwise.
-  def wait_for_server_to_include(str, timeout: LOG_TIMEOUT, log: false)
-    time_timeout = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
-    line = ''
-
+  def wait_for_server_to_include(str, timeout: nil, log: false)
     puts "\n——— #{full_name} waiting for '#{str}'" if log
-    line = server_gets(str, time_timeout, log: log) until line&.include?(str)
+    wait_for_server_log(str, timeout, log: log) { |line| line.include?(str) }
     true
   end
 
   # Returns line if and when server log matches re, unless idx is specified,
   # then returns regex match.  Will timeout otherwise.
-  def wait_for_server_to_match(re, idx = nil, timeout: LOG_TIMEOUT, log: false)
-    time_timeout = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
-    line = ''
-
+  def wait_for_server_to_match(re, idx = nil, timeout: nil, log: false)
     puts "\n——— #{full_name} waiting for '#{re.inspect}'" if log
-    line = server_gets(re, time_timeout, log: log) until line&.match?(re)
+    line = wait_for_server_log(re, timeout, log: log) { |entry| entry.match?(re) }
     idx ? line[re, idx] : line
   end
 
-  def server_gets(match_obj, time_timeout, log: false)
-    error_retries = 0
-    line = ''
-
-    sleep 0.05 until @server.is_a?(IO) || Process.clock_gettime(Process::CLOCK_MONOTONIC) > time_timeout
-
-    raise Minitest::Assertion,  "@server is not an IO" unless @server.is_a?(IO)
-    if Process.clock_gettime(Process::CLOCK_MONOTONIC) > time_timeout
-      raise Minitest::Assertion, "Timeout waiting for server to log #{match_obj.inspect}"
+  def wait_for_server_log(match_obj, timeout, log: false)
+    deadline = Process.clock_gettime(PROC_CLK_MONO) + (timeout || LOG_TIMEOUT)
+    loop do
+      line = server_gets(match_obj, deadline: deadline, log: log)
+      return line if yield line
     end
+  end
 
-    begin
-      if @server.wait_readable(LOG_WAIT_READ) and line = @server&.gets
+  def server_wait_error(message)
+    output = @server_log + @server_line_buffer
+    "#{message}\nServer output (last 4096 characters):\n#{output[-4096..-1] || output}"
+  end
+
+  def server_gets(match_obj, timeout = nil, log: false, deadline: nil)
+    deadline ||= Process.clock_gettime(PROC_CLK_MONO) + (timeout || LOG_TIMEOUT)
+    error_retries = 0
+    flunk server_wait_error('@server is not an IO') unless @server.is_a?(IO)
+
+    loop do
+      remaining = deadline - Process.clock_gettime(PROC_CLK_MONO)
+      flunk server_wait_error("Timeout waiting for server to log #{match_obj.inspect}") if remaining <= 0
+
+      if index = @server_line_buffer.index("\n")
+        line = @server_line_buffer.slice!(0..index)
+        # Nonblocking reads bypass IO#gets' Windows newline conversion.
+        line.sub!(/\r\n\z/, "\n")
         @server_log << line
         puts "    #{line}" if log
+        return line
       end
-    rescue StandardError => e
-      error_retries += 1
-      raise(Minitest::Assertion,  "Waiting for server to log #{match_obj.inspect} raised #{e.class}") if error_retries == LOG_ERROR_QTY
-      sleep LOG_ERROR_SLEEP
-      retry
+
+      begin
+        next unless @server.wait_readable([remaining, LOG_WAIT_READ].min)
+        part = @server.read_nonblock(RESP_READ_LEN, exception: false)
+        case part
+        when String
+          @server_line_buffer << part
+        when nil
+          unless @server_line_buffer.empty?
+            line = @server_line_buffer.slice!(0..-1)
+            @server_log << line
+            puts "    #{line}" if log
+            return line
+          end
+          flunk server_wait_error("Server output closed before logging #{match_obj.inspect}")
+        end
+      rescue IOError, SystemCallError => e
+        error_retries += 1
+        if error_retries >= LOG_ERROR_QTY
+          flunk server_wait_error("Waiting for server to log #{match_obj.inspect}, raised #{e.class}: #{e.message}")
+        end
+        sleep [LOG_ERROR_SLEEP, [deadline - Process.clock_gettime(PROC_CLK_MONO), 0].max].min
+      end
     end
-    if Process.clock_gettime(Process::CLOCK_MONOTONIC) > time_timeout
-      raise Minitest::Assertion, "Timeout waiting for server to log #{match_obj.inspect}"
+  end
+
+  # gets worker pids from @server output
+  def get_worker_pids(phase = 0, size = workers, timeout: nil, log: false)
+    pids = []
+    re = /PID: (\d+)\) booted in [.0-9]+s, phase: #{phase}/
+    while pids.size < size
+      if pid = wait_for_server_to_match(re, 1, timeout: timeout, log: log)
+        pids << pid
+      end
     end
-    line
+    pids.map(&:to_i)
   end
 
   def open_client_socket(unix: false, timeout: 3)
-    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+    deadline = Process.clock_gettime(PROC_CLK_MONO) + timeout
     retries = 0
     begin
-      unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, bind_port)
+      skt = unix ? UNIXSocket.new(@bind_path) : TCPSocket.new(HOST, bind_port)
+      @ios_to_close << skt
+      skt
     rescue Errno::EADDRNOTAVAIL => e
-      raise e if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+      raise e if Process.clock_gettime(PROC_CLK_MONO) >= deadline
       retries += 1
       sleep 0.01 * retries.clamp(0, 10)
       retry
@@ -306,7 +367,6 @@ class TestIntegration < PumaTest
 
   def connect(path = nil, unix: false)
     s = open_client_socket(unix: unix)
-    @ios_to_close << s
     s << "GET /#{path} HTTP/1.1\r\nHost: test.com\r\n\r\n"
     s
   end
@@ -315,7 +375,6 @@ class TestIntegration < PumaTest
   # does not wait for a read
   def fast_connect(path = nil, unix: false)
     s = open_client_socket(unix: unix)
-    @ios_to_close << s
     fast_write s, "GET /#{path} HTTP/1.1\r\nHost: test.com\r\n\r\n"
     s
   end
@@ -349,7 +408,7 @@ class TestIntegration < PumaTest
     content_length = nil
     chunked = nil
     response = +''
-    t_st = Process.clock_gettime Process::CLOCK_MONOTONIC
+    t_st = Process.clock_gettime PROC_CLK_MONO
     if connection.to_io.wait_readable timeout
       loop do
         begin
@@ -385,7 +444,7 @@ class TestIntegration < PumaTest
           when nil
             raise EOFError
           end
-          if timeout < Process.clock_gettime(Process::CLOCK_MONOTONIC) - t_st
+          if timeout < Process.clock_gettime(PROC_CLK_MONO) - t_st
             raise Timeout::Error, 'Client Read Timeout'
           end
         end
@@ -393,18 +452,6 @@ class TestIntegration < PumaTest
     else
       raise Timeout::Error, 'Client Read Timeout'
     end
-  end
-
-  # gets worker pids from @server output
-  def get_worker_pids(phase = 0, size = workers, log: false)
-    pids = []
-    re = /PID: (\d+)\) booted in [.0-9]+s, phase: #{phase}/
-    while pids.size < size
-      if pid = wait_for_server_to_match(re, 1, log: log)
-        pids << pid
-      end
-    end
-    pids.map(&:to_i)
   end
 
   # used to define correct 'refused' errors
@@ -430,10 +477,8 @@ class TestIntegration < PumaTest
 
   def set_pumactl_config(unix: false)
     if unix
-      @control_path = tmp_path('.cntl_sock')
       "activate_control_app 'unix://#{control_path}', { auth_token: '#{TOKEN}' }"
     else
-      @control_port = UniquePort.call
       "activate_control_app 'tcp://#{HOST}:#{control_port}', { auth_token: '#{TOKEN}' }"
     end
   end
@@ -447,7 +492,7 @@ class TestIntegration < PumaTest
       elsif @control_port && !@control_path
         %W[-C tcp://#{HOST}:#{@control_port} -T #{TOKEN} #{argv}]
       else
-        flunk 'Both @control_path and @control_port esist?'
+        flunk 'Both @control_path and @control_port exist?'
       end
 
     r, w = IO.pipe
@@ -483,9 +528,19 @@ class TestIntegration < PumaTest
     JSON.parse read_pipe.read.split("\n", 2).last
   end
 
+  # Restarts the server `restarts` times while `num_threads` client threads keep
+  # sending requests, then asserts that (almost) none of those requests were
+  # dropped.
+  #
+  # The number of restarts is a loop bound, not a count of however many restarts
+  # happen to fit inside a fixed number of requests.  Client threads run until
+  # they are told to stop, and each pass waits for `replies_per_gate` further
+  # successful responses before signaling again, so traffic is known to be
+  # flowing across every restart.  A fast server or a slow machine changes how
+  # long the test takes, not whether it passes.
   def restart_does_not_drop_connections(
       num_threads: 1,
-      total_requests: 500,
+      restarts: 5,
       config: nil,
       unix: nil,
       signal: nil,
@@ -497,8 +552,11 @@ class TestIntegration < PumaTest
     skip_if :truffleruby, suffix: ' - Undiagnosed failures on TruffleRuby'
     skipped = nil
 
+    replies_per_gate = 100   # successful responses to wait for before signaling again
+    gate_timeout     = 15    # seconds to wait for those responses
+    pause            = 0.001 # seconds each client waits between requests
+
     clustered = (workers || 0) >= 2
-    restart_loop_sleep = clustered ? 0.15 : 0.10
 
     args = "-w #{workers} -t 5:5 -q test/rackup/hello_with_delay.ru"
     if Puma.windows?
@@ -511,21 +569,24 @@ class TestIntegration < PumaTest
     refused = thread_run_refused unix: false
     message = 'A' * 16_256  # 2^14 - 128
 
+    request_text = "POST / HTTP/1.1\r\nHost: test.com\r\n" \
+      "Content-Length: #{message.bytesize}\r\n\r\n#{message}"
+
     mutex = Mutex.new
     restart_count = 0
+    running = true
     client_threads = []
 
-    num_requests = (total_requests/num_threads).to_i
-
-    num_threads.times do |thread|
+    num_threads.times do
       client_threads << Thread.new do
-        num_requests.times do |req_num|
+        while running
           begin
+            mutex.synchronize { replies[:attempts] += 1 }
             begin
               socket = open_client_socket(unix: unix)
-              fast_write socket, "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: #{message.bytesize}\r\n\r\n#{message}"
+              fast_write socket, request_text
             rescue => e
-              replies[:write_error] += 1
+              mutex.synchronize { replies[:write_error] += 1 }
               raise e
             end
             body = read_body(socket, 10)
@@ -542,12 +603,16 @@ class TestIntegration < PumaTest
             # client would see an empty response
             # Errno::EBADF Windows may not be able to make a connection
             mutex.synchronize { replies[:reset] += 1 }
-          rescue *refused, IOError
+          rescue *refused, IOError, Errno::EINVAL
             # IOError intermittently thrown by Ubuntu, add to allow retry
+            # Errno::EINVAL - ran out of ephemeral ports, only seen when a test
+            # is already failing and the client threads run far longer than usual
             mutex.synchronize { replies[:refused] += 1 }
           rescue ::Timeout::Error
             mutex.synchronize { replies[:read_timeout] += 1 }
           ensure
+            # this generates a lot of sockets, clear here, rather than using
+            # teardown
             if socket.is_a?(IO) && !socket.closed?
               begin
                 socket.close
@@ -555,50 +620,37 @@ class TestIntegration < PumaTest
               end
             end
           end
+          # client threads are not capped by a request count, so they are paced
+          # instead - without this they exhaust ephemeral ports
+          sleep pause
         end
-        # STDOUT.puts "#{thread} #{replies[:success]}"
       end
     end
 
-    run = true
+    begin
+      wait_for_replies replies, replies_per_gate, mutex: mutex,
+        timeout: gate_timeout, what: 'before the first restart'
 
-    restart_thread = Thread.new do
-      # Wait for some connections before first restart
-      sleep 0.2
-      while run
+      restarts.times do |idx|
+        target = mutex.synchronize { replies[:success] } + replies_per_gate
+
         if Puma.windows?
           cli_pumactl 'restart'
         else
           Process.kill signal, @pid
         end
-        if signal == :USR2
-          # If 'wait_for_server_to_boot' times out, error in thread shuts down CI
-          begin
-            wait_for_server_to_boot timeout: 5
-          rescue Minitest::Assertion # Timeout
-            run = false
-          end
-        end
         restart_count += 1
 
-        if Puma.windows?
-          sleep 2.0
-        elsif clustered
-          phase = signal == :USR2 ? 0 : restart_count
-          # If 'get_worker_pids phase' times out, error in thread shuts down CI
-          begin
-            get_worker_pids phase, log: log
-            # Wait with an exponential backoff before signaling next restart
-            sleep restart_loop_sleep * restart_count
-          rescue Minitest::Assertion # Timeout
-            run = false
-          rescue Errno::EBADF # bad restart?
-            run = false
-          end
-        else
-          sleep 0.1
-        end
+        # none of these are rescued - a wait that never finishes must fail the
+        # test loudly, rather than quietly ending the restart loop
+        wait_for_server_to_boot(timeout: 30, log: log) if signal == :USR2
+        get_worker_pids(signal == :USR2 ? 0 : restart_count, log: log) if clustered
+
+        wait_for_replies replies, target, mutex: mutex, timeout: gate_timeout,
+          what: "after restart #{idx + 1} of #{restarts}"
       end
+    ensure
+      running = false
     end
 
     # cycle thru threads rather than one at a time
@@ -609,8 +661,6 @@ class TestIntegration < PumaTest
       client_threads.compact!
     end
 
-    run = false
-    restart_thread.join
     if Puma.windows?
       cli_pumactl 'stop'
       wait_server
@@ -619,36 +669,32 @@ class TestIntegration < PumaTest
     end
     @server = nil
 
-    msg = ("   %4d unexpected_response\n"   % replies.fetch(:unexpected_response,0)).dup
-    msg << "   %4d refused\n"               % replies.fetch(:refused,0)
-    msg << "   %4d read timeout\n"          % replies.fetch(:read_timeout,0)
-    msg << "   %4d reset\n"                 % replies.fetch(:reset,0)
-    msg << "   %4d write_errors\n"          % replies.fetch(:write_error,0)
-    msg << "   %4d success\n"               % replies.fetch(:success,0)
-    msg << "   %4d success after restart\n" % replies.fetch(:restart,0)
-    msg << "   %4d restart count\n"         % restart_count
+    msg = +("   %4d attempts\n"              % replies.fetch(:attempts,0))
+    msg <<  "   %4d unexpected_response\n"   % replies.fetch(:unexpected_response,0)
+    msg <<  "   %4d refused\n"               % replies.fetch(:refused,0)
+    msg <<  "   %4d read timeout\n"          % replies.fetch(:read_timeout,0)
+    msg <<  "   %4d reset\n"                 % replies.fetch(:reset,0)
+    msg <<  "   %4d write_errors\n"          % replies.fetch(:write_error,0)
+    msg <<  "   %4d success\n"               % replies.fetch(:success,0)
+    msg <<  "   %4d success after restart\n" % replies.fetch(:restart,0)
+    msg <<  "   %4d restart count\n"         % restart_count
 
-    actual_requests = num_threads * num_requests
-    allowed_errors = (actual_requests * 0.002).round
+    attempts = replies[:attempts]
+    allowed_errors = restarts
 
-    refused = replies[:refused]
-    reset   = replies[:reset]
-
-    # started intermittently failing on ubuntu22, May-2026
-    assert_operator_equal = UBUNTU_VERSION && UBUNTU_VERSION <= 22 ? 1 : 2
-
-    assert_operator restart_count, :>=, assert_operator_equal, msg
+    assert_equal restarts, restart_count, msg
 
     if Puma.windows?
-      assert_equal actual_requests - reset - refused, replies[:success]
+      assert_equal attempts - replies[:reset] - replies[:refused], replies[:success]
     else
-      assert_operator replies[:success], :>=,  actual_requests - allowed_errors, msg
+      assert_operator replies[:success], :>=,  attempts - allowed_errors, msg
     end
 
   ensure
     unless skipped
+      running = false
       if passed?
-        msg = "    #{restart_count} restarts, #{reset} resets, #{refused} refused, #{replies[:restart]} success after restart, #{replies[:write_error]} write error"
+        msg = "    #{restart_count} restarts, #{replies[:attempts]} attempts, #{replies[:reset]} resets, #{replies[:refused]} refused, #{replies[:restart]} success after restart, #{replies[:write_error]} write error"
         $debugging_info << "#{full_name}\n#{msg}\n"
       else
         client_threads.each { |thr| thr.kill if thr.is_a? Thread }
@@ -656,4 +702,44 @@ class TestIntegration < PumaTest
       end
     end
   end
+
+  # Blocks until `replies[:success]` reaches `target`.  Fails the test if that
+  # does not happen within `timeout` seconds, rather than passing quietly on a
+  # server that has stopped answering.
+  def wait_for_replies(replies, target, mutex:, timeout: 15, what: nil)
+    deadline = Process.clock_gettime(PROC_CLK_MONO) + timeout
+    count = 0
+    loop do
+      count = mutex.synchronize { replies[:success] }
+      break if count >= target
+      if Process.clock_gettime(PROC_CLK_MONO) > deadline
+        flunk "Only #{count} successful requests #{what}, " \
+          "expected #{target} within #{timeout} seconds"
+      end
+      sleep 0.05
+    end
+    count
+  end
+
+  # use `PWR` for linux, `:INFO` for mac
+  def thread_log
+    signal =
+      if    RUBY_PLATFORM.include? 'linux'  then :PWR
+      elsif RUBY_PLATFORM.include? 'darwin' then :INFO
+      else ; :PWR
+      end
+
+    skip_unless_signal_exist? signal
+
+    if workers.nil? || workers.zero?
+      cli_server "-t1:1 -q test/rackup/hello.ru"
+      Process.kill signal, @pid
+    else
+      cli_server "-w#{workers} -t1:1 -q test/rackup/hello.ru"
+      Process.kill signal, get_worker_pids.first
+    end
+
+    assert wait_for_server_to_include('Thread: TID-')
+  end
+
 end

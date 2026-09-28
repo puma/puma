@@ -91,7 +91,7 @@ class TestPersistent < PumaTest
     response = socket.read_response
     assert_equal "HTTP/1.1 204 No Content\r\nx-header: Works\r\n\r\n", response
 
-    response = socket.req_write(@valid_request).read_response
+    response = socket.send_http(@valid_request).read_response
 
     assert_equal @valid_response, response
   end
@@ -174,8 +174,11 @@ class TestPersistent < PumaTest
 
     sleep 2
 
-    assert_raises EOFError do
-      socket.read_nonblock(1)
+    # EOFError            - Ubuntu & macOS
+    # Errno::ECONNABORTED - Windows
+    # Errno::ECONNRESET   - TruffleRuby (macOS?)
+    assert_raises EOFError, Errno::ECONNABORTED, Errno::ECONNRESET do
+      socket.send_http_read_response
     end
   end
 

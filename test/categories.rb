@@ -13,6 +13,7 @@ module PumaTestCategories
   INTEGRATION_TEST_FILES = %w[
     test_http11.rb
     test_integration_cluster.rb
+    test_integration_helpers.rb
     test_integration_pumactl.rb
     test_integration_single.rb
     test_integration_ssl.rb

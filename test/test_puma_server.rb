@@ -77,18 +77,22 @@ class TestPumaServer < PumaTest
   end
 
   def test_streaming_body
+    queue = Queue.new
     server_run do |env|
       body = lambda do |stream|
-        stream.write("Hello World")
+        stream.syswrite "Hello World"
         stream.close
+        queue << true
       end
 
       [200, {}, body]
     end
 
-    body = send_http_read_resp_body "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
+    socket = send_http "GET / HTTP/1.0\r\nConnection: close\r\n\r\n"
 
-    assert_equal "Hello World", body
+    queue.pop
+
+    assert_equal "Hello World", socket.read_body
   end
 
   def test_file_body
@@ -237,10 +241,10 @@ class TestPumaServer < PumaTest
   end
 
   def test_puma_socket
-    body = "HTTP/1.1 750 Upgraded to Awesome\r\nDone: Yep!\r\n"
+    body = "HTTP/1.1 750 Upgraded to Awesome\r\nDone: Yep!\r\n\r\n"
     server_run do |env|
       io = env['puma.socket']
-      io.write body
+      io.syswrite body
       io.close
       [-1, {}, []]
     end
@@ -1216,6 +1220,49 @@ class TestPumaServer < PumaTest
     assert_equal "5", content_length
   end
 
+  def test_chunked_request_pause_after_last_chunk_1
+    body = nil
+    content_length = nil
+    server_run { |env|
+      body ||= env["rack.input"].read
+      content_length ||= env["CONTENT_LENGTH"]
+      [200, {}, [""]]
+    }
+
+    socket = send_http "GET / HTTP/1.1\r\nTransfer-Encoding: chunked\r\nHost: test.com\r\n\r\n0\r\n"
+
+    sleep 1
+
+    response = socket.send_http("X-Trailer: value\r\n\r\n#{GET_11}").read_all
+
+    assert_equal "HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n" * 2, response
+    assert_equal "", body
+    assert_equal "0", content_length
+  end
+
+  def test_chunked_request_pause_after_last_chunk_2
+    body = nil
+    content_length = nil
+    server_run { |env|
+      body ||= env["rack.input"].read
+      content_length ||= env["CONTENT_LENGTH"]
+      [200, {}, [""]]
+    }
+
+    socket = send_http "GET / HTTP/1.1\r\nTransfer-Encoding: chunked\r\nHost: test.com\r\n\r\n" \
+    "5\r\nhello\r\n" \
+    "6\r\n\nworld\r\n0\r\n"
+
+    sleep 1
+
+    responses = socket.send_http("X-Trailer: value\r\n\r\n#{GET_11}").read_all
+
+    assert_equal "hello\nworld", body
+    assert_equal "11", content_length
+
+    assert_equal "HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n" * 2, responses
+  end
+
   # See https://github.com/puma/puma/issues/3337 & https://github.com/puma/puma/pull/3338
   #
   def test_chunked_body_pause_within_chunk_size_hex
@@ -1744,7 +1791,7 @@ class TestPumaServer < PumaTest
   # System-resource errors such as EMFILE should not be silently swallowed by accept loop.
   def test_accept_emfile
     stub_accept_nonblock Errno::EMFILE.new('accept(2)')
-    sleep 0.1 if Puma::IS_WINDOWS && Puma::IS_ARM
+    sleep 0.1 if Puma::IS_WINDOWS
     refute_empty @log_writer.stderr.string, "Expected EMFILE error not logged"
   end
 
@@ -1798,6 +1845,57 @@ class TestPumaServer < PumaTest
     assert_raises EOFError do
       socket.read_nonblock(256)
     end
+  end
+
+  def test_shutdown_with_buffered_keep_alive_request
+    assert_keep_alive_request_closed_during_shutdown(:stop, true)
+  end
+
+  def test_shutdown_with_late_keep_alive_request
+    assert_keep_alive_request_closed_during_shutdown(:stop, false)
+  end
+
+  def test_restart_with_buffered_keep_alive_request
+    assert_keep_alive_request_closed_during_shutdown(:begin_restart, true)
+  end
+
+  def test_restart_with_late_keep_alive_request
+    assert_keep_alive_request_closed_during_shutdown(:begin_restart, false)
+  end
+
+  def assert_keep_alive_request_closed_during_shutdown(command, buffered)
+    response_ready = Queue.new
+    resume = Queue.new
+    server_run(max_threads: 1) { [200, {}, ["hello"]] }
+    @server.define_singleton_method(:handle_request) do |*args|
+      result = super(*args)
+      response_ready << result
+      resume.pop
+      result
+    end
+
+    socket = new_socket
+    socket.write(buffered ? GET_11 + GET_11 : GET_11)
+    assert_equal :keep_alive, Timeout.timeout(5) { response_ready.pop }
+    socket.write(GET_11) unless buffered
+
+    @server.public_send(command)
+    Timeout.timeout(5) do
+      sleep 0.001 until @pool.with_mutex { @pool.instance_variable_get(:@shutdown) }
+    end
+    resume.close
+
+    response = Timeout.timeout(5) { socket.read }
+    assert @server.instance_variable_get(:@thread).join(5), "Server did not stop"
+    assert_equal ["200"], response.scan(/HTTP\/1\.1 (\d{3})/).flatten
+    assert_includes response, "\r\n\r\nhello"
+    assert_equal 1, @server.requests_count
+    assert_empty @log_writer.stderr.string
+  ensure
+    resume&.close
+    socket&.close
+    # Restart retains listeners for a successor; this test has none.
+    @server.binder.close_listeners if command == :begin_restart
   end
 
   def test_run_stop_thread_safety
@@ -2172,6 +2270,61 @@ class TestPumaServer < PumaTest
     assert_includes body, "GET /404 HTTP/1.1\r\n"
     assert_includes body, "Content-Length: 144\r\n"
     assert_equal 1, response.scan("HTTP/1.1 200 OK").size
+  end
+
+  queue_request_options = [true, false]
+  {'content_length' => 'Content_Length: 0', 'transfer_encoding' => 'Transfer_Encoding: chunked'}.each do |name, header|
+    queue_request_options.each do |queue_requests|
+      define_method("test_underscore_framing_#{name}_queue_requests_#{queue_requests}") do
+        requests = Queue.new
+        server_run(queue_requests: queue_requests) do |env|
+          requests << env['PATH_INFO']
+          [200, {}, ['OK']]
+        end
+
+        socket = send_http "POST /invalid HTTP/1.1\r\nHost: test.com\r\n#{header}\r\n\r\n#{GET_11}"
+        response = socket.read_all
+
+        assert_equal ['400'], response.scan(/HTTP\/1\.1 (\d{3})/).flatten
+        assert_predicate requests, :empty?
+        assert_raises(EOFError) { socket.read_response }
+      end
+    end
+
+    define_method("test_underscore_framing_#{name}_pipelined") do
+      requests = Queue.new
+      server_run do |env|
+        requests << env['PATH_INFO']
+        [200, {}, ['OK']]
+      end
+
+      socket = send_http "#{GET_11}POST /invalid HTTP/1.1\r\nHost: test.com\r\n#{header}\r\n\r\n#{GET_11}"
+      response = socket.read_all
+
+      assert_equal ['200', '400'], response.scan(/HTTP\/1\.1 (\d{3})/).flatten
+      assert_equal '/', requests.pop(true)
+      assert_predicate requests, :empty?
+      assert_raises(EOFError) { socket.read_response }
+    end
+
+    define_method("test_underscore_framing_#{name}_keep_alive_fragmented") do
+      requests = Queue.new
+      server_run do |env|
+        requests << env['PATH_INFO']
+        [200, {}, ['OK']]
+      end
+
+      socket = send_http GET_11
+      assert_equal 'HTTP/1.1 200 OK', socket.read_response.status
+      socket << "POST /invalid HTTP/1.1\r\nHost: test.com\r\n#{header}\r\n"
+      socket << "Expect: 100-continue\r\n\r\n"
+      response = socket.read_all
+
+      assert_equal ['400'], response.scan(/HTTP\/1\.1 (\d{3})/).flatten
+      assert_equal '/', requests.pop(true)
+      assert_predicate requests, :empty?
+      assert_raises(EOFError) { socket.read_response }
+    end
   end
 
   def test_auto_trim_with_variable_pool_size

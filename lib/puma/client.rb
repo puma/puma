@@ -3,6 +3,7 @@
 require_relative 'detect'
 require_relative 'io_buffer'
 require_relative 'client_env'
+require_relative 'null_io'
 require 'tempfile'
 
 if Puma::IS_JRUBY
@@ -312,6 +313,8 @@ module Puma
       raise e unless HttpParserError === e && e.message.include?('non-SSL')
 
       req, _ = @buffer.split "\r\n\r\n"
+      raise e if req.nil? || req.empty?
+
       request_line, headers = req.split "\r\n", 2
 
       # below checks for request issues and changes error message accordingly
@@ -425,6 +428,15 @@ module Puma
     # @return [Boolean] true if the body can be completely read, false otherwise
     #
     def setup_body
+      # The parsers preserve underscores as commas to distinguish these aliases
+      # from real framing headers. Reject them before 100 Continue or body reads,
+      # regardless of allow_underscore_headers, to avoid proxy disagreements.
+      if @env.key?('HTTP_CONTENT,LENGTH') || @env.key?('HTTP_TRANSFER,ENCODING')
+        @error_status_code = 400
+        @env[HTTP_CONNECTION] = CLOSE
+        raise HttpParserError, 'Underscores are not allowed in HTTP framing headers'
+      end
+
       @body_read_start = Process.clock_gettime(Process::CLOCK_MONOTONIC, :float_millisecond)
 
       if @env[HTTP_EXPECT] == CONTINUE
@@ -619,6 +631,8 @@ module Puma
     end
 
     def decode_chunk(chunk)
+      return finish_last_chunk(@prev_chunk + chunk) if @in_last_chunk
+
       if @partial_part_left > 0
         if @partial_part_left <= chunk.size
           if @partial_part_left > 2
@@ -665,24 +679,7 @@ module Puma
           if len == 0
             @in_last_chunk = true
             @body.rewind
-            rest = io.read
-            if rest.bytesize < CHUNK_VALID_ENDING_SIZE
-              @buffer = nil
-              @partial_part_left = CHUNK_VALID_ENDING_SIZE - rest.bytesize
-              return false
-            else
-              # if the next character is a CRLF, set buffer to everything after that CRLF
-              start_of_rest = if rest.start_with?(CHUNK_VALID_ENDING)
-                CHUNK_VALID_ENDING_SIZE
-              else # we have started a trailer section, which we do not support. skip it!
-                rest.index(CHUNK_VALID_ENDING*2) + CHUNK_VALID_ENDING_SIZE*2
-              end
-
-              @buffer = rest[start_of_rest..-1]
-              @buffer = nil if @buffer.empty?
-              set_ready
-              return true
-            end
+            return finish_last_chunk(io.read)
           end
 
           # Track the excess as a function of the size of the
@@ -735,12 +732,28 @@ module Puma
         end
       end
 
-      if @in_last_chunk
-        set_ready
-        true
+      false
+    end
+
+    # Consume the terminator that ends a chunked body. Per RFC 9112 §7.1.2
+    # this is either a bare CRLF or an optional trailer section ending in
+    # CRLF*2. Puma does not surface trailers, so we skip past them. Bytes
+    # past the terminator belong to the next pipelined request.
+    def finish_last_chunk(rest)
+      if rest.start_with?(CHUNK_VALID_ENDING)
+        trailer_end = CHUNK_VALID_ENDING_SIZE
+      elsif idx = rest.index(CHUNK_VALID_ENDING * 2)
+        trailer_end = idx + CHUNK_VALID_ENDING_SIZE * 2
       else
-        false
+        @prev_chunk = rest
+        return false
       end
+
+      @prev_chunk = ""
+      @buffer = rest[trailer_end..-1]
+      @buffer = nil if @buffer.empty?
+      set_ready
+      true
     end
 
     def set_ready

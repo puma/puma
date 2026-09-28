@@ -9,18 +9,12 @@ class TestIntegrationSingle < TestIntegration
   def workers ; 0 ; end
 
   def test_hot_restart_does_not_drop_connections_threads
-    ttl_reqs = Puma.windows? ? 500 : 1_000
-    restart_does_not_drop_connections num_threads: 5, total_requests: ttl_reqs,
-      signal: :USR2
+    restart_does_not_drop_connections num_threads: 5, signal: :USR2
   end
 
   def test_hot_restart_does_not_drop_connections
-    if Puma.windows?
-      restart_does_not_drop_connections total_requests: 300,
-        signal: :USR2
-    else
-      restart_does_not_drop_connections signal: :USR2
-    end
+    restart_does_not_drop_connections signal: :USR2,
+      restarts: Puma::IS_WINDOWS ? 4 : 5
   end
 
   def test_usr2_restart
@@ -153,17 +147,9 @@ class TestIntegrationSingle < TestIntegration
     assert_raises(Errno::ECONNREFUSED) { TCPSocket.new(HOST, @bind_port) }
   end
 
-  def test_siginfo_thread_print
-    skip_unless_signal_exist? :INFO
-
-    cli_server 'test/rackup/hello.ru'
-    output = []
-    t = Thread.new { output << @server.readlines }
-    Process.kill :INFO, @pid
-    Process.kill :INT , @pid
-    t.join
-
-    assert_match "Thread: TID", output.join
+  # uses `:PWR` for linux, `:INFO` for mac
+  def test_thread_log
+    thread_log
   end
 
   def test_write_to_log

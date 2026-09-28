@@ -137,6 +137,19 @@ class TestLauncher < PumaTest
     assert is_stopped, "after_stopped not called"
   end
 
+  def test_after_stopped_fires_after_requests_drain
+    events = []
+    runner = Object.new
+    runner.define_singleton_method(:stop_blocked) { events << :requests_drained }
+    launcher = create_launcher
+    launcher.instance_variable_set(:@runner, runner)
+    launcher.events.after_stopped { events << :after_stopped }
+
+    launcher.send(:do_graceful_stop)
+
+    assert_equal [:requests_drained, :after_stopped], events
+  end
+
   private
 
   def create_launcher(config = Puma::Configuration.new, lw = Puma::LogWriter.strings, **kw)

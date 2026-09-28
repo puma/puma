@@ -23,33 +23,31 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_hot_restart_does_not_drop_connections_threads
-    restart_does_not_drop_connections num_threads: 10, total_requests: 3_000,
-      signal: :USR2
+    restart_does_not_drop_connections num_threads: 10, signal: :USR2
   end
 
   def test_hot_restart_does_not_drop_connections
-    restart_does_not_drop_connections num_threads: 1, total_requests: 1_000,
-      signal: :USR2
+    restart_does_not_drop_connections num_threads: 1, signal: :USR2
   end
 
   def test_phased_restart_does_not_drop_connections_threads
-    restart_does_not_drop_connections num_threads: 10, total_requests: 3_000,
-      signal: :USR1, config: "preload_app! false"
+    restart_does_not_drop_connections num_threads: 10, signal: :USR1,
+      config: "preload_app! false"
   end
 
   def test_phased_restart_does_not_drop_connections
-    restart_does_not_drop_connections num_threads: 1, total_requests: 1_000,
-      signal: :USR1, config: "preload_app! false"
+    restart_does_not_drop_connections num_threads: 1, signal: :USR1,
+      config: "preload_app! false"
   end
 
   def test_phased_restart_does_not_drop_connections_threads_fork_worker
-    restart_does_not_drop_connections num_threads: 10, total_requests: 3_000,
-      signal: :USR1, config: "fork_worker; preload_app! false"
+    restart_does_not_drop_connections num_threads: 10, signal: :USR1,
+      config: "fork_worker; preload_app! false"
   end
 
   def test_phased_restart_does_not_drop_connections_unix
-    restart_does_not_drop_connections num_threads: 1, total_requests: 1_000,
-      signal: :USR1, unix: true, config: "preload_app! false"
+    restart_does_not_drop_connections num_threads: 1, signal: :USR1, unix: true,
+      config: "preload_app! false"
   end
 
   def test_pre_existing_unix
@@ -89,18 +87,9 @@ class TestIntegrationCluster < TestIntegration
     end
   end
 
-  def test_siginfo_thread_print
-    skip_unless_signal_exist? :INFO
-
-    cli_server "-w #{workers} -q test/rackup/hello.ru"
-    worker_pids = get_worker_pids
-    output = []
-    t = Thread.new { output << @server.readlines }
-    Process.kill :INFO, worker_pids.first
-    Process.kill :INT , @pid
-    t.join
-
-    assert_match "Thread: TID", output.join
+  # uses `:PWR` for linux, `:INFO` for mac
+  def test_thread_log
+    thread_log
   end
 
   def test_usr2_restart
@@ -147,7 +136,7 @@ class TestIntegrationCluster < TestIntegration
     assert wait_for_server_to_include('after_booted called')
     assert wait_for_server_to_include('Goodbye!')
     # below logged after workers are stopped
-    assert wait_for_server_to_include('after_stopped called')
+    assert wait_for_server_to_include('after_stopped called', timeout: STOP_TIMEOUT)
     wait_server 15
   end
 
@@ -449,7 +438,7 @@ class TestIntegrationCluster < TestIntegration
 
     Process.kill :SIGURG, @pid
 
-    get_worker_pids 1, worker_count - 1
+    get_worker_pids 1, worker_count - 1, timeout: 15
 
     refute @server_log[/.*Terminating timed out worker.*/]
   end
@@ -584,14 +573,14 @@ class TestIntegrationCluster < TestIntegration
     cli_server "-w 1 test/rackup/hello.ru", env: { 'RUBY_MN_THREADS' => '1' }
 
     assert wait_for_server_to_include('Worker 0 (PID')
-    assert_match(/WARNING: Detected `RUBY_MN_THREADS/, @server_log)
+    assert_includes @server_log, 'WARNING: Detected `RUBY_MN_THREADS'
   end
 
   def test_warning_message_not_outputted_when_single_worker_silenced
     cli_server "-w 1 test/rackup/hello.ru", config: "silence_single_worker_warning"
 
     assert wait_for_server_to_include('Worker 0 (PID')
-    refute_match(/WARNING: Detected running cluster mode with 1 worker/, @server_log)
+    refute_includes @server_log, 'WARNING: Detected running cluster mode with 1 worker'
   end
 
   def test_signal_ttin
