@@ -4,6 +4,7 @@ require_relative "helper"
 require_relative "helpers/integration"
 
 require "puma/configuration"
+require "puma/runner"
 
 require "time"
 
@@ -155,14 +156,9 @@ class TestIntegrationCluster < TestIntegration
     assert_empty zombies, "Process ids #{zombies} became zombies"
   end
 
-  # IO.pipe sets O_NONBLOCK on both ends in MRI Ruby. If the wakeup pipe fills
-  # during worker drain (stop_workers does not read from it), wakeup! previously
-  # blocked forever in ppoll(POLLOUT) instead of returning immediately.
-  def test_term_does_not_deadlock_on_full_wakeup_pipe
+  def test_wakeup_does_not_block_when_pipe_is_full
     r, w = IO.pipe
 
-    # Fill the pipe to capacity, simulating worker ping messages accumulating
-    # while stop_workers loops without reading from the pipe.
     begin
       loop { w.write_nonblock("x" * 512) }
     rescue IO::EAGAINWaitWritable
