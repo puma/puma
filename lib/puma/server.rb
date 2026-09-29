@@ -400,6 +400,9 @@ module Puma
                     end
                   else
                     pool.wait_until_not_full
+
+                    # A stop command may have arrived while we were blocked waiting for a free thread, check again now
+                    break if check.wait_readable(0) && handle_check
                   end
                 end
 
