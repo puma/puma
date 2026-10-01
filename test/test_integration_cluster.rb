@@ -4,6 +4,7 @@ require_relative "helper"
 require_relative "helpers/integration"
 
 require "puma/configuration"
+require "puma/runner"
 
 require "time"
 
@@ -153,6 +154,25 @@ class TestIntegrationCluster < TestIntegration
     zombies = bad_exit_pids worker_pids
 
     assert_empty zombies, "Process ids #{zombies} became zombies"
+  end
+
+  def test_wakeup_does_not_block_when_pipe_is_full
+    r, w = IO.pipe
+
+    begin
+      loop { w.write_nonblock("x" * 512) }
+    rescue IO::EAGAINWaitWritable
+    end
+
+    runner = Puma::Runner.allocate
+    runner.instance_variable_set(:@wakeup, w)
+
+    t = Thread.new { runner.wakeup! }
+    assert t.join(2.0), "wakeup! deadlocked — blocked >2s on a full pipe"
+  ensure
+    t&.kill
+    r&.close
+    w&.close
   end
 
   # mimicking stuck workers, test respawn with external TERM
