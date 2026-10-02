@@ -128,6 +128,51 @@ class Http11ParserTest < TestIntegration
     assert_equal '/forums/1/path;stillpath/2375', req['REQUEST_PATH']
   end
 
+  REJECTED_PATH_CHARS = ['{', '}', '`', '\\']
+
+  def test_rejects_unescaped_characters_in_path
+    parser = Puma::HttpParser.new
+
+    REJECTED_PATH_CHARS.each do |char|
+      get = "GET /path#{char}here HTTP/1.1\r\n\r\n"
+
+      assert_raises(Puma::HttpParserError, "expected #{char.inspect} in path to be rejected") do
+        parser.execute({}, get, 0)
+      end
+      parser.reset
+    end
+  end
+
+  def test_accepts_browser_unescaped_characters_in_path
+    parser = Puma::HttpParser.new
+    req = {}
+    parser.execute(req, "GET /a|b[c]^d HTTP/1.1\r\n\r\n", 0)
+
+    assert parser.finished?
+    assert_equal '/a|b[c]^d', req['REQUEST_PATH']
+  end
+
+  def test_accepts_browser_unescaped_characters_in_query
+    parser = Puma::HttpParser.new
+    req = {}
+    parser.execute(req, "GET /search?filter[status]=active&q={a}|b^c`d\\e HTTP/1.1\r\n\r\n", 0)
+
+    assert parser.finished?
+    assert_equal 'filter[status]=active&q={a}|b^c`d\\e', req['QUERY_STRING']
+  end
+
+  def test_parse_absolute_uri_with_ipv6_literal
+    parser = Puma::HttpParser.new
+    req = {}
+    http = "GET http://[::1]:9292/x HTTP/1.1\r\n\r\n"
+    nread = parser.execute(req, http, 0)
+
+    assert_equal http.length, nread
+    assert parser.finished?
+    refute parser.error?
+    assert_equal 'http://[::1]:9292/x', req['REQUEST_URI']
+  end
+
   # lame random garbage maker
   def rand_data(min, max, readable=true)
     count = min + ((rand(max)+1) *10).to_i

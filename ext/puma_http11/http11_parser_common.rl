@@ -17,6 +17,9 @@
   escape = ("%" xdigit xdigit);
   uchar = (unreserved | escape | "%");
   pchar = (uchar | ":" | "@" | "&" | "=" | "+" | ";");
+  # RFC 3986 disallows these in paths; browsers never send them unescaped there.
+  path_unwise = ("{" | "}" | "`" | "\\");
+  path_char = pchar -- path_unwise;
   tspecials = ("(" | ")" | "<" | ">" | "@" | "," | ";" | ":" | "\\" | "\"" | "/" | "[" | "]" | "?" | "=" | "{" | "}" | " " | "\t");
 
 # elements
@@ -26,7 +29,7 @@
   scheme = ( alpha | digit | "+" | "-" | "." )* ;
   absolute_uri = (scheme ":" (uchar | reserved )*);
 
-  path = ( pchar+ ( "/" pchar* )* ) ;
+  path = ( path_char+ ( "/" path_char* )* ) ;
   query = ( uchar | reserved )* %query_string ;
   param = ( pchar | "/" )* ;
   params = ( param ( ";" param )* ) ;
