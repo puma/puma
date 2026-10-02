@@ -5,6 +5,7 @@ require_relative "helpers/tmp_path"
 
 require "puma/configuration"
 require 'puma/log_writer'
+require "puma/runner"
 
 # Do not add any tests creating workers to this, as Cluster may call `Process.waitall`,
 # which may cause issues in the test process.
@@ -116,6 +117,16 @@ class TestLauncher < PumaTest
 
   def test_log_config_disabled
     refute_match(/Configuration:/, create_launcher.log_writer.stdout.string)
+  end
+
+  # The kernel ignores default-action signals sent to PID 1 (containers)
+  def test_raise_sigterm_as_pid_1_exits_143
+    runner = Puma::Runner.new(create_launcher)
+
+    error = Process.stub(:pid, 1) do
+      assert_raises(SystemExit) { runner.raise_sigterm }
+    end
+    assert_equal 143, error.status
   end
 
   def test_fire_after_stopped

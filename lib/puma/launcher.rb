@@ -447,7 +447,7 @@ module Puma
           # Shortcut the control flow in case raise_exception_on_sigterm is true
           do_graceful_stop
 
-          raise(SignalException, "SIGTERM") if @options[:raise_exception_on_sigterm]
+          @runner.raise_sigterm if @options[:raise_exception_on_sigterm]
         end
       rescue Exception
         log "*** SIGTERM not implemented, signal based gracefully stopping unavailable!"
