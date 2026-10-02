@@ -416,6 +416,12 @@ module Puma
     end
     private :fetch_status_code
 
+    def request_has_close?(env)
+      conn = env.fetch(HTTP_CONNECTION, "").downcase
+      conn.include?(CLOSE) && conn.split(",").any? { |option| option.strip == CLOSE }
+    end
+    private :request_has_close?
+
     # Processes and write headers to the IOBuffer.
     # @param env [Hash] see Puma::Client#env, from request
     # @param status [Integer] the status returned by the Rack application
@@ -439,7 +445,7 @@ module Puma
       http_11 = env[SERVER_PROTOCOL] == HTTP_11
       if http_11
         resp_info[:allow_chunked] = true
-        resp_info[:keep_alive] = env.fetch(HTTP_CONNECTION, "").downcase != CLOSE
+        resp_info[:keep_alive] = !request_has_close?(env)
 
         # An optimization. The most common response is 200, so we can
         # reply with the proper 200 status without having to compute
