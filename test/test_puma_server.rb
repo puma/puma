@@ -804,8 +804,6 @@ class TestPumaServer < PumaTest
     assert_equal "HTTP/1.1 200 OK\r\ncontent-type: plain/text\r\nconnection: close\r\ncontent-length: 5\r\n\r\nhello", response
   end
 
-  # `Connection` is a comma-separated list of connection options, so `close`
-  # must be detected even when combined with other options.
   def test_http_11_close_with_body_and_other_connection_options
     server_run { [200, {"Content-Type" => "plain/text"}, ["hello"]] }
 
@@ -815,8 +813,6 @@ class TestPumaServer < PumaTest
     assert_equal "HTTP/1.1 200 OK\r\ncontent-type: plain/text\r\nconnection: close\r\ncontent-length: 5\r\n\r\nhello", response
   end
 
-  # Repeated `Connection` headers are joined with ", " by the parser, which
-  # produces the same list-valued case.
   def test_http_11_close_with_body_and_repeated_connection_headers
     server_run { [200, {"Content-Type" => "plain/text"}, ["hello"]] }
 
@@ -826,8 +822,24 @@ class TestPumaServer < PumaTest
     assert_equal "HTTP/1.1 200 OK\r\ncontent-type: plain/text\r\nconnection: close\r\ncontent-length: 5\r\n\r\nhello", response
   end
 
-  # A `Connection` option that merely contains "close" as a substring is not
-  # the `close` connection option and must not end the connection.
+  def test_http_11_close_with_body_and_mixed_case_connection_option
+    server_run { [200, {"Content-Type" => "plain/text"}, ["hello"]] }
+
+    req = "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: Close\r\n\r\n"
+    response = send_http_read_response req
+
+    assert_equal "HTTP/1.1 200 OK\r\ncontent-type: plain/text\r\nconnection: close\r\ncontent-length: 5\r\n\r\nhello", response
+  end
+
+  def test_http_11_close_with_body_and_mixed_case_connection_options
+    server_run { [200, {"Content-Type" => "plain/text"}, ["hello"]] }
+
+    req = "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: Upgrade, Close\r\n\r\n"
+    response = send_http_read_response req
+
+    assert_equal "HTTP/1.1 200 OK\r\ncontent-type: plain/text\r\nconnection: close\r\ncontent-length: 5\r\n\r\nhello", response
+  end
+
   def test_http_11_keep_alive_with_body_and_connection_option_containing_close
     server_run { [200, {"Content-Type" => "plain/text"}, ["hello"]] }
 

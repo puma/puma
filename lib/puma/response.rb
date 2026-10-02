@@ -416,23 +416,9 @@ module Puma
     end
     private :fetch_status_code
 
-    # Does the request's `Connection` header list the `close` connection option?
-    #
-    # `Connection` is a comma-separated list of connection options (RFC 9110
-    # section 7.6.1) and repeated `Connection` headers are joined with ", " by
-    # the parser, so `close` can be preceded or followed by other options.
-    # Comparing the raw value against `"close"` misses those, and would leave
-    # the connection open even though the client asked for it to be closed.
-    #
-    # @param env [Hash] see Puma::Client#env, from request
-    # @return [Boolean]
-    #
     def request_has_close?(env)
-      conn = env.fetch(HTTP_CONNECTION, "")
-      # Fast path, avoids splitting in the common cases.
-      return false unless conn.include? CLOSE
-
-      conn.split(',').any? { |option| option.strip == CLOSE }
+      conn = env.fetch(HTTP_CONNECTION, "").downcase
+      conn.include?(CLOSE) && conn.split(",").any? { |option| option.strip == CLOSE }
     end
     private :request_has_close?
 
