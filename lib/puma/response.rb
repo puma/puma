@@ -297,7 +297,7 @@ module Puma
             fast_write_str socket, io_buffer.read_and_reset
           else
             fast_write_str socket, io_buffer.read_and_reset
-            IO.copy_stream body, socket
+            IO.copy_stream body, socket, content_length
           end
         end
       elsif body.is_a?(::Array) && body.length == 1
