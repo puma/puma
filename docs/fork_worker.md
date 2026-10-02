@@ -28,6 +28,7 @@ The `fork_worker` option allows your application to be initialized only once for
     - When initially forking the parent process to the worker 0 child, `before_fork` will trigger on the parent process and `before_worker_boot` will trigger on the worker 0 child as normal.
     - When forking the worker 0 child to grandchild workers, `before_refork` and `after_refork` will trigger on the worker 0 child, and `before_worker_boot` will trigger on each grandchild worker.
     - For clarity, `before_fork` does not trigger on worker 0, and `after_refork` does not trigger on the grandchild.
+    - When worker 0 forks grandchildren, it runs `before_worker_fork` and `after_worker_fork` itself. Those two hooks run in the master process, under the normal path, but in worker 0 here. This means that a hook_error_handler cannot infer the process from the hook name. It should branch on opts[:process], which reports :master or :worker. Raising in the master takes down the whole server, while raising in worker 0 only kills that worker.
 - As a general migration guide:
     - Copy any logic within your existing `before_fork` hook to the `before_refork` hook.
     - Consider to copy logic from your `before_worker_boot` hook to the `after_refork` hook, if it is needed to reset the state of worker 0 after it forks.

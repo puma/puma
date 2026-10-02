@@ -362,8 +362,7 @@ module Puma
             block.call arg
           end
         rescue => e
-          log_writer.log "WARNING hook #{key} failed with exception (#{e.class}) #{e.message}"
-          log_writer.debug e.backtrace.join("\n")
+          handle_hook_error e, key, arg, hook_options, hook_data, log_writer
         end
       end
     end
@@ -403,6 +402,35 @@ module Puma
     end
 
     private
+
+    # Runs when a hook block raises. Hands the exception to the configured
+    # `hook_error_handler`, if any; otherwise logs it as before. Puma
+    # deliberately does not catch exceptions from the handler itself, so a
+    # handler can `raise` to fail fast. See DSL#hook_error_handler.
+    #
+    def handle_hook_error(e, key, arg, hook_options, hook_data, log_writer)
+      handler = options[:hook_error_handler]
+
+      unless handler
+        log_writer.log "WARNING hook #{key} failed with exception (#{e.class}) #{e.message}"
+        log_writer.debug e.backtrace.join("\n")
+        return
+      end
+
+      arity = handler.arity
+      return handler.call(e, key) if arity == 2
+      return handler.call(e)      if arity == 1
+
+      id = hook_options[:id]
+
+      # Negative arity means optional or splat params, so the handler accepts
+      # at least this many. Everything else gets the full set.
+      handler.call e, key, {
+        process:   Puma.master? ? :master : :worker,
+        arg:       arg,
+        hook_data: (hook_data[id] if hook_data && id)
+      }
+    end
 
     def rewrite_unavailable_ipv6_binds!
       return if self.class.ipv6_interface_available?
