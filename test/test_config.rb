@@ -754,6 +754,23 @@ class TestConfigFile < PumaTest
     assert_equal 10000, conf.final_options[:http_content_length_limit]
   end
 
+  def test_http_parser_defaults_to_nil
+    conf = Puma::Configuration.new
+    conf.clamp
+
+    assert_nil conf.final_options[:http_parser]
+  end
+
+  def test_http_parser
+    parser_class = Class.new
+    conf = Puma::Configuration.new do |c|
+      c.http_parser parser_class
+    end
+    conf.clamp
+
+    assert_equal parser_class, conf.final_options[:http_parser]
+  end
+
   def test_options_raises_not_clamped_error_when_not_clamped
     conf = Puma::Configuration.new
 

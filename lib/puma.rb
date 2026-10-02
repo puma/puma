@@ -8,8 +8,16 @@ require 'stringio'
 
 require 'thread'
 
-# use require, see https://github.com/puma/puma/pull/2381
-require 'puma/puma_http11'
+require_relative 'puma/http_parser_error'
+
+# The puma_http11 extension provides `Puma::HttpParser` and `MiniSSL::Engine`.
+# Puma loads without it, and a server then needs a parser class from the
+# `http_parser` option, see docs/http_parser.md.
+begin
+  # use require, see https://github.com/puma/puma/pull/2381
+  require 'puma/puma_http11'
+rescue LoadError
+end
 
 require_relative 'puma/detect'
 require_relative 'puma/json_serialization'

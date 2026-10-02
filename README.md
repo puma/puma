@@ -436,6 +436,10 @@ For more, see the [Restart documentation](docs/restart.md).
 
 Puma responds to several signals. A detailed guide to using UNIX signals with Puma can be found in the [Signals documentation](docs/signals.md).
 
+## HTTP Parser
+
+Puma parses requests with its `puma_http11` extension. The `http_parser` option replaces it with another class, and Puma can then run without the extension. See the [HTTP parser documentation](docs/http_parser.md) for the interface a parser has to follow.
+
 ## Platform Constraints
 
 Some platforms do not support all Puma features.

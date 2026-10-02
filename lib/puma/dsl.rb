@@ -1564,6 +1564,22 @@ module Puma
       @options[:http_content_length_limit] = limit
     end
 
+    # The class used to parse HTTP requests, instead of the default
+    # `Puma::HttpParser` from Puma's `puma_http11` extension.
+    #
+    # The class must follow the same interface as `Puma::HttpParser`.
+    # See [docs/http_parser.md](https://github.com/puma/puma/blob/main/docs/http_parser.md).
+    #
+    # The default is +nil+, which uses `Puma::HttpParser`.
+    #
+    # @example
+    #   require "puma/http1"
+    #   http_parser Puma::HTTP1::Parser
+    #
+    def http_parser(parser_class)
+      @options[:http_parser] = parser_class
+    end
+
     # Supported http methods, which will replace `Puma::Const::SUPPORTED_HTTP_METHODS`.
     # The value of `:any` will allow all methods, otherwise, the value must be
     # an array of strings. Note that methods are all uppercase.
