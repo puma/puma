@@ -172,16 +172,16 @@ module Puma
           elsif res_body.respond_to?(:to_path) && (fn = res_body.to_path) &&
               File.readable?(fn)
             body = File.open fn, 'rb'
-            content_length = body.size
             close_body = true
+            content_length = body.size
           else
             body = res_body
           end
         elsif !res_body.is_a?(::File) && res_body.respond_to?(:to_path) &&
             (fn = res_body.to_path) && File.readable?(fn = res_body.to_path)
           body = File.open fn, 'rb'
-          content_length = body.size
           close_body = true
+          content_length = body.size
         elsif !res_body.is_a?(::File) && res_body.respond_to?(:filename) &&
             res_body.respond_to?(:bytesize) && File.readable?(fn = res_body.filename)
           # Sprockets::Asset
@@ -242,10 +242,11 @@ module Puma
       end
 
       fast_write_response socket, body, io_buffer, chunked, content_length.to_i
-      body.close if close_body
 
       # if we're shutting down, close keep_alive connections
       !shutting_down? && keep_alive ? :keep_alive : :close
+    ensure
+      body.close if close_body
     end
 
     # Used to write 'early hints', 'no body' responses, 'hijacked' responses,
