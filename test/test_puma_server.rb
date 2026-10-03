@@ -2008,6 +2008,41 @@ class TestPumaServer < PumaTest
     test_drain_on_shutdown false
   end
 
+  def test_no_accept_after_stop_while_waiting_for_thread
+    started_connections = Queue.new
+    wait = Queue.new
+
+    server_run(queue_requests: false, max_threads: 1, drain_on_shutdown: false) do
+      started_connections << true
+      wait.pop
+      [200, {}, ["DONE"]]
+    end
+
+    busy = send_http GET_10
+    started_connections.pop
+
+    waiting_for_thread = Queue.new
+    @pool.define_singleton_method(:wait_until_not_full) do
+      waiting_for_thread << true
+      super()
+    end
+
+    pending = send_http GET_10
+    waiting_for_thread.pop
+
+    @server.stop
+    wait.close
+    assert_match 'DONE', busy.read_body
+
+    served = begin
+      pending.wait_readable(1) && pending.read_body.include?('DONE')
+    rescue Errno::ECONNRESET, EOFError
+      false
+    end
+
+    refute served, 'Connection accepted after stop command was served'
+  end
+
   def test_remote_address_header
     server_run(remote_address: :header, remote_address_header: 'HTTP_X_REMOTE_IP') do |env|
       [200, {}, [env['REMOTE_ADDR']]]
