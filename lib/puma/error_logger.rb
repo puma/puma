@@ -80,11 +80,19 @@ module Puma
 
       query_string = env[QUERY_STRING]
 
+      # REMOTE_ADDR/X-Forwarded-For are only present once header parsing has
+      # completed, so they're absent for requests that fail to parse (e.g.
+      # HttpParserError). Fall back to the socket's peer address, which
+      # `req` (a Puma::Client) can still provide since it reads directly
+      # off the connection rather than the parsed env.
+      remote_addr = env[HTTP_X_FORWARDED_FOR] || env[REMOTE_ADDR]
+      remote_addr ||= req.peerip if req.respond_to?(:peerip)
+
       REQUEST_FORMAT % [
         env[REQUEST_METHOD],
         env[REQUEST_PATH] || env[PATH_INFO],
         query_string.nil? || query_string.empty? ? "" : "?#{query_string}",
-        env[HTTP_X_FORWARDED_FOR] || env[REMOTE_ADDR] || "-"
+        remote_addr || "-"
       ]
     end
 
