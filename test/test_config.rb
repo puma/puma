@@ -365,6 +365,25 @@ class TestConfigFile < PumaTest
     assert_equal [200, {}, ["error page"]], app.call({})
   end
 
+  def test_continue_callback_DSL
+    conf = Puma::Configuration.new do |c|
+      c.continue_callback { |env| env['PATH_INFO'] == '/upload' ? [307, {}, []] : false }
+    end
+    conf.clamp
+
+    callback = conf.options[:continue_callback]
+
+    assert_equal [307, {}, []], callback.call('PATH_INFO' => '/upload')
+    assert_equal false, callback.call('PATH_INFO' => '/')
+  end
+
+  def test_continue_callback_DSL_requires_a_callable
+    error = assert_raises(RuntimeError) do
+      Puma::Configuration.new { |c| c.continue_callback }.clamp
+    end
+    assert_match "#call'able", error.message
+  end
+
   def test_allow_users_to_override_default_options
     conf = Puma::Configuration.new(restart_cmd: 'bin/rails server')
     conf.clamp

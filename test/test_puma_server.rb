@@ -948,6 +948,77 @@ class TestPumaServer < PumaTest
     assert_equal "HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
   end
 
+  def test_Expect_100_continue_callback_false_sends_continue
+    seen = Queue.new
+    callback = ->(env) { seen << env; false }
+    server_run(continue_callback: callback) { [200, {}, [""]] }
+
+    response = send_http_read_all "GET /upload HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\nExpect: 100-continue\r\n\r\n"
+
+    assert_equal "HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
+    assert_equal '/upload', seen.pop(true)['PATH_INFO']
+  end
+
+  def test_Expect_100_continue_callback_response_skips_body
+    app_called = false
+    callback = ->(_env) { [307, { 'location' => 'https://uploads.example.com/' }, []] }
+    server_run(continue_callback: callback) { app_called = true; [200, {}, ["OK"]] }
+
+    socket = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: 10\r\nExpect: 100-continue\r\n\r\n"
+    response = socket.read_all
+
+    refute_includes response, "100 Continue"
+    assert_match %r{\AHTTP/1\.1 307 Temporary Redirect\r\n}, response
+    assert_includes response, "location: https://uploads.example.com/\r\n"
+    assert_includes response, "connection: close\r\n"
+    refute app_called, "the app must not run for a request the callback answered"
+  end
+
+  def test_Expect_100_continue_callback_can_reject
+    callback = ->(env) { env['CONTENT_LENGTH'].to_i > 5 ? [413, {}, ['too big']] : false }
+    server_run(continue_callback: callback) { [200, {}, ["OK"]] }
+
+    response = send_http("POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: 10\r\nExpect: 100-continue\r\n\r\n").read_all
+
+    refute_includes response, "100 Continue"
+    assert_match %r{\AHTTP/1\.1 413 }, response
+    assert response.end_with?("too big")
+  end
+
+  def test_Expect_100_continue_callback_response_body_is_closed
+    body_closed = false
+    body = ['too big']
+    body.define_singleton_method(:close) { body_closed = true }
+    callback = ->(_env) { [413, {}, body] }
+    server_run(continue_callback: callback) { [200, {}, ["OK"]] }
+
+    response = send_http("POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: 10\r\nExpect: 100-continue\r\n\r\n").read_all
+
+    assert_match %r{\AHTTP/1\.1 413 }, response
+    assert body_closed, "the callback's response body must be closed"
+  end
+
+  def test_Expect_100_continue_callback_raising_is_a_500
+    callback = ->(_env) { raise "callback blew up" }
+    server_run(continue_callback: callback) { [200, {}, ["OK"]] }
+
+    response = send_http("POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: 10\r\nExpect: 100-continue\r\n\r\n").read_all
+
+    refute_includes response, "100 Continue"
+    assert_match %r{\AHTTP/1\.1 500 }, response
+  end
+
+  def test_Expect_100_continue_callback_not_called_without_expect
+    calls = 0
+    callback = ->(_env) { calls += 1; false }
+    server_run(continue_callback: callback) { [200, {}, ["OK"]] }
+
+    response = send_http_read_all "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\n\r\n"
+
+    assert_match %r{\AHTTP/1\.1 200 OK}, response
+    assert_equal 0, calls
+  end
+
   def test_chunked_request
     body = nil
     content_length = nil
