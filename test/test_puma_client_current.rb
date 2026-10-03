@@ -47,14 +47,14 @@ class PumaClientCurrentTest < PumaTest
       Net::HTTP.new(@url.host, @url.port).start do |connection|
         connection.max_retries = 0
         socket = connection.instance_variable_get(:@socket)
-        waiter = Thread.new { Thread.stop }
+        queue = Queue.new
         @tester.around = proc do |&handle_request|
           socket.close if disconnect
           handle_request.call
-          waiter.wakeup
+          queue << 1
         end
         body = connection.get("/").body
-        waiter.join
+        queue.pop
         body
       rescue IOError # expected if disconnect is true
         raise unless disconnect
