@@ -1,36 +1,26 @@
 # frozen_string_literal: true
 
 require_relative "helper"
+require_relative "helpers/test_puma/puma_socket"
 
 require "puma/server"
-
-class PumaClientCurrentApplication
-  def initialize
-    @around = nil
-    @responses = []
-  end
-
-  attr_accessor :around
-  attr_reader :responses
-
-  def call(env)
-    @around.call do
-      body = Puma::Client.connection_closed? ? "closed" : "open"
-      @responses << body
-      [200, {"Content-Type" => "text/plain"}, [body]]
-    end
-  end
-end
 
 class PumaClientCurrentTest < PumaTest
   parallelize_me!
 
+  include TestPuma::PumaSocket
+
   def setup
-    @tester = PumaClientCurrentApplication.new
-    @server = Puma::Server.new @tester, nil, {log_writer: Puma::LogWriter.strings}
-    @port = (@server.add_tcp_listener "127.0.0.1", 0).addr[1]
-    @tcp = "http://127.0.0.1:#{@port}"
-    @url = URI.parse(@tcp)
+    @host = "127.0.0.1"
+    @in_app = false
+    app = lambda do |_env|
+      @in_app = true
+      closed = Puma::Client.connection_closed?
+      @in_app = false
+      [200, {}, [closed.to_s]]
+    end
+    @server = Puma::Server.new app, nil, {log_writer: Puma::LogWriter.strings}
+    @bind_port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
   end
 
@@ -39,32 +29,19 @@ class PumaClientCurrentTest < PumaTest
   end
 
   def test_connection_closed
-    skip_unless :closed_socket
+    test = self
+    @server.define_singleton_method(:closed_socket?) { |_socket| test.instance_variable_get(:@in_app) }
 
-    def get(disconnect:)
-      # Make an unretriable request where the socket is optionally closed before the app handler runs.
-      @tester.around = nil # these should all be called sequentially, so cause an error if called out of sequence.
-      Net::HTTP.new(@url.host, @url.port).start do |connection|
-        connection.max_retries = 0
-        socket = connection.instance_variable_get(:@socket)
-        queue = Queue.new
-        @tester.around = proc do |&handle_request|
-          socket.close if disconnect
-          handle_request.call
-          queue << 1
-        end
-        body = connection.get("/").body
-        queue.pop
-        body
-      rescue IOError # expected if disconnect is true
-        raise unless disconnect
-      end
-    end
+    assert_equal "true", send_http_read_resp_body
+  end
 
-    3.times { get(disconnect: false) }
-    3.times { get(disconnect: true) }
-    3.times { get(disconnect: false) }
+  def test_connection_open
+    @server.define_singleton_method(:closed_socket?) { |_socket| false }
 
-    assert_equal ["open"]*3 + ["closed"]*3 + ["open"]*3, @tester.responses
+    assert_equal "false", send_http_read_resp_body
+  end
+
+  def test_connection_closed_outside_request
+    refute Puma::Client.connection_closed?
   end
 end
