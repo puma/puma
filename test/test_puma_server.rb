@@ -254,6 +254,27 @@ class TestPumaServer < PumaTest
     assert_equal body, data
   end
 
+  def test_connection_closed
+    checking = false
+    server_run do |env|
+      checking = true
+      closed = env["puma.connection_closed?"].call
+      checking = false
+      [200, {}, [closed.to_s]]
+    end
+    socket = new_socket
+    client_port = socket.local_address.ip_port
+    @server.define_singleton_method(:closed_socket?) do |server_socket|
+      checking && server_socket.to_io.remote_address.ip_port == client_port
+    rescue SystemCallError
+      false
+    end
+
+    socket.send_http GET_10
+
+    assert_equal "true", socket.read_body
+  end
+
   def test_very_large_return
     giant = "x" * 2056610
 

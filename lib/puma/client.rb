@@ -123,21 +123,6 @@ module Puma
       @read_buffer = String.new # rubocop: disable Performance/UnfreezeString
     end
 
-    class << self
-      # Returns true if the current request's connection is closed. Useful for calling within your app to avoid
-      # expensive computation for a response that couldn't be written to the client.
-      # False is not a guarantee the connection will remain open.
-      # Always returns false outside of a request, or if the system does not support detecting closed sockets.
-      def connection_closed?
-        io = Thread.current.puma_client&.io
-        if io
-          Server.current.closed_socket?(io)
-        else
-          false
-        end
-      end
-    end
-
     # Remove in Puma 7?
     def closed?
       @to_io.closed?
