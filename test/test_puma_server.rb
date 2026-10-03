@@ -918,8 +918,6 @@ class TestPumaServer < PumaTest
     callback = ->(_env) { [307, { 'location' => 'https://uploads.example.com/' }, []] }
     server_run(continue_callback: callback) { app_called = true; [200, {}, ["OK"]] }
 
-    # Headers only: a client that honours 100-continue waits for the interim
-    # response before sending the body, so none is sent here.
     socket = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: 10\r\nExpect: 100-continue\r\n\r\n"
     response = socket.read_all
 
