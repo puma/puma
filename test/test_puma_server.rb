@@ -1962,8 +1962,6 @@ class TestPumaServer < PumaTest
     test_drain_on_shutdown false
   end
 
-  # With queue_requests false, the accept loop blocks in wait_until_not_full while
-  # all threads are busy. A stop issued during that wait must not accept another connection.
   def test_no_accept_after_stop_while_waiting_for_thread
     started_connections = Queue.new
     wait = Queue.new
@@ -1977,8 +1975,6 @@ class TestPumaServer < PumaTest
     busy = send_http GET_10
     started_connections.pop
 
-    # Signal when the accept loop reaches wait_until_not_full for the next connection.
-    # By then IO.select has already returned, so a stop issued now isn't seen by it.
     waiting_for_thread = Queue.new
     @pool.define_singleton_method(:wait_until_not_full) do
       waiting_for_thread << true
@@ -1988,12 +1984,10 @@ class TestPumaServer < PumaTest
     pending = send_http GET_10
     waiting_for_thread.pop
 
-    # Stop the server and wait for the first request to finish
     @server.stop
     wait.close
     assert_match 'DONE', busy.read_body
 
-    # The second request should not be handled
     served = begin
       pending.wait_readable(1) && pending.read_body.include?('DONE')
     rescue Errno::ECONNRESET, EOFError
