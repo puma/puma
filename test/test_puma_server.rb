@@ -941,6 +941,19 @@ class TestPumaServer < PumaTest
     assert response.end_with?("too big")
   end
 
+  def test_Expect_100_continue_callback_response_body_is_closed
+    body_closed = false
+    body = ['too big']
+    body.define_singleton_method(:close) { body_closed = true }
+    callback = ->(_env) { [413, {}, body] }
+    server_run(continue_callback: callback) { [200, {}, ["OK"]] }
+
+    response = send_http("POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: 10\r\nExpect: 100-continue\r\n\r\n").read_all
+
+    assert_match %r{\AHTTP/1\.1 413 }, response
+    assert body_closed, "the callback's response body must be closed"
+  end
+
   def test_Expect_100_continue_callback_raising_is_a_500
     callback = ->(_env) { raise "callback blew up" }
     server_run(continue_callback: callback) { [200, {}, ["OK"]] }

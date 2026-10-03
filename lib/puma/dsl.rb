@@ -1119,31 +1119,13 @@ module Puma
       @options[:lowlevel_error_handler] = obj
     end
 
-    # Use +obj+ or +block+ to decide how to answer a request that sends
-    # <tt>Expect: 100-continue</tt>, before Puma replies +100 Continue+ and
-    # before any of the request body is read.
+    # Use +obj+ or +block+ to answer a request that sends
+    # <tt>Expect: 100-continue</tt> before Puma replies +100 Continue+ and reads
+    # the body. It receives the Rack env (headers, no body) and can run on the
+    # reactor thread, so it must return quickly.
     #
-    # It receives the Rack env, which has the request line and headers but no
-    # body. Return +false+ (or +nil+) to carry on as usual: Puma sends
-    # +100 Continue+ and the request reaches your app. Return a Rack response,
-    # typically a 3xx or 4xx, to send that instead: the body is never read,
-    # your app is not called, and the connection is closed afterwards, since
-    # the client may already be sending a body Puma will not read.
-    #
-    # Without this option Puma always sends +100 Continue+, as before.
-    #
-    # The callback can run on the reactor thread, which services every
-    # connection still waiting for its request, so it must return quickly.
-    # Decide from the headers alone; do not perform I/O in it.
-    #
-    # @example Redirect uploads before the client sends the body
-    #   continue_callback do |env|
-    #     if env['PATH_INFO'] == '/upload'
-    #       [307, { 'location' => 'https://uploads.example.com/' }, []]
-    #     else
-    #       false
-    #     end
-    #   end
+    # Return +false+ to carry on as usual, or a Rack response to send instead:
+    # the app is not called and the connection is closed afterwards.
     #
     # @example Refuse oversized uploads without receiving them
     #   continue_callback do |env|

@@ -602,7 +602,11 @@ module Puma
         @log_writer.parse_error e, client
       when ContinueRejected
         status, headers, res_body = e.response
-        prepare_response(status, headers, res_body, requests, client)
+        begin
+          prepare_response(status, headers, res_body, requests, client)
+        ensure
+          res_body.close if res_body.respond_to? :close
+        end
       else
         response_to_error(client, requests, e, 500)
         @log_writer.unknown_error e, nil, "Read"
