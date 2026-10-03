@@ -3,7 +3,6 @@
 module Puma
   #———————————————————————— DO NOT USE — this class is for internal use only ———
 
-  # Add `Thread#puma_client` and `Thread#puma_client=`
   Thread.attr_accessor(:puma_client)
 
   # The methods here are included in Server, but are separated into this file.
