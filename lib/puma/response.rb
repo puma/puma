@@ -73,6 +73,7 @@ module Puma
       end
 
       env["puma.mark_as_io_bound"] = -> { processor.mark_as_io_thread! }
+      env["puma.connection_closed?"] = -> { closed_socket?(socket) }
 
       begin
         status, headers, app_body = @thread_pool.with_force_shutdown do
