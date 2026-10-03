@@ -46,7 +46,7 @@ module Puma
     end
 
     def start_phased_restart(refork = false)
-      @events.fire_before_restart!
+      @events.fire_before_restart!(refork)
       @phase += 1
       if refork
         log "- Starting worker refork, phase: #{@phase}"
