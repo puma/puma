@@ -7,7 +7,7 @@ and by the type of object used for the body.
 
 Five rackup files are located in 'test/rackup' that can be used.  All have their
 request body size (in kB) set via `Body-Conf` header or with `ENV['CI_BODY_CONF']`.
-Additionally, the ci_select.ru file can have it's body type set via a starting
+Additionally, the ci_select.ru file can have its body type set via a starting
 character.
 
 * **ci_array.ru** - body is an `Array` of 1kB strings.  `Content-Length` is not set.
@@ -21,7 +21,7 @@ contain 1kB items.
 
 All can be delayed by a float value (seconds) specified by the `Dly` header
 
-Note that rhe `Body-Conf` header takes precedence, and `ENV['CI_BODY_CONF']` is
+Note that the `Body-Conf` header takes precedence, and `ENV['CI_BODY_CONF']` is
 only read on load.
 
 ## ci_select.ru
