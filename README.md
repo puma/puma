@@ -28,7 +28,7 @@ $ puma
 ```
 
 Without arguments, puma will look for a rackup (.ru) file in
-working directory called `config.ru`.
+the working directory called `config.ru`.
 
 ## SSL Connection Support
 
@@ -171,7 +171,7 @@ after_worker_shutdown do |worker_handle|
 end
 ```
 
-In addition, there is an `before_refork` and `after_refork` hooks which are used only in [`fork_worker` mode](docs/fork_worker.md),
+In addition, there are `before_refork` and `after_refork` hooks which are used only in [`fork_worker` mode](docs/fork_worker.md),
 when the worker 0 child process forks a grandchild worker:
 
 ```ruby
@@ -394,7 +394,7 @@ Puma has a built-in status and control app that can be used to query and control
 $ puma --control-url tcp://127.0.0.1:9293 --control-token foo
 ```
 
-Puma will start the control server on localhost port 9293. All requests to the control server will need to include control token (in this case, `token=foo`) as a query parameter. This allows for simple authentication. Check out `Puma::App::Status` or [status.rb](https://github.com/puma/puma/blob/main/lib/puma/app/status.rb) to see what the status app has available.
+Puma will start the control server on localhost port 9293. All requests to the control server will need to include a control token (in this case, `token=foo`) as a query parameter. This allows for simple authentication. Check out `Puma::App::Status` or [status.rb](https://github.com/puma/puma/blob/main/lib/puma/app/status.rb) to see what the status app has available.
 
 You can also interact with the control server via `pumactl`. This command will restart Puma:
 

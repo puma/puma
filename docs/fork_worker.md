@@ -30,7 +30,7 @@ The `fork_worker` option allows your application to be initialized only once for
     - For clarity, `before_fork` does not trigger on worker 0, and `after_refork` does not trigger on the grandchild.
 - As a general migration guide:
     - Copy any logic within your existing `before_fork` hook to the `before_refork` hook.
-    - Consider to copy logic from your `before_worker_boot` hook to the `after_refork` hook, if it is needed to reset the state of worker 0 after it forks.
+    - Consider copying logic from your `before_worker_boot` hook to the `after_refork` hook, if it is needed to reset the state of worker 0 after it forks.
 
 ### Limitations
 

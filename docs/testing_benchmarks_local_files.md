@@ -78,7 +78,7 @@ ruby 3.2.0dev (2022-06-14T01:21:55Z master 048f14221c) +YJIT [x86_64-linux]
 
 ## bench_base.sh, bench_base.rb
 
-These two files setup parameters for the Puma server, which is normally started in a shell 
+These two files set up parameters for the Puma server, which is normally started in a shell 
 script. It then starts a Ruby file (a subclass of BenchBase), passing arguments to it. The 
 Ruby file is normally used to generate a client request stream(s).
 

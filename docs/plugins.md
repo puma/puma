@@ -14,7 +14,7 @@ There are two canonical plugins to aid in the development of new plugins:
 Plugins are activated in a Puma configuration file (such as `config/puma.rb`)
 by adding `plugin "name"`, such as `plugin "heroku"`.
 
-Plugins are activated based on path requirements so, activating the `heroku`
+Plugins are activated based on path requirements, so activating the `heroku`
 plugin is much like `require "puma/plugin/heroku"`. This allows gems to provide
 multiple plugins (as well as unrelated gems to provide Puma plugins).
 
@@ -39,4 +39,4 @@ public API for plugins.
 
 ## Binder hooks
 
-There's `Puma::Binder#before_parse` method that allows to add proc to run before the body of `Puma::Binder#parse`. Example of usage can be found in [that repository](https://github.com/anchordotdev/puma-acme/blob/v0.1.3/lib/puma/acme/plugin.rb#L97-L118) (`before_parse_hook` could be renamed `before_parse`, making monkey patching of [binder.rb](https://github.com/anchordotdev/puma-acme/blob/v0.1.3/lib/puma/acme/binder.rb) is unnecessary).
+There's a `Puma::Binder#before_parse` method that allows adding a proc to run before the body of `Puma::Binder#parse`. Example of usage can be found in [that repository](https://github.com/anchordotdev/puma-acme/blob/v0.1.3/lib/puma/acme/plugin.rb#L97-L118) (`before_parse_hook` could be renamed `before_parse`, making monkey patching of [binder.rb](https://github.com/anchordotdev/puma-acme/blob/v0.1.3/lib/puma/acme/binder.rb) unnecessary).
