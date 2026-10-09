@@ -162,7 +162,7 @@ module Puma
       if res_body.respond_to?(:each) && !resp_info[:response_hijack]
         # below converts app_body into body, dependent on app_body's characteristics, and
         # content_length will be set if it can be determined
-        if !content_length && !resp_info[:transfer_encoding] && status != 204
+        if !content_length && !resp_info[:transfer_encoding] && status != 204 && status != 304
           if res_body.respond_to?(:to_ary) && (array_body = res_body.to_ary) &&
               array_body.is_a?(Array)
             body = array_body.compact
