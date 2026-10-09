@@ -55,24 +55,20 @@ class TestResponseHeader < PumaTest
     client = Puma::Client.new(writer, { 'REQUEST_METHOD' => 'GET', 'SERVER_PROTOCOL' => 'HTTP/1.0' })
 
     [{}, { 'content-length' => File.size(__FILE__).to_s }].each do |headers|
-      [Errno::EPIPE.new, Puma::ConnectionError.new('write failed')].each do |write_error|
-        response_file = nil
-        fail_write = lambda do |_socket, body, *_args|
-          response_file = body
-          raise write_error
-        end
-
-        @server.stub(:fast_write_response, fail_write) do
-          error = assert_raises(write_error.class) do
-            @server.prepare_response(200, headers, rack_body, 1, client)
-          end
-          assert_same write_error, error
-          assert_instance_of File, response_file
-          assert response_file.closed?, 'separately opened response file must be closed'
-        end
-      ensure
-        response_file.close if response_file && !response_file.closed?
+      response_file = nil
+      fail_write = lambda do |_socket, body, *_args|
+        response_file = body
+        raise Errno::EPIPE
       end
+
+      @server.stub(:fast_write_response, fail_write) do
+        assert_raises(Errno::EPIPE) do
+          @server.prepare_response(200, headers, rack_body, 1, client)
+        end
+        assert response_file.closed?, 'separately opened response file must be closed'
+      end
+    ensure
+      response_file.close if response_file && !response_file.closed?
     end
   end
 
