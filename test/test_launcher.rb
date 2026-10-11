@@ -150,6 +150,50 @@ class TestLauncher < PumaTest
     assert_equal [:requests_drained, :after_stopped], events
   end
 
+  def test_control_server_uses_activated_socket
+    skip_unless :unix
+
+    ctl_path = tmp_path('.sock')
+    main_path = tmp_path('.sock')
+    ctl_unix_server = UNIXServer.new ctl_path
+    # Same type puma registers for a systemd activated socket
+    ctl_server = TCPServer.for_fd ctl_unix_server.fileno
+    ctl_unix_server.autoclose = false
+
+    conf = Puma::Configuration.new do |c|
+      c.app ->(_env) { [200, {}, ['ok']] }
+      c.bind "unix://#{main_path}"
+      c.activate_control_app "unix://#{ctl_path}", auth_token: 'none'
+      c.log_requests false
+    end
+
+    launcher = create_launcher(conf)
+    launcher.binder.activated_sockets[[:unix, ctl_path]] = ctl_server
+
+    # Binding the app listeners must not close (or unlink) the socket that was
+    # activated for the control server.
+    launcher.binder.parse conf.options[:binds]
+    refute ctl_server.closed?, "socket activated for the control URL was closed"
+    assert File.exist?(ctl_path), "socket activated for the control URL was unlinked"
+    assert_equal [[:unix, ctl_path]], launcher.binder.activated_sockets.keys
+
+    runner = Puma::Single.new(launcher)
+    begin
+      runner.start_control
+      assert_empty launcher.binder.activated_sockets
+
+      # The control server must be serving on the very socket that was handed over.
+      client = UNIXSocket.new ctl_path
+      client.write "GET /stats HTTP/1.0\r\n\r\n"
+      assert_match(/\AHTTP\/1\.0 200 OK/, client.read)
+    ensure
+      client&.close
+      ctl_unix_server.close
+      runner.stop_control
+      launcher.binder.close_listeners
+    end
+  end
+
   private
 
   def create_launcher(config = Puma::Configuration.new, lw = Puma::LogWriter.strings, **kw)

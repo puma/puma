@@ -438,6 +438,32 @@ class TestBinderParallel < TestBinderBase
     refute binder.proto_env["rack.multithread"]
   end
 
+  def test_synthesize_binds_from_activated_fds_skips_control_url
+    binds = ['tcp://0.0.0.0:3000']
+    sockets = {
+      [:tcp, '0.0.0.0', 5000] => nil,
+      [:tcp, '127.0.0.1', 9293] => nil,
+      [:unix, '/tmp/puma-ctl.sock'] => nil
+    }
+    @binder.instance_variable_set(:@activated_sockets, sockets)
+
+    result = @binder.synthesize_binds_from_activated_fs(binds, false, except: 'tcp://127.0.0.1:9293')
+    assert_equal ['tcp://0.0.0.0:3000', 'tcp://0.0.0.0:5000', 'unix:///tmp/puma-ctl.sock'], result
+
+    result = @binder.synthesize_binds_from_activated_fs(binds, true, except: 'unix:///tmp/puma-ctl.sock')
+    assert_equal ['tcp://0.0.0.0:5000', 'tcp://127.0.0.1:9293'], result
+  end
+
+  def test_take_activated_socket
+    sock = Object.new
+    @binder.activated_sockets[[:tcp, '127.0.0.1', 9293]] = sock
+
+    assert_nil @binder.take_activated_socket('tcp://127.0.0.1:9294')
+    assert_nil @binder.take_activated_socket('unix:///tmp/puma-ctl.sock')
+    assert_equal [[:tcp, '127.0.0.1', 9293], sock], @binder.take_activated_socket('tcp://127.0.0.1:9293')
+    assert_empty @binder.activated_sockets
+  end
+
   def test_rack_multiprocess_default_configuration
     refute @binder.proto_env["rack.multiprocess"]
   end

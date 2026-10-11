@@ -116,13 +116,21 @@ module Puma
     # When only_matching is true in, all binds that do not match an activated
     # socket is removed in place.
     #
+    # Activated sockets that match +except+ (the control server URL) are left
+    # out: the control server binds them itself, and listening on them here too
+    # would make the control server fail to start with "There is already a
+    # server bound".
+    #
     # It's a noop if no activated sockets were received.
-    def synthesize_binds_from_activated_fs(binds, only_matching)
+    def synthesize_binds_from_activated_fs(binds, only_matching, except: nil)
       return binds unless activated_sockets.any?
 
       activated_binds = []
+      skip_keys = except ? activated_keys_for(except) : []
 
       activated_sockets.keys.each do |proto, addr, port|
+        next if skip_keys.include?([proto, addr, port].compact)
+
         if port
           tcp_url = "#{proto}://#{addr}:#{port}"
           ssl_url = "ssl://#{addr}:#{port}"
@@ -296,8 +304,12 @@ module Puma
       # Also close any unused activated sockets
       unless @activated_sockets.empty?
         fds = @ios.map(&:to_i)
+        # The control server is bound by its own binder later on, so its
+        # activated socket must be kept for it.
+        control_keys = @options[:control_url] ? activated_keys_for(@options[:control_url]) : []
         @activated_sockets.each do |key, sock|
           next if fds.include? sock.to_i
+          next if control_keys.include? key
           log_writer.log "* Closing unused activated socket: #{key.first}://#{key[1..-1].join ':'}"
           begin
             sock.close
@@ -307,6 +319,41 @@ module Puma
           File.unlink key[1] if key.first == :unix
         end
       end
+    end
+
+    # The keys under which a socket activated for +url+ may be registered in
+    # +activated_sockets+.
+    def activated_keys_for(url)
+      uri = URI.parse url
+      case uri.scheme
+      when "tcp", "ssl"
+        [[:tcp, uri.host, uri.port]]
+      when "unix"
+        path = "#{uri.host}#{uri.path}"
+        return [] if path.start_with?('@')
+        keys = [[:unix, path]]
+        real = begin
+          File.realdirpath(path)
+        rescue SystemCallError
+          nil
+        end
+        keys << [:unix, real] if real && real != path
+        keys
+      else
+        []
+      end
+    rescue URI::InvalidURIError
+      []
+    end
+
+    # Removes and returns the activated socket for +url+ as <tt>[key, socket]</tt>,
+    # or +nil+ when none was activated for it.
+    def take_activated_socket(url)
+      activated_keys_for(url).each do |key|
+        sock = @activated_sockets.delete(key)
+        return [key, sock] if sock
+      end
+      nil
     end
 
     def localhost_authority

@@ -91,7 +91,8 @@ module Puma
       if @options[:bind_to_activated_sockets]
         @options[:binds] = @binder.synthesize_binds_from_activated_fs(
           @options[:binds],
-          @options[:bind_to_activated_sockets] == 'only'
+          @options[:bind_to_activated_sockets] == 'only',
+          except: @options[:control_url]
         )
       end
 
