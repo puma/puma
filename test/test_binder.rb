@@ -464,6 +464,15 @@ class TestBinderParallel < TestBinderBase
     assert_empty @binder.activated_sockets
   end
 
+  def test_take_activated_socket_unix_path_with_space
+    sock = Object.new
+    @binder.activated_sockets[[:unix, '/tmp/puma control.sock']] = sock
+
+    assert_equal [[:unix, '/tmp/puma control.sock'], sock],
+                 @binder.take_activated_socket('unix:///tmp/puma%20control.sock')
+    assert_empty @binder.activated_sockets
+  end
+
   def test_rack_multiprocess_default_configuration
     refute @binder.proto_env["rack.multiprocess"]
   end

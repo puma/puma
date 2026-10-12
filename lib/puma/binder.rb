@@ -329,7 +329,7 @@ module Puma
       when "tcp", "ssl"
         [[:tcp, uri.host, uri.port]]
       when "unix"
-        path = "#{uri.host}#{uri.path}"
+        path = "#{uri.host}#{uri.path}".gsub("%20", " ")
         return [] if path.start_with?('@')
         keys = [[:unix, path]]
         real = begin
