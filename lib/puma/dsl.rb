@@ -1119,6 +1119,25 @@ module Puma
       @options[:lowlevel_error_handler] = obj
     end
 
+    # Use +obj+ or +block+ to handle exceptions raised by +before_fork+,
+    # +before_worker_fork+, +after_worker_fork+, +before_worker_boot+,
+    # +before_worker_shutdown+, +after_worker_shutdown+, +before_refork+,
+    # +after_refork+, and +before_restart+ hooks. It does not cover
+    # +before_thread_start+, +before_thread_exit+, +out_of_band+, or
+    # +after_booted+.
+    #
+    # @example Crash workers instead of booting them half-configured
+    #   master_pid = Process.pid
+    #   hook_error_handler do |err, hook|
+    #     raise err unless Process.pid == master_pid
+    #   end
+    #
+    def hook_error_handler(obj=nil, &block)
+      obj ||= block
+      raise "Provide either a #call'able or a block" unless obj
+      @options[:hook_error_handler] = obj
+    end
+
     # Use +obj+ or +block+ to answer a request that sends
     # <tt>Expect: 100-continue</tt> before Puma replies +100 Continue+ and reads
     # the body. It receives the Rack env (headers, no body) and can run on the

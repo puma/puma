@@ -125,6 +125,30 @@ class TestIntegrationCluster < TestIntegration
     assert_equal 0, status
   end
 
+  def test_hook_error_handler_raise_crashes_worker
+    cli_server "-w 1 test/rackup/hello.ru",
+      config: <<~'CONFIG',
+        worker_check_interval 1
+
+        before_worker_boot do
+          raise "hook_error_handler test failure"
+        end
+
+        hook_error_handler do |e, key|
+          $stdout.puts "handler saw #{key}"
+          $stdout.flush
+          raise e
+        end
+      CONFIG
+      merge_err: true, no_wait: true
+
+    assert wait_for_server_to_include('handler saw before_worker_boot')
+    assert wait_for_server_to_include('handler saw before_worker_boot')
+
+    refute_includes @server_log, 'booted in',
+      'worker should never finish booting when the hook error is re-raised'
+  end
+
   def test_after_booted_and_after_stopped
     skip_unless_signal_exist? :TERM
     cli_server "-w #{workers} " \
