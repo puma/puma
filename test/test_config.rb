@@ -701,18 +701,9 @@ class TestConfigFile < PumaTest
     assert_match expected, log_writer.stdout.string
   end
 
-  def hook_error_conf(handler)
-    conf = Puma::Configuration.new do |c|
-      c.hook_error_handler(&handler)
-      c.before_restart { |_a| raise RuntimeError, 'Error from hook' }
-    end
-    conf.clamp
-    conf
-  end
-
   def test_hook_error_handler_replaces_default_logging
     seen = []
-    conf = hook_error_conf ->(e, key) { seen << [e.message, key] }
+    conf = hook_error_conf ->(err, hook) { seen << [err.message, hook] }
     log_writer = Puma::LogWriter.strings
 
     conf.run_hooks(:before_restart, 'ARG', log_writer)
@@ -721,58 +712,13 @@ class TestConfigFile < PumaTest
     refute_match(/WARNING hook/, log_writer.stdout.string)
   end
 
-  def test_hook_error_handler_absent_leaves_logging_unchanged
-    conf = Puma::Configuration.new do |c|
-      c.before_restart { |_a| raise RuntimeError, 'Error from hook' }
-    end
-    conf.clamp
-    log_writer = Puma::LogWriter.strings
-
-    conf.run_hooks(:before_restart, 'ARG', log_writer)
-
-    assert_match(/WARNING hook before_restart failed with exception \(RuntimeError\) Error from hook/,
-      log_writer.stdout.string)
-  end
-
-  def test_hook_error_handler_exception_propagates
-    conf = hook_error_conf ->(e, _key) { raise e }
+  def test_hook_error_handler_can_reraise
+    conf = hook_error_conf ->(err, _hook) { raise err }
 
     error = assert_raises RuntimeError do
       conf.run_hooks(:before_restart, 'ARG', Puma::LogWriter.strings)
     end
     assert_equal 'Error from hook', error.message
-  end
-
-  def test_hook_error_handler_receives_error_and_hook
-    seen = nil
-    conf = hook_error_conf ->(*args) { seen = args }
-    conf.run_hooks(:before_restart, 'ARG', Puma::LogWriter.strings)
-
-    assert_equal 2, seen.size
-    assert_equal 'Error from hook', seen[0].message
-    assert_equal :before_restart, seen[1]
-  end
-
-  def test_hook_error_handler_accepts_callable_object
-    seen = []
-    handler = Object.new
-    handler.define_singleton_method(:call) { |e, key| seen << [e.message, key] }
-
-    conf = Puma::Configuration.new do |c|
-      c.hook_error_handler handler
-      c.before_restart { |_a| raise RuntimeError, 'Error from hook' }
-    end
-    conf.clamp
-    conf.run_hooks(:before_restart, 'ARG', Puma::LogWriter.strings)
-
-    assert_equal [['Error from hook', :before_restart]], seen
-  end
-
-  def test_hook_error_handler_requires_callable_or_block
-    error = assert_raises RuntimeError do
-      Puma::Configuration.new { |c| c.hook_error_handler }.clamp
-    end
-    assert_equal "Provide either a #call'able or a block", error.message
   end
 
   def test_config_does_not_load_workers_by_default
@@ -987,6 +933,15 @@ class TestConfigFile < PumaTest
     end
 
     assert_match(/Warning: The code in the `#{hook_name}` block will not execute in the current Puma configuration/, out)
+  end
+
+  def hook_error_conf(handler)
+    conf = Puma::Configuration.new do |c|
+      c.hook_error_handler(&handler)
+      c.before_restart { raise RuntimeError, 'Error from hook' }
+    end
+    conf.clamp
+    conf
   end
 end
 

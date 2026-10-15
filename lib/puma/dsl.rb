@@ -1122,9 +1122,7 @@ module Puma
     # Use +obj+ or +block+ to handle exceptions raised by +before_fork+,
     # +before_worker_fork+, +after_worker_fork+, +before_worker_boot+,
     # +before_worker_shutdown+, +after_worker_shutdown+, +before_refork+,
-    # +after_refork+, and +before_restart+ hooks. It does not cover
-    # +before_thread_start+, +before_thread_exit+, +out_of_band+, or
-    # +after_booted+.
+    # +after_refork+, and +before_restart+ hooks.
     #
     # @example Crash workers instead of booting them half-configured
     #   master_pid = Process.pid
