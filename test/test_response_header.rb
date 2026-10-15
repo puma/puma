@@ -68,7 +68,7 @@ class TestResponseHeader < PumaTest
         assert response_file.closed?, 'separately opened response file must be closed'
       end
     ensure
-      response_file.close if response_file && !response_file.closed?
+      response_file&.close
     end
   end
 
