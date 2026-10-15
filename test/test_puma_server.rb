@@ -702,6 +702,7 @@ class TestPumaServer < PumaTest
     sleep 1.15
 
     assert @server.shutting_down?
+    assert @server.thread.join(1)
 
     assert_raises Errno::ECONNREFUSED do
       send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 12\r\n\r\n"
@@ -752,6 +753,7 @@ class TestPumaServer < PumaTest
     sleep 1.15
 
     assert @server.shutting_down?
+    assert @server.thread.join(1)
 
     assert socket.wait_readable(1), 'Unexpected timeout'
     assert_raises Errno::ECONNREFUSED do
@@ -787,6 +789,7 @@ class TestPumaServer < PumaTest
     sleep 1.15
 
     assert @server.shutting_down?
+    assert @server.thread.join(1)
 
     assert socket.wait_readable(1), 'Unexpected timeout'
     assert_raises Errno::ECONNREFUSED do
@@ -818,6 +821,7 @@ class TestPumaServer < PumaTest
     sleep 1.15
 
     assert @server.shutting_down?
+    assert @server.thread.join(1)
 
     assert socket.wait_readable(1), 'Unexpected timeout'
     assert_raises Errno::ECONNREFUSED do
