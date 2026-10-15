@@ -392,7 +392,8 @@ module Puma
 
                 unless shutting_down?
                   if @queue_requests
-                    if @cluster_accept_loop_delay.on? && (busy_threads_plus_todo = pool.busy_threads) > 0
+                    if @cluster_accept_loop_delay.on? &&
+                        (busy_threads_plus_todo = pool.busy_threads + (@reactor ? @reactor.reactor_size * 0.375 : 0)) > 0
                       delay = @cluster_accept_loop_delay.calculate(
                         max_threads: @max_threads,
                         busy_threads_plus_todo: busy_threads_plus_todo
