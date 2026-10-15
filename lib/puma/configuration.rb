@@ -362,8 +362,7 @@ module Puma
             block.call arg
           end
         rescue => e
-          log_writer.log "WARNING hook #{key} failed with exception (#{e.class}) #{e.message}"
-          log_writer.debug e.backtrace.join("\n")
+          handle_hook_error e, key, log_writer
         end
       end
     end
@@ -403,6 +402,15 @@ module Puma
     end
 
     private
+
+    def handle_hook_error(e, key, log_writer)
+      if (handler = options[:hook_error_handler])
+        handler.call(e, key)
+      else
+        log_writer.log "WARNING hook #{key} failed with exception (#{e.class}) #{e.message}"
+        log_writer.debug e.backtrace.join("\n")
+      end
+    end
 
     def rewrite_unavailable_ipv6_binds!
       return if self.class.ipv6_interface_available?

@@ -690,6 +690,23 @@ class TestIntegrationCluster < TestIntegration
     assert_equal 'after_worker_shutdown worker=1 status=0', ary[1]
   end
 
+  def test_hook_error_handler_reraise_crashes_worker
+    cli_server "-w 1 test/rackup/hello.ru", merge_err: true, no_wait: true, config: <<~'CONFIG'
+      before_worker_boot do
+        raise "hook_error_handler test failure"
+      end
+
+      hook_error_handler do |err, hook|
+        puts "handler saw #{hook}"
+        raise err
+      end
+    CONFIG
+
+    assert wait_for_server_to_include('handler saw before_worker_boot')
+    assert wait_for_server_to_include('handler saw before_worker_boot')
+    refute_includes @server_log, 'booted in'
+  end
+
   def test_worker_hook_warning_cli
     cli_server "-w2 test/rackup/hello.ru", config: <<~CONFIG
       before_worker_boot(:test) do |index, data|
