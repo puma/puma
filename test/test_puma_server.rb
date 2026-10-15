@@ -620,6 +620,24 @@ class TestPumaServer < PumaTest
     assert_equal "HTTP/1.0 200 OK\r\ncontent-type: application/pdf\r\ncontent-length: 4242\r\n\r\n", response
   end
 
+  def test_304_with_empty_body_has_no_content_length
+    server_run { [304, {"Content-Type" => "text/plain"}, []] }
+
+    response = send_http_read_response "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\n\r\n"
+
+    assert_equal "HTTP/1.1 304 #{STATUS_CODES[304]}", response.status
+    assert_equal ["content-type: text/plain", "connection: close"], response.headers
+  end
+
+  def test_304_keeps_app_content_length
+    server_run { [304, {"Content-Length" => "4242"}, []] }
+
+    response = send_http_read_response "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\n\r\n"
+
+    assert_equal "HTTP/1.1 304 #{STATUS_CODES[304]}", response.status
+    assert_equal ["connection: close", "content-length: 4242"], response.headers
+  end
+
   def test_status_hook_fires_when_server_changes_states
 
     states = []
