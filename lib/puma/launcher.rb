@@ -78,6 +78,7 @@ module Puma
       @binder = Binder.new(@log_writer, @options)
       @binder.create_inherited_fds(env).each { |k| env.delete k }
       @binder.create_activated_fds(env).each { |k| env.delete k }
+      @control_activated_socket = @binder.take_activated_socket(@options[:control_url]) if @options[:control_url]
 
       @environment = @config.environment
 
@@ -112,7 +113,7 @@ module Puma
       @status = :run
     end
 
-    attr_reader :binder, :log_writer, :events, :config, :options, :restart_dir
+    attr_reader :binder, :log_writer, :events, :config, :options, :restart_dir, :control_activated_socket
 
     # Return stats about the server
     def stats
