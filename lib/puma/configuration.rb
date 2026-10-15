@@ -294,6 +294,7 @@ module Puma
       set_conditional_default_options
       @_options.finalize_values
       rewrite_unavailable_ipv6_binds!
+      validate_options
       @clamped = true
       warn_hooks
       options
@@ -512,6 +513,10 @@ module Puma
     def set_conditional_default_options
       @_options.default_options[:preload_app] = !@_options[:prune_bundler] &&
         (@_options[:workers] > 1) && Puma.forkable?
+    end
+
+    def validate_options
+      raise "fork_worker and mold_worker cannot be used together" if @_options[:fork_worker] && @_options[:mold_worker]
     end
 
     def warn_hooks

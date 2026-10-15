@@ -46,6 +46,11 @@ class TestIntegrationCluster < TestIntegration
       config: "fork_worker; preload_app! false"
   end
 
+  def test_phased_restart_does_not_drop_connections_threads_mold_worker
+    restart_does_not_drop_connections num_threads: 10, signal: :USR1,
+      config: "mold_worker; preload_app! false"
+  end
+
   def test_phased_restart_does_not_drop_connections_unix
     restart_does_not_drop_connections num_threads: 1, signal: :USR1, unix: true,
       config: "preload_app! false"
@@ -264,6 +269,7 @@ class TestIntegrationCluster < TestIntegration
 
   def test_worker_timeout
     skip 'Thread#name not available' unless Thread.current.respond_to?(:name)
+
     timeout = Puma::Configuration::DEFAULTS[:worker_check_interval] + 1
     config = <<~CONFIG
       worker_timeout #{timeout}
@@ -402,6 +408,95 @@ class TestIntegrationCluster < TestIntegration
     socks.each { |s| read_body s }
 
     refute_includes pids, get_worker_pids(1, wrkrs - 1)
+  end
+
+  def test_mold_worker_reforks_at_each_threshold
+    hooks = Tempfile.new 'mold_hooks'
+    wrkrs = 3
+    cli_server "-w #{wrkrs} test/rackup/hello.ru", config: <<~CONFIG
+      worker_check_interval 1
+      mold_worker 10, 20
+      after_mold_promotion { File.write '#{hooks.path}', "promoted\n", mode: 'a' }
+      before_mold_shutdown { File.write '#{hooks.path}', "shutdown\n", mode: 'a' }
+    CONFIG
+
+    get_worker_pids 0, wrkrs
+    phase1_pids = send_requests_until_phase 1, wrkrs
+    phase2_pids = send_requests_until_phase 2, wrkrs
+
+    assert_empty phase1_pids & phase2_pids
+    assert_equal "promoted\npromoted\nshutdown\n", File.read(hooks.path)
+  end
+
+  def test_mold_worker_ignores_mold_requests_for_threshold
+    cli_server "-w #{workers} -t 1:1 test/rackup/hello.ru", config: <<~CONFIG
+      worker_check_interval 0.5
+      mold_worker 10, 11
+    CONFIG
+
+    get_worker_pids 0
+    send_requests_until_phase 1
+
+    assert_raises(Minitest::Assertion) { wait_for_server_to_include "phase: 2", timeout: 3 }
+  end
+
+  def test_mold_worker_replaces_workers_after_mold_dies
+    cli_server "-w #{workers} test/rackup/hello.ru", config: <<~CONFIG
+      worker_check_interval 1
+      mold_worker 10
+    CONFIG
+
+    get_worker_pids 0
+    phase1_pids = send_requests_until_phase 1
+
+    Process.kill :KILL, promoted_mold_pid
+    Process.kill :KILL, phase1_pids.first
+
+    get_worker_pids 1, 1
+    assert_equal "Hello World", read_body(connect)
+  end
+
+  def test_mold_worker_refork_completes_after_mold_dies_during_promotion
+    cli_server "-w 1 test/rackup/hello.ru", config: <<~CONFIG
+      mold_worker 1_000_000
+      after_mold_promotion { sleep 2 }
+    CONFIG
+
+    get_worker_pids 0, 1
+    Process.kill :URG, @pid
+    wait_for_server_to_include "to mold"
+    Process.kill :KILL, promoted_mold_pid
+
+    get_worker_pids 1, 1
+    assert_equal "Hello World", read_body(connect)
+  end
+
+  def test_mold_worker_exits_cleanly_when_master_dies
+    cli_server "-w 1 test/rackup/hello.ru", merge_err: true, config: "mold_worker 1_000_000"
+
+    get_worker_pids 0, 1
+    Process.kill :URG, @pid
+    get_worker_pids 1, 1
+    stop_server signal: :KILL
+
+    refute_includes "#{@server_line_buffer}#{@server.read}", "EOFError"
+  end
+
+  def test_mold_worker_phased_restart_retires_mold
+    cli_server "-w #{workers} test/rackup/hello.ru", config: <<~CONFIG
+      worker_check_interval 1
+      preload_app! false
+      mold_worker 10
+    CONFIG
+
+    get_worker_pids 0
+    send_requests_until_phase 1
+    mold_pid = promoted_mold_pid
+
+    Process.kill :USR1, @pid
+
+    get_worker_pids 2
+    assert_raises(Errno::ESRCH) { 20.times { Process.kill(0, mold_pid); sleep 0.1 } }
   end
 
   def test_fork_worker_spawn
@@ -748,6 +843,30 @@ class TestIntegrationCluster < TestIntegration
   end
 
   private
+
+  def promoted_mold_pid
+    @server_log.scan(/Promoting worker \d \(PID: (\d+)\) to mold/).last.first.to_i
+  end
+
+  def send_requests_until_phase(phase, size = workers)
+    sending = true
+    sender = Thread.new do
+      while sending
+        begin
+          socket = connect
+          read_body socket
+        rescue IOError, SystemCallError
+        ensure
+          socket&.close
+        end
+        sleep 0.005
+      end
+    end
+    get_worker_pids phase, size
+  ensure
+    sending = false
+    sender&.join
+  end
 
   def worker_timeout(timeout, iterations, details, config, log: nil)
     cli_server "-w #{workers} -t 1:1 test/rackup/hello.ru", config: config

@@ -1,4 +1,4 @@
-Puma provides three distinct kinds of restart operations, each for different use cases. This document describes "hot restarts" and "phased restarts." The third kind of restart operation is called "refork" and is described in the documentation for [`fork_worker`](fork_worker.md).
+Puma provides three distinct kinds of restart operations, each for different use cases. This document describes "hot restarts" and "phased restarts." The third kind of restart operation is called "refork" and is described in the documentation for [`fork_worker` and `mold_worker`](fork_worker.md).
 
 ## Hot restart
 
