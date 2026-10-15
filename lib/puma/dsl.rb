@@ -48,6 +48,8 @@ module Puma
   #     | before_worker_shutdown | :before_worker_shutdown | inside, after       |
   #     | before_refork          | :before_refork          | inside              |
   #     | after_refork           | :after_refork           | inside              |
+  #     | after_mold_promotion   | :after_mold_promotion   | inside              |
+  #     | before_mold_shutdown   | :before_mold_shutdown   | inside              |
   #
   class DSL
     ON_WORKER_KEY = [String, Symbol].freeze
@@ -1007,6 +1009,43 @@ module Puma
       process_hook :after_refork, key, block
     end
 
+    # When `mold_worker` is enabled, code to run in a worker after it stops
+    # serving requests and becomes a mold, before any workers are forked from it.
+    # The worker's index is passed as an argument.
+    #
+    # This can be used to close any connections to remote servers (database,
+    # Redis, ...) or to run garbage collection to maximize copy-on-write
+    # efficiency.
+    #
+    # This can be called multiple times to add several hooks.
+    #
+    # @note Cluster mode with `mold_worker` enabled only.
+    #
+    # @example
+    #   after_mold_promotion do
+    #     3.times { GC.start }
+    #   end
+    #
+    def after_mold_promotion(key = nil, &block)
+      process_hook :after_mold_promotion, key, block, cluster_only: true
+    end
+
+    # When `mold_worker` is enabled, code to run in a mold before it exits.
+    # The mold's index is passed as an argument.
+    #
+    # This can be called multiple times to add several hooks.
+    #
+    # @note Cluster mode with `mold_worker` enabled only.
+    #
+    # @example
+    #   before_mold_shutdown do
+    #     puts 'Mold shutting down...'
+    #   end
+    #
+    def before_mold_shutdown(key = nil, &block)
+      process_hook :before_mold_shutdown, key, block, cluster_only: true
+    end
+
     # Provide a block to be executed just before a thread is added to the thread
     # pool. Note that while the block executes, thread creation is delayed, and
     # a request may have to wait. The new thread will not be added to the
@@ -1122,7 +1161,8 @@ module Puma
     # Use +obj+ or +block+ to handle exceptions raised by +before_fork+,
     # +before_worker_fork+, +after_worker_fork+, +before_worker_boot+,
     # +before_worker_shutdown+, +after_worker_shutdown+, +before_refork+,
-    # +after_refork+, and +before_restart+ hooks.
+    # +after_refork+, +after_mold_promotion+, +before_mold_shutdown+, and
+    # +before_restart+ hooks.
     #
     # @example Crash workers instead of booting them half-configured
     #   master_pid = Process.pid
@@ -1462,7 +1502,7 @@ module Puma
 
     # When enabled, workers will be forked from worker 0 instead of from the master process.
     # This option is similar to `preload_app` because the app is preloaded before forking,
-    # but it is compatible with phased restart.
+    # but it is compatible with phased restart when `preload_app!` is disabled.
     #
     # This option also enables the `refork` command (SIGURG), which optimizes copy-on-write performance
     # in a running app.
@@ -1480,6 +1520,29 @@ module Puma
     #
     def fork_worker(after_requests=1000)
       @options[:fork_worker] = Integer(after_requests)
+    end
+
+    # When enabled, a worker that reaches the given request count stops serving
+    # requests and becomes a "mold", a template process that every new worker
+    # is forked from. Each threshold promotes a new mold and reforks all workers
+    # from it. Thresholds are per worker, counted from when that worker booted.
+    #
+    # This option also enables the `refork` command (SIGURG), which promotes
+    # the busiest worker to a new mold at any time.
+    #
+    # Incompatible with `fork_worker`.
+    #
+    # The default is +nil+.
+    #
+    # @note This is experimental.
+    # @note Cluster mode only.
+    #
+    # @example
+    #   mold_worker 1000, 2000, 4000
+    #
+    def mold_worker(*thresholds)
+      thresholds = [1000] if thresholds.empty?
+      @options[:mold_worker] = thresholds.map { |t| Integer(t) }
     end
 
     # @deprecated Use {#max_keep_alive} instead.
