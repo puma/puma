@@ -457,6 +457,7 @@ class TestBinderParallel < TestBinderBase
     hash = { "LISTEN_FDS" => 1, "LISTEN_PID" => $$ }
     @log_writer.instance_variable_set(:@debug, true)
 
+    sock.autoclose = false
     @binder.instance_variable_set(:@sock_fd, sock.fileno)
     def @binder.socket_activation_fd(int); @sock_fd; end
     @result = @binder.create_activated_fds(hash)
@@ -467,6 +468,8 @@ class TestBinderParallel < TestBinderBase
     assert_kind_of TCPServer, @binder.activated_sockets[ary]
     assert_match "Registered #{ary.join(":")} for activation from LISTEN_FDS", @log_writer.stdout.string
     assert_equal ["LISTEN_FDS", "LISTEN_PID"], @result
+  ensure
+    @binder.activated_sockets.each_value(&:close)
   end
 
   def assert_parsing_logs_uri(order = [:unix, :tcp])
