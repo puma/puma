@@ -77,10 +77,8 @@ module Puma
       control = Puma::Server.new app, nil,
         { min_threads: 0, max_threads: 1, queue_requests: false, log_writer: @log_writer }
 
-      # Hand over a socket activated for the control URL (e.g. by systemd).
-      if (activated = @launcher.binder.take_activated_socket(str))
-        key, sock = activated
-        control.binder.activated_sockets[key] = sock
+      if (activated = @launcher.control_activated_socket)
+        control.binder.activated_sockets.store(*activated)
       end
 
       begin

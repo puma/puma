@@ -3,6 +3,7 @@
 require_relative "helper"
 require_relative "helpers/tmp_path"
 
+require "puma/binder"
 require "puma/configuration"
 require 'puma/log_writer'
 
@@ -153,45 +154,37 @@ class TestLauncher < PumaTest
   def test_control_server_uses_activated_socket
     skip_unless :unix
 
-    ctl_path = tmp_path('.sock')
-    main_path = tmp_path('.sock')
-    ctl_unix_server = UNIXServer.new ctl_path
-    # Same type puma registers for a systemd activated socket
-    ctl_server = TCPServer.for_fd ctl_unix_server.fileno
-    ctl_unix_server.autoclose = false
-
+    port = UniquePort.call
+    ctl_url = "tcp://127.0.0.1:#{port}"
+    ctl_socket = Addrinfo.tcp("127.0.0.1", port).listen
+    ctl_socket.autoclose = false
     conf = Puma::Configuration.new do |c|
       c.app ->(_env) { [200, {}, ['ok']] }
-      c.bind "unix://#{main_path}"
-      c.activate_control_app "unix://#{ctl_path}", auth_token: 'none'
-      c.log_requests false
+      c.activate_control_app ctl_url, auth_token: 'none'
+      c.bind_to_activated_sockets
     end
+    log_writer = Puma::LogWriter.strings
+    env = { 'LISTEN_FDS' => '1', 'LISTEN_PID' => Process.pid.to_s }
 
-    launcher = create_launcher(conf)
-    launcher.binder.activated_sockets[[:unix, ctl_path]] = ctl_server
-
-    # Binding the app listeners must not close (or unlink) the socket that was
-    # activated for the control server.
+    binder_new = Puma::Binder.method(:new)
+    activated_binder = ->(*args) do
+      binder_new.call(*args).tap { |b| b.define_singleton_method(:socket_activation_fd) { |_| ctl_socket.fileno } }
+    end
+    launcher = Puma::Binder.stub(:new, activated_binder) { create_launcher(conf, log_writer, env: env) }
     launcher.binder.parse conf.options[:binds]
-    refute ctl_server.closed?, "socket activated for the control URL was closed"
-    assert File.exist?(ctl_path), "socket activated for the control URL was unlinked"
-    assert_equal [[:unix, ctl_path]], launcher.binder.activated_sockets.keys
-
     runner = Puma::Single.new(launcher)
-    begin
-      runner.start_control
-      assert_empty launcher.binder.activated_sockets
+    runner.start_control
 
-      # The control server must be serving on the very socket that was handed over.
-      client = UNIXSocket.new ctl_path
-      client.write "GET /stats HTTP/1.0\r\n\r\n"
-      assert_match(/\AHTTP\/1\.0 200 OK/, client.read)
-    ensure
-      client&.close
-      ctl_unix_server.close
-      runner.stop_control
-      launcher.binder.close_listeners
-    end
+    client = TCPSocket.new "127.0.0.1", port
+    client.write "GET /stats HTTP/1.0\r\n\r\n"
+
+    assert_match(/\AHTTP\/1\.0 200 OK/, client.read)
+    assert_includes log_writer.stdout.string, "* Activated #{ctl_url}"
+    refute_includes log_writer.stdout.string, "Closing unused activated socket"
+  ensure
+    client&.close
+    runner&.stop_control
+    launcher&.binder&.close_listeners
   end
 
   private
