@@ -11,7 +11,7 @@ require 'openssl'
 #
 class TestExampleCertExpiration < PumaTest
   EXAMPLES_DIR = File.expand_path '../examples/puma', __dir__
-  EXPIRE_THRESHOLD = Time.now.utc - (60 * 60 * 24 * 30) # 30 days
+  EXPIRE_THRESHOLD = Time.now.utc + (60 * 60 * 24 * 30) # 30 days
 
   # Explicitly list the files to test
   TEST_FILES = %w[
