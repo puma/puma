@@ -65,6 +65,11 @@ module Puma
       rescue Errno::ESRCH
       end
 
+      def retire!
+        Process.kill "URG", @pid
+      rescue Errno::ESRCH
+      end
+
       def ping!(status)
         hsh = {}
         k, v = nil, nil
