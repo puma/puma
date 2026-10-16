@@ -2,6 +2,9 @@
 
 This is a very common setup using an upstream. It was adapted from some Capistrano recipe I found on the Internet a while ago.
 
+For HTTPS in front of Puma (TLS at nginx, plain Unix/TCP to Puma), see
+[ssl.md](ssl.md).
+
 ```nginx
 upstream myapp {
   server unix:///myapp/tmp/puma.sock;
