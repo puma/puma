@@ -49,9 +49,8 @@ module Puma
   # and earlier behavior of using a binary on/off sleep value, we scale the delay across two regimes:
   # below thread saturation (`u <= 1.0`), a concave square-root ramp (`Math.sqrt(u)`) applies earlier
   # tie-breaking backpressure as threads become busy (especially on CPU-bound workloads sharing a GVL);
-  # above saturation (`1.0 < u < overload_multiplier`), a concave exponential saturation curve applies
-  # stronger early backpressure as the todo queue builds, capping at `max_delay` when
-  # `max_threads * overload_multiplier` is reached.
+  # above saturation (`1.0 < u < overload_multiplier`), a linear overload ramp scales smoothly to
+  # `max_delay` at `max_threads * overload_multiplier` without over-sleeping during high-concurrency bursts.
   #
   # Private: API may change unexpectedly
   class ClusterAcceptLoopDelay
@@ -69,11 +68,8 @@ module Puma
 
       # Reach maximum delay when `max_threads * overload_multiplier` is reached in the system
       @overload_multiplier = 25.0
-      @overload_span = @overload_multiplier - 1.0
-      @decay_tau = @overload_span / 2.0
-      @decay_norm = 1.0 / (1.0 - Math.exp(-@overload_span / @decay_tau))
-      @knee_base = 1.4 / @overload_multiplier
-      @knee_span = 1.0 - @knee_base
+      @knee_base = 1.25 / @overload_multiplier
+      @overload_slope = (1.0 - @knee_base) / (@overload_multiplier - 1.0)
     end
 
     def on?
@@ -99,8 +95,7 @@ module Puma
       elsif u >= @overload_multiplier
         return @max_delay
       else
-        curve = (1.0 - Math.exp(-(u - 1.0) / @decay_tau)) * @decay_norm
-        return @max_delay * (@knee_base + @knee_span * curve)
+        return @max_delay * (@knee_base + @overload_slope * (u - 1.0))
       end
     end
   end
