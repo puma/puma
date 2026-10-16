@@ -143,8 +143,11 @@ module Puma
         timed_out << client
       end
       timed_out.each { |client| wakeup!(client) }
-      @earliest = (@timeouts.each_key { |k| break k } unless @timeouts.empty?)
-      @early_earliest = (@early_timeouts.each_key { |k| break k } unless @early_timeouts.empty?)
+      if map.equal?(@timeouts)
+        @earliest = (@timeouts.each_key { |k| break k } unless @timeouts.empty?)
+      else
+        @early_earliest = (@early_timeouts.each_key { |k| break k } unless @early_timeouts.empty?)
+      end
     end
 
     # Start monitoring the object.
