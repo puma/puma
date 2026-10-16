@@ -18,6 +18,7 @@ class TestIntegrationPumactl < TestIntegration
 
   def test_stop_tcp
     skip_if :jruby, :truffleruby # Undiagnose thread race. TODO fix
+
     cli_server "-q test/rackup/sleep.ru #{set_pumactl_args} -S #{@state_path}"
 
     cli_pumactl "stop"
@@ -35,6 +36,7 @@ class TestIntegrationPumactl < TestIntegration
 
   def ctl_unix(signal='stop')
     skip_unless :unix
+
     stderr = Tempfile.new(%w(stderr .log))
 
     cli_server "-q #{set_pumactl_args unix: true} -S #{@state_path} test/rackup/hello.ru",
@@ -50,6 +52,7 @@ class TestIntegrationPumactl < TestIntegration
 
   def test_phased_restart_cluster
     skip_unless :fork
+
     cli_server "test/rackup/sleep.ru #{set_pumactl_args unix: true}", unix: true, config: <<~RUBY
       quiet
       workers #{workers}
@@ -88,6 +91,7 @@ class TestIntegrationPumactl < TestIntegration
 
   def test_refork_cluster
     skip_unless :fork
+
     wrkrs = 3
     cli_server "-q -w #{wrkrs} test/rackup/sleep.ru #{set_pumactl_args unix: true} -S #{@state_path}",
       config: 'fork_worker 50',
@@ -132,6 +136,24 @@ class TestIntegrationPumactl < TestIntegration
 
     cli_pumactl "stop", unix: true
 
+    wait_server
+  end
+
+  def test_refork_cluster_mold_worker
+    skip_unless :fork
+
+    wrkrs = 3
+    cli_server "-q -w #{wrkrs} test/rackup/sleep.ru #{set_pumactl_args unix: true} -S #{@state_path}",
+      config: 'mold_worker 1_000_000',
+      unix: true
+
+    phase0_worker_pids = get_worker_pids 0, wrkrs
+    cli_pumactl "refork", unix: true
+    phase1_worker_pids = get_worker_pids 1, wrkrs
+
+    assert_empty phase0_worker_pids & phase1_worker_pids
+
+    cli_pumactl "stop", unix: true
     wait_server
   end
 
@@ -317,6 +339,7 @@ class TestIntegrationPumactl < TestIntegration
 
   def test_control_gc_stats_unix
     skip_unless :unix
+
     control_gc_stats unix: true
   end
 end

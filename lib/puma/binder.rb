@@ -309,6 +309,13 @@ module Puma
       end
     end
 
+    # Removes and returns the activated socket for +url+ as <tt>[key, socket]</tt>,
+    # or +nil+ if none was activated for it.
+    def take_activated_socket(url)
+      key = activated_keys_for(url).find { |k| @activated_sockets.key?(k) }
+      [key, @activated_sockets.delete(key)] if key
+    end
+
     def localhost_authority
       @localhost_authority ||= Localhost::Authority.fetch if defined?(Localhost::Authority) && !Puma::IS_JRUBY
     end
@@ -485,6 +492,28 @@ module Puma
     end
 
     private
+
+    def activated_keys_for(url)
+      uri = URI.parse url
+      case uri.scheme
+      when "tcp", "ssl"
+        [[:tcp, uri.host, uri.port]]
+      when "unix"
+        path = "#{uri.host}#{uri.path}".gsub("%20", " ")
+        return [] if path.start_with?("@")
+
+        real_path = begin
+          File.realdirpath(path)
+        rescue SystemCallError
+          path
+        end
+        [[:unix, path], [:unix, real_path]].uniq
+      else
+        []
+      end
+    rescue URI::InvalidURIError
+      []
+    end
 
     # @!attribute [r] loopback_addresses
     def loopback_addresses

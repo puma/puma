@@ -8,6 +8,8 @@ if $mingw
   have_library 'ssp'
 end
 
+have_func "prctl(PR_SET_CHILD_SUBREAPER, 1)", "sys/prctl.h"
+
 unless ENV["PUMA_DISABLE_SSL"]
   # don't use pkg_config('openssl') if '--with-openssl-dir' is used
   has_openssl_dir = dir_config('openssl').any? ||

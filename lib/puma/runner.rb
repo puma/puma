@@ -77,6 +77,10 @@ module Puma
       control = Puma::Server.new app, nil,
         { min_threads: 0, max_threads: 1, queue_requests: false, log_writer: @log_writer }
 
+      if (activated = @launcher.control_activated_socket)
+        control.binder.activated_sockets.store(*activated)
+      end
+
       begin
         control.binder.parse [str], nil, 'Starting control server'
       rescue Errno::EADDRINUSE, Errno::EACCES => e

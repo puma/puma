@@ -55,6 +55,7 @@ class TestConfigFile < PumaTest
 
   def test_ssl_configuration_from_DSL
     skip_unless :ssl
+
     conf = Puma::Configuration.new do |config|
       config.load "test/config/ssl_config.rb"
     end
@@ -73,6 +74,7 @@ class TestConfigFile < PumaTest
   def test_ssl_self_signed_configuration_from_DSL
     skip_if :jruby
     skip_unless :ssl
+
     conf = Puma::Configuration.new do |config|
       config.load "test/config/ssl_self_signed_config.rb"
     end
@@ -338,6 +340,7 @@ class TestConfigFile < PumaTest
 
   def test_ssl_bind_with_ca
     skip_unless :ssl
+
     conf = Puma::Configuration.new do |c|
       c.ssl_bind "0.0.0.0", "9292", {
         cert: "/path/to/cert",
@@ -507,6 +510,24 @@ class TestConfigFile < PumaTest
     assert_equal conf.options[:raise_exception_on_sigterm], true
   end
 
+  def test_mold_worker_and_fork_worker_from_separate_sources_raise
+    conf = Puma::Configuration.new(config_files: ["test/config/fork_worker.rb"], mold_worker: [1000])
+
+    error = assert_raises(RuntimeError) { conf.clamp }
+    assert_equal "fork_worker and mold_worker cannot be used together", error.message
+  end
+
+  def test_mold_worker_and_fork_worker_from_cluster_hook_raise
+    conf = Puma::Configuration.new do |c|
+      c.workers 2
+      c.mold_worker
+      c.cluster { c.fork_worker }
+    end
+
+    error = assert_raises(RuntimeError) { conf.clamp }
+    assert_equal "fork_worker and mold_worker cannot be used together", error.message
+  end
+
   def test_single_without_block_raises_error
     conf = Puma::Configuration.new do |c|
       assert_raises(ArgumentError, "`single` must be called with a block") do
@@ -669,6 +690,20 @@ class TestConfigFile < PumaTest
     assert_warning_for_hooks_defined_in_single_mode :before_refork
   end
 
+  def test_run_hooks_after_mold_promotion
+    assert_run_hooks :after_mold_promotion
+
+    assert_raise_on_hooks_without_block :after_mold_promotion
+    assert_warning_for_hooks_defined_in_single_mode :after_mold_promotion
+  end
+
+  def test_run_hooks_before_mold_shutdown
+    assert_run_hooks :before_mold_shutdown
+
+    assert_raise_on_hooks_without_block :before_mold_shutdown
+    assert_warning_for_hooks_defined_in_single_mode :before_mold_shutdown
+  end
+
   def test_run_hooks_before_thread_start
     assert_run_hooks :before_thread_start
     assert_run_hooks :before_thread_start, configured_with: :before_thread_start
@@ -699,6 +734,26 @@ class TestConfigFile < PumaTest
     conf.run_hooks(:before_restart, 'ARG', log_writer)
     expected = /WARNING hook before_restart failed with exception \(RuntimeError\) Error from hook/
     assert_match expected, log_writer.stdout.string
+  end
+
+  def test_hook_error_handler_replaces_default_logging
+    seen = []
+    conf = hook_error_conf ->(err, hook) { seen << [err.message, hook] }
+    log_writer = Puma::LogWriter.strings
+
+    conf.run_hooks(:before_restart, 'ARG', log_writer)
+
+    assert_equal [['Error from hook', :before_restart]], seen
+    refute_match(/WARNING hook/, log_writer.stdout.string)
+  end
+
+  def test_hook_error_handler_can_reraise
+    conf = hook_error_conf ->(err, _hook) { raise err }
+
+    error = assert_raises RuntimeError do
+      conf.run_hooks(:before_restart, 'ARG', Puma::LogWriter.strings)
+    end
+    assert_equal 'Error from hook', error.message
   end
 
   def test_config_does_not_load_workers_by_default
@@ -913,6 +968,15 @@ class TestConfigFile < PumaTest
     end
 
     assert_match(/Warning: The code in the `#{hook_name}` block will not execute in the current Puma configuration/, out)
+  end
+
+  def hook_error_conf(handler)
+    conf = Puma::Configuration.new do |c|
+      c.hook_error_handler(&handler)
+      c.before_restart { raise RuntimeError, 'Error from hook' }
+    end
+    conf.clamp
+    conf
   end
 end
 
