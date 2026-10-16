@@ -58,9 +58,10 @@ class TestClusterAcceptLoopDelay < PumaTest
       max_delay: 0.05
     )
 
-    # Below thread saturation (u = 0.25), delay scales more gently than linear (0.00025 vs 0.0005)
+    # Below thread saturation (u = 0.25), concave sqrt ramp applies stronger early
+    # backpressure than linear (0.0014 vs 0.0005)
     sub_saturated = cal_delay.calculate(busy_threads_plus_todo: 1, max_threads: 4)
-    assert_in_delta 0.00025, sub_saturated, 0.00005
+    assert_in_delta 0.0014, sub_saturated, 0.0001
 
     # Above thread saturation (u = 13.0, midpoint of 1..25), concave curve applies stronger
     # early backpressure than linear midpoint (0.026)

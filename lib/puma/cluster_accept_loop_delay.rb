@@ -47,10 +47,11 @@ module Puma
   # For now, both goals are framed as "load balancing" across workers (processes) and achieved through
   # the same mechanism of sleeping longer to delay busier workers. Rather than the prior Puma 6.x
   # and earlier behavior of using a binary on/off sleep value, we scale the delay across two regimes:
-  # below thread saturation (`u <= 1.0`), a gentle power curve (`u ** 1.5`) avoids over-penalizing
-  # lightly loaded workers; above saturation (`1.0 < u < overload_multiplier`), a concave exponential
-  # saturation curve applies stronger early backpressure as the todo queue builds, capping at
-  # `max_delay` when `max_threads * overload_multiplier` is reached.
+  # below thread saturation (`u <= 1.0`), a concave square-root ramp (`Math.sqrt(u)`) applies earlier
+  # tie-breaking backpressure as threads become busy (especially on CPU-bound workloads sharing a GVL);
+  # above saturation (`1.0 < u < overload_multiplier`), a concave exponential saturation curve applies
+  # stronger early backpressure as the todo queue builds, capping at `max_delay` when
+  # `max_threads * overload_multiplier` is reached.
   #
   # Private: API may change unexpectedly
   class ClusterAcceptLoopDelay
@@ -71,7 +72,7 @@ module Puma
       @overload_span = @overload_multiplier - 1.0
       @decay_tau = @overload_span / 2.0
       @decay_norm = 1.0 / (1.0 - Math.exp(-@overload_span / @decay_tau))
-      @knee_base = 1.0 / @overload_multiplier
+      @knee_base = 1.4 / @overload_multiplier
       @knee_span = 1.0 - @knee_base
     end
 
@@ -94,7 +95,7 @@ module Puma
 
       u = busy_threads_plus_todo.to_f / max_threads.to_f
       if u <= 1.0
-        return @max_delay * @knee_base * (u * Math.sqrt(u))
+        return @max_delay * @knee_base * Math.sqrt(u)
       elsif u >= @overload_multiplier
         return @max_delay
       else
