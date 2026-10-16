@@ -83,6 +83,7 @@ module Puma
     # The object used for a request with no body. All requests with
     # no body share this one object since it has no state.
     EmptyBody = NullIO.new
+    DeprecatedEmptyBody = DeprecatedNullIO.new
 
     attr_reader :env, :to_io, :body, :io, :timeout_at, :ready, :hijacked,
                 :tempfile, :io_buffer, :http_content_length_limit_exceeded,
@@ -91,7 +92,7 @@ module Puma
     attr_writer :peerip, :http_content_length_limit, :supported_http_methods,
                 :allow_underscore_headers, :continue_callback
 
-    attr_accessor :remote_addr_header, :listener, :env_set_http_version
+    attr_accessor :remote_addr_header, :listener, :env_set_http_version, :empty_rack_input
 
     def initialize(io, env=nil)
       @io = io
@@ -117,6 +118,7 @@ module Puma
       @hijacked = false
 
       @http_content_length_limit = nil
+      @empty_rack_input = EmptyBody
       @http_content_length_limit_exceeded = nil
       @allow_underscore_headers = true
       @continue_callback = nil
