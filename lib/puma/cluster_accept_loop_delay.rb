@@ -46,9 +46,11 @@ module Puma
   #
   # For now, both goals are framed as "load balancing" across workers (processes) and achieved through
   # the same mechanism of sleeping longer to delay busier workers. Rather than the prior Puma 6.x
-  # and earlier behavior of using a binary on/off sleep value, we increase it an amount proportional
-  # to the load the server is under, capping the maximum delay to the scenario where all threads are busy
-  # and the todo list has reached a multiplier of the maximum number of threads.
+  # and earlier behavior of using a binary on/off sleep value, we scale the delay across two regimes:
+  # below thread saturation (`u <= 1.0`), a concave square-root ramp (`Math.sqrt(u)`) applies earlier
+  # tie-breaking backpressure as threads become busy (especially on CPU-bound workloads sharing a GVL);
+  # above saturation (`1.0 < u < overload_multiplier`), a linear overload ramp scales smoothly to
+  # `max_delay` at `max_threads * overload_multiplier` without over-sleeping during high-concurrency bursts.
   #
   # Private: API may change unexpectedly
   class ClusterAcceptLoopDelay
@@ -66,6 +68,8 @@ module Puma
 
       # Reach maximum delay when `max_threads * overload_multiplier` is reached in the system
       @overload_multiplier = 25.0
+      @knee_base = 1.25 / @overload_multiplier
+      @overload_slope = (1.0 - @knee_base) / (@overload_multiplier - 1.0)
     end
 
     def on?
@@ -83,9 +87,16 @@ module Puma
       # if the pool needs to be reaped. The busy thread plus todo count may go over this value by a large amount.
       max_threads:
     )
-      max_value = @overload_multiplier * max_threads
-      # Approaches max delay when `busy_threads_plus_todo` approaches `max_value`
-      return max_delay * busy_threads_plus_todo.clamp(0, max_value) / max_value
+      return 0 if @max_delay == 0 || busy_threads_plus_todo <= 0
+
+      u = busy_threads_plus_todo.to_f / max_threads.to_f
+      if u <= 1.0
+        return @max_delay * @knee_base * Math.sqrt(u)
+      elsif u >= @overload_multiplier
+        return @max_delay
+      else
+        return @max_delay * (@knee_base + @overload_slope * (u - 1.0))
+      end
     end
   end
 end
