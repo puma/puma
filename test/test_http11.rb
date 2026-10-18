@@ -339,4 +339,17 @@ class Http11ParserTest < TestIntegration
 
     assert_equal "Valid\tValue", req['HTTP_DUMMY']
   end
+
+  def test_common_and_uncommon_headers
+    parser = Puma::HttpParser.new
+    req = {}
+    http = "GET / HTTP/1.1\r\nAccept: */*\r\nWarning: 199 -\r\nX-Forwarded-For: 127.0.0.1\r\nX-Custom-Test: ok\r\n\r\n"
+
+    parser.execute(req, http, 0)
+
+    assert_equal '*/*', req['HTTP_ACCEPT']
+    assert_equal '199 -', req['HTTP_WARNING']
+    assert_equal '127.0.0.1', req['HTTP_X_FORWARDED_FOR']
+    assert_equal 'ok', req['HTTP_X_CUSTOM_TEST']
+  end
 end
