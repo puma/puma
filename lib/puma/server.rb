@@ -531,13 +531,16 @@ module Puma
             next_request_ready = if client.has_back_to_back_requests?
               with_force_shutdown(client) { client.process_back_to_back_requests }
             else
-              with_force_shutdown(client) { client.eagerly_finish }
+              with_force_shutdown(client) do
+                timeout = @thread_pool.waiting > 0 && @thread_pool.backlog == 0 ? 0.0001 : 0
+                client.eagerly_finish(timeout)
+              end
             end
 
             if next_request_ready
               # When Puma has spare threads, allow this one to be monopolized
               # Perf optimization for https://github.com/puma/puma/issues/3788
-              if @thread_pool.waiting > 0
+              if @thread_pool.waiting > 0 && @thread_pool.backlog == 0
                 can_loop = true
               else
                 @thread_pool.with_mutex do
