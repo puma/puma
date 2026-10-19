@@ -287,6 +287,32 @@ class TestPumaControlCli < PumaTest
     assert_kind_of Thread, t.join, "server didn't stop"
   end
 
+  def test_control_unix_path_with_space
+    skip_unless :unix
+
+    Dir.mktmpdir do |dir|
+      url = "unix://#{File.join(dir, 'puma ctl.sock').gsub(' ', '%20')}"
+
+      opts = [
+        "--control-url", url,
+        "--control-token", "ctrl",
+        "--config-file", "test/config/app.rb"
+      ]
+
+      control_cli = Puma::ControlCLI.new (opts + ["start"]), @ready, @ready
+      t = Thread.new do
+        control_cli.run
+      end
+
+      wait_booted
+
+      assert_command_cli_output opts + ["status"], "Puma is started"
+      assert_command_cli_output opts + ["stop"], "Command stop sent success"
+
+      assert_kind_of Thread, t.join, "server didn't stop"
+    end
+  end
+
   def test_control_ipv6
     port = UniquePort.call '::1'
     url = "tcp://[::1]:#{port}"
