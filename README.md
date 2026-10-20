@@ -6,7 +6,7 @@
 
 [![Actions](https://github.com/puma/puma/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/puma/puma/actions/workflows/tests.yml?query=branch%3Amain)
 
-<a href="https://commitgoods.com/collections/puma?utm_source=github">
+<a href="https://commitgoods.com/collections/puma?utm_source=github&amp;utm_medium=referral">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://cdn.shopify.com/s/files/1/0101/8752/files/commitgoods-badge-stacked-navy-dark.svg">
     <img src="https://cdn.shopify.com/s/files/1/0101/8752/files/commitgoods-badge-stacked-navy.svg" height="28" alt="Official merch on commitgoods.com">
@@ -486,7 +486,7 @@ Community guides:
 
 ## Merchandise
 
-Puma stickers, shirts, hoodies, and mugs are available at [commitgoods.com](https://commitgoods.com/collections/puma?utm_source=github).
+Puma stickers, shirts, hoodies, and mugs are available at [commitgoods.com](https://commitgoods.com/collections/puma?utm_source=github&utm_medium=referral).
 
 ## Contributing
 
