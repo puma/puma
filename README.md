@@ -6,6 +6,13 @@
 
 [![Actions](https://github.com/puma/puma/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/puma/puma/actions/workflows/tests.yml?query=branch%3Amain)
 
+<a href="https://commitgoods.com/collections/puma?utm_source=github">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://cdn.shopify.com/s/files/1/0101/8752/files/commitgoods-badge-stacked-navy-dark.svg">
+    <img src="https://cdn.shopify.com/s/files/1/0101/8752/files/commitgoods-badge-stacked-navy.svg" height="28" alt="Official merch on commitgoods.com">
+  </picture>
+</a>
+
 Puma is a **simple, fast, multi-threaded, and highly parallel HTTP 1.1 server for Ruby/Rack applications**.
 
 ## Built For Speed &amp; Parallelism
@@ -476,6 +483,10 @@ Community guides:
 ### Monitoring
 
 * [puma-status](https://github.com/ylecuyer/puma-status) — Monitor CPU/Mem/Load of running puma instances from the CLI
+
+## Merchandise
+
+Puma stickers, shirts, hoodies, and mugs are available at [commitgoods.com](https://commitgoods.com/collections/puma?utm_source=github).
 
 ## Contributing
 
