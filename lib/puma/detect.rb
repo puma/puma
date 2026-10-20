@@ -16,7 +16,7 @@ module Puma
 
   IS_WINDOWS = RUBY_DESCRIPTION.match?(/mswin|ming|cygwin/)
 
-  IS_LINUX = !(IS_OSX || IS_WINDOWS)
+  IS_LINUX = RUBY_DESCRIPTION.include? 'linux'
 
   IS_ARM = RUBY_PLATFORM.include? 'aarch64'
 
