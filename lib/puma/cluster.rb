@@ -569,6 +569,7 @@ module Puma
             end
 
             if in_phased_restart && workers_not_booted.zero?
+              @retired_molds.each(&:term)
               @events.fire_after_booted!
               debug_loaded_extensions("Loaded Extensions - master:") if @log_writer.debug?
               in_phased_restart = false
@@ -705,11 +706,12 @@ module Puma
       @mold_ready = true
     end
 
+    # A promoted mold has forked no workers, so it is stopped now. An active
+    # mold stops forking, and is stopped once the restart completes.
     def retire_molds
-      [@promoted_mold, @mold].compact.each do |mold|
-        mold.term
-        @retired_molds << mold
-      end
+      @promoted_mold&.term
+      @mold&.retire!
+      @retired_molds.concat [@promoted_mold, @mold].compact
       @promoted_mold = nil
       @mold = nil
     end

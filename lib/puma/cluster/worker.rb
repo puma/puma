@@ -176,8 +176,13 @@ module Puma
       def run_mold
         $0 = $0.sub("cluster worker", "mold")
 
+        retired = false
         stopping = false
         stop_read, stop_write = Puma::Util.pipe
+        Signal.trap "SIGURG" do
+          retired = true
+          stop_write.write_nonblock(".", exception: false)
+        end
         Signal.trap "SIGTERM" do
           @worker_write << "#{PIPE_EXTERNAL_TERM}#{Process.pid}\n" rescue nil
           stopping = true
@@ -193,13 +198,19 @@ module Puma
         loop do
           IO.select([@fork_pipe, stop_read])
           # A retired mold must not read indices meant for its replacement.
-          break if stopping
+          break if retired || stopping
 
           idx = @fork_pipe.sysread(MOLD_FORK_BYTES).unpack1(MOLD_FORK_FORMAT)
           pid = spawn_worker(idx)
           @worker_write << "#{PIPE_FORK}#{pid}:#{idx}\n"
         rescue EOFError
           break
+        end
+
+        if retired
+          # Stay alive until stopped, so the workers this mold forked are
+          # reaped and the master is woken as they exit.
+          stop_read.read(1) until stopping
         end
 
         @config.run_hooks(:before_mold_shutdown, index, @log_writer, @hook_data)

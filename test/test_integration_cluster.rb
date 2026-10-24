@@ -411,21 +411,36 @@ class TestIntegrationCluster < TestIntegration
   end
 
   def test_mold_worker_reforks_at_each_threshold
-    hooks = Tempfile.new 'mold_hooks'
     wrkrs = 3
     cli_server "-w #{wrkrs} test/rackup/hello.ru", config: <<~CONFIG
       worker_check_interval 1
       mold_worker 10, 20
-      after_mold_promotion { File.write '#{hooks.path}', "promoted\n", mode: 'a' }
-      before_mold_shutdown { File.write '#{hooks.path}', "shutdown\n", mode: 'a' }
+      after_mold_promotion { puts "after_mold_promotion" }
+      before_mold_shutdown { puts "before_mold_shutdown" }
     CONFIG
 
     get_worker_pids 0, wrkrs
     phase1_pids = send_requests_until_phase 1, wrkrs
     phase2_pids = send_requests_until_phase 2, wrkrs
+    wait_for_server_to_include "before_mold_shutdown"
 
     assert_empty phase1_pids & phase2_pids
-    assert_equal "promoted\npromoted\nshutdown\n", File.read(hooks.path)
+    assert_equal %w[after_mold_promotion after_mold_promotion before_mold_shutdown],
+      @server_log.scan(/after_mold_promotion|before_mold_shutdown/)
+  end
+
+  def test_mold_worker_refork_replaces_workers_forked_by_previous_mold
+    cli_server "-w #{workers} test/rackup/hello.ru", config: <<~CONFIG
+      worker_check_interval 30
+      mold_worker 1_000_000
+    CONFIG
+
+    get_worker_pids 0
+    Process.kill :URG, @pid
+    phase1_pids = get_worker_pids 1
+    Process.kill :URG, @pid
+
+    assert_empty phase1_pids & get_worker_pids(2)
   end
 
   def test_mold_worker_ignores_mold_requests_for_threshold
