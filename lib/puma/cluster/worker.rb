@@ -178,7 +178,7 @@ module Puma
 
         retired = false
         stopping = false
-        stop_read, stop_write = Puma::Util.pipe
+        stop_read, stop_write = @mold_stop_pipe = Puma::Util.pipe
         Signal.trap "SIGURG" do
           retired = true
           stop_write.write_nonblock(".", exception: false)
@@ -234,6 +234,8 @@ module Puma
         end
 
         pid = fork do
+          @mold_stop_pipe&.each(&:close)
+
           new_worker = Worker.new index: idx,
                                   master: master,
                                   launcher: @launcher,

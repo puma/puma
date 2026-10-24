@@ -443,6 +443,50 @@ class TestIntegrationCluster < TestIntegration
     assert_empty phase1_pids & get_worker_pids(2)
   end
 
+  def test_mold_worker_refork_does_not_trigger_idle_timeout
+    cli_server "-w 1 test/rackup/hello.ru", config: <<~CONFIG
+      idle_timeout 30
+      mold_worker 1_000_000
+    CONFIG
+
+    get_worker_pids 0, 1
+    Process.kill :URG, @pid
+    get_worker_pids 1, 1
+
+    assert_equal "Hello World", read_body(connect)
+  end
+
+  def test_mold_worker_promotion_does_not_trigger_idle_timeout
+    cli_server "-w #{workers} test/rackup/hello.ru", config: <<~CONFIG
+      idle_timeout 1
+      mold_worker 1_000_000
+      after_mold_promotion { sleep 2 }
+    CONFIG
+
+    get_worker_pids 0
+    Process.kill :URG, @pid
+    get_worker_pids 1
+
+    assert_equal "Hello World", read_body(connect)
+  end
+
+  def test_mold_worker_refork_does_not_leak_file_descriptors
+    cli_server "-w 1", config: <<~CONFIG
+      mold_worker 1_000_000
+      app { |_| [200, {}, [Dir.children('/dev/fd').size.to_s]] }
+    CONFIG
+
+    get_worker_pids 0, 1
+    descriptors = read_body(connect).to_i
+
+    3.times do |phase|
+      Process.kill :URG, @pid
+      get_worker_pids phase + 1, 1
+
+      assert_equal descriptors, read_body(connect).to_i
+    end
+  end
+
   def test_mold_worker_ignores_mold_requests_for_threshold
     cli_server "-w #{workers} -t 1:1 test/rackup/hello.ru", config: <<~CONFIG
       worker_check_interval 0.5
@@ -468,6 +512,55 @@ class TestIntegrationCluster < TestIntegration
     Process.kill :KILL, phase1_pids.first
 
     get_worker_pids 1, 1
+    assert_equal "Hello World", read_body(connect)
+  end
+
+  def test_mold_worker_replaces_pending_workers_after_mold_dies
+    cli_server "-w #{workers} test/rackup/hello.ru", config: <<~CONFIG
+      master = Process.pid
+      mold_worker 1_000_000
+      before_worker_fork do
+        if Process.pid != master
+          puts "mold about to fork"
+          sleep
+        end
+      end
+    CONFIG
+
+    get_worker_pids 0
+    Process.kill :URG, @pid
+    wait_for_server_to_include "mold about to fork"
+    Process.kill :KILL, promoted_mold_pid
+    get_worker_pids 1
+
+    assert_equal "Hello World", read_body(connect)
+  end
+
+  def test_mold_worker_refork_waits_for_all_workers_after_worker_dies
+    boot_gate = tmp_path
+    cli_server "-w 3 test/rackup/hello.ru", config: <<~CONFIG
+      master = Process.pid
+      mold_worker 1_000_000
+      after_booted { puts "cluster ready" }
+      before_worker_boot do |index|
+        if Process.ppid != master && index == 1
+          puts "waiting for boot gate"
+          sleep 0.01 until File.exist? '#{boot_gate}'
+        end
+      end
+    CONFIG
+
+    get_worker_pids 0, 3
+    wait_for_server_to_include "cluster ready"
+    Process.kill :URG, @pid
+    first_worker = get_worker_pids(1, 1).first
+    wait_for_server_to_include "waiting for boot gate"
+    Process.kill :KILL, first_worker
+    get_worker_pids 1, 1
+    File.write boot_gate, ''
+    wait_for_server_to_include "cluster ready"
+
+    assert_equal 4, @server_log.scan(/booted in [.0-9]+s, phase: 1/).size
     assert_equal "Hello World", read_body(connect)
   end
 
