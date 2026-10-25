@@ -621,6 +621,97 @@ class TestIntegrationCluster < TestIntegration
     assert_equal '0', read_body(connect)
   end
 
+  def test_fork_worker_replaces_worker_zero_without_losing_pending_forks
+    paused = tmp_path
+    cli_server "-w 4 test/rackup/hello.ru", no_wait: true, config: <<~CONFIG
+      master = Process.pid
+      fork_worker 0
+      after_worker_fork do |index|
+        if Process.pid != master && index == 1 && !File.exist?('#{paused}')
+          File.write '#{paused}', ''
+          puts "Fork paused in \#{Process.pid}"
+          sleep
+        end
+      end
+    CONFIG
+
+    worker_zero = wait_for_server_to_match(/Fork paused in (\d+)/, 1).to_i
+    Process.kill :KILL, worker_zero
+
+    wait_for_server_to_match(/Worker 0 \(PID: (?!#{worker_zero}\))\d+\) booted/)
+    [1, 2, 3].each do |index|
+      booted = /Worker #{index} \(PID: \d+\) booted/
+      wait_for_server_to_match(booted) unless @server_log.match?(booted)
+    end
+    assert_equal "Hello World", read_body(connect)
+  end
+
+  def test_fork_worker_phased_restart_does_not_wait_for_check_interval
+    cli_server "-w 3 test/rackup/hello.ru", config: <<~CONFIG
+      fork_worker 0
+      preload_app! false
+      worker_check_interval 30
+    CONFIG
+
+    get_worker_pids 0, 3
+    Process.kill :USR1, @pid
+
+    get_worker_pids 1, 3, timeout: 3
+    assert_equal "Hello World", read_body(connect)
+  end
+
+  def test_fork_worker_coalesces_pending_reforks
+    boot_gate = tmp_path
+    cli_server "-w 3 #{set_pumactl_args} test/rackup/hello.ru", config: <<~CONFIG
+      fork_worker 0
+      after_booted do
+        puts "cluster ready"
+        sleep 0.01 until File.exist? '#{boot_gate}'
+      end
+      after_refork { puts "refork complete" }
+    CONFIG
+
+    get_worker_pids 0, 3
+    wait_for_server_to_include "cluster ready"
+    2.times { cli_pumactl "refork" }
+    File.write boot_gate, ''
+    get_worker_pids 1, 2
+    wait_for_server_to_include "refork complete" unless @server_log.include? "refork complete"
+
+    assert_equal [1], get_stats['worker_status'].map { |w| w['phase'] }.uniq
+    assert_equal "Hello World", read_body(connect)
+  end
+
+  def test_fork_worker_refork_waits_for_all_workers_after_worker_dies
+    boot_gate = tmp_path
+    File.write boot_gate, ''
+    cli_server "-w 4 test/rackup/hello.ru", config: <<~CONFIG
+      master = Process.pid
+      fork_worker 0
+      after_booted { puts "cluster ready" }
+      before_worker_boot do |index|
+        if Process.ppid != master && index == 2
+          puts "waiting for boot gate"
+          sleep 0.01 until File.exist? '#{boot_gate}'
+        end
+      end
+    CONFIG
+
+    get_worker_pids 0, 4
+    wait_for_server_to_include "cluster ready"
+    File.unlink boot_gate
+    Process.kill :URG, @pid
+    first_worker = get_worker_pids(1, 1).first
+    wait_for_server_to_include "waiting for boot gate"
+    Process.kill :KILL, first_worker
+    get_worker_pids 1, 1
+    File.write boot_gate, ''
+    wait_for_server_to_include "cluster ready"
+
+    assert_equal 4, @server_log.scan(/booted in [.0-9]+s, phase: 1/).size
+    assert_equal "Hello World", read_body(connect)
+  end
+
   def test_phased_restart_with_fork_worker_and_high_worker_count
     worker_count = 10
 

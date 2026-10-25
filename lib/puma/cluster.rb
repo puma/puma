@@ -219,6 +219,10 @@ module Puma
       t.map!(&:ping_timeout)
 
       @next_check = [t.min, @next_check].compact.min
+      if @options[:fork_worker] && @workers.any?(&:term?)
+        # Orphaned workers cannot wake the master through worker 0 as they exit.
+        @next_check = [@next_check, Time.now + 0.1].min
+      end
     end
 
     def worker(index, master)
@@ -319,7 +323,7 @@ module Puma
     # @version 5.0.0
     def fork_worker!
       if (worker = worker_at 0)
-        worker.phase += 1
+        worker.phase = @phase + 1
       end
       phased_restart(true)
     end
@@ -623,10 +627,12 @@ module Puma
         end
       end
 
+      fork_worker_exited = false
       @workers.reject! do |w|
         next w.term? if w.pid.nil?
 
         status = reap(w, reaped_children)
+        fork_worker_exited = true if status && @options[:fork_worker] && w.index == 0
         if status.is_a?(Process::Status)
           w.process_status = status
           @config.run_hooks(:after_worker_shutdown, w, @log_writer)
@@ -634,6 +640,7 @@ module Puma
         status
       end
 
+      clear_pending_workers if fork_worker_exited
       @promoted_mold = nil if @promoted_mold && reap(@promoted_mold, reaped_children)
       if @mold && reap(@mold, reaped_children)
         @mold = nil
