@@ -377,14 +377,14 @@ module Puma
     # @return [Boolean]
     #
     def illegal_header_key?(header_key)
-      !!(ILLEGAL_HEADER_KEY_REGEX =~ header_key.to_s)
+      ILLEGAL_HEADER_KEY_REGEX.match?(header_key.to_s)
     end
 
     # @param header_value [#to_s]
     # @return [Boolean]
     #
     def illegal_header_value?(header_value)
-      !!(ILLEGAL_HEADER_VALUE_REGEX =~ header_value.to_s)
+      ILLEGAL_HEADER_VALUE_REGEX.match?(header_value.to_s)
     end
 
     # Used in the lambda for env[ `Puma::Const::EARLY_HINTS` ]
@@ -419,7 +419,9 @@ module Puma
     private :fetch_status_code
 
     def request_has_close?(env)
-      conn = env.fetch(HTTP_CONNECTION, "").downcase
+      return false unless (conn = env[HTTP_CONNECTION])
+
+      conn = conn.downcase
       conn.include?(CLOSE) && conn.split(",").any? { |option| option.strip == CLOSE }
     end
     private :request_has_close?
@@ -462,7 +464,8 @@ module Puma
         end
       else
         resp_info[:allow_chunked] = false
-        resp_info[:keep_alive] = env.fetch(HTTP_CONNECTION, "").downcase == KEEP_ALIVE
+        conn = env[HTTP_CONNECTION]
+        resp_info[:keep_alive] = conn ? conn.downcase == KEEP_ALIVE : false
 
         # Same optimization as above for HTTP/1.1
         #
@@ -503,6 +506,11 @@ module Puma
           resp_info[:response_hijack] = vs
           next
         when BANNED_HEADER_KEY
+          next
+        end
+
+        if vs.is_a?(::String) && !vs.empty? && !vs.include?(NEWLINE)
+          io_buffer.append key, colon, vs, line_ending unless illegal_header_value?(vs)
           next
         end
 
