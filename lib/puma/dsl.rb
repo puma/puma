@@ -1663,6 +1663,22 @@ module Puma
       @options[:http_content_length_limit] = limit
     end
 
+    # Leave +rack.input+ unset for requests with no body, as Rack 3.1 allows,
+    # instead of setting it to an empty stream. Apps then need to check for
+    # +nil+ before reading it. Without this, an app that uses the empty stream
+    # under Rack 3.1 or later gets a deprecation warning, since leaving it unset
+    # will become the default in a future major version. Has no effect with
+    # Rack before 3.1, which requires +rack.input+.
+    #
+    # The default is +false+.
+    #
+    # @example
+    #   nil_rack_input_on_empty_body
+    #
+    def nil_rack_input_on_empty_body(enabled = true)
+      @options[:nil_rack_input_on_empty_body] = enabled
+    end
+
     # Supported http methods, which will replace `Puma::Const::SUPPORTED_HTTP_METHODS`.
     # The value of `:any` will allow all methods, otherwise, the value must be
     # an array of strings. Note that methods are all uppercase.

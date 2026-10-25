@@ -337,8 +337,10 @@ module Puma
     end
 
     def handle_servers
-      @env_set_http_version = Object.const_defined?(:Rack) && ::Rack.respond_to?(:release) &&
+      rack_before_3_1 = Object.const_defined?(:Rack) && ::Rack.respond_to?(:release) &&
         Gem::Version.new(::Rack.release) < Gem::Version.new('3.1.0')
+      @env_set_http_version = rack_before_3_1
+      @empty_rack_input = empty_rack_input(rack_before_3_1)
 
       begin
         check = @check
@@ -453,11 +455,23 @@ module Puma
       @events.fire :state, :done
     end
 
+    # Rack 3.1 made rack.input optional, earlier versions require it.
+    def empty_rack_input(rack_before_3_1)
+      if rack_before_3_1
+        Client::EmptyBody
+      elsif @options[:nil_rack_input_on_empty_body]
+        nil
+      else
+        Client::DeprecatedEmptyBody
+      end
+    end
+
     # :nodoc:
     def new_client(io, sock)
       client = Client.new(io, @binder.env(sock))
       client.listener = sock
       client.env_set_http_version = @env_set_http_version
+      client.empty_rack_input = @empty_rack_input
       client.http_content_length_limit = @http_content_length_limit
       client.supported_http_methods = @supported_http_methods
       client.allow_underscore_headers = @allow_underscore_headers
