@@ -297,10 +297,11 @@ module Puma
       @parser.finished? ? process_env_body : false
     end
 
-    def eagerly_finish
+    def eagerly_finish(timeout = 0)
       return true if @ready
-      while @to_io.wait_readable(0) # rubocop: disable Style/WhileUntilModifier
+      while @to_io.wait_readable(timeout) # rubocop: disable Style/WhileUntilModifier
         return true if try_to_finish
+        timeout = 0
       end
       false
     end
