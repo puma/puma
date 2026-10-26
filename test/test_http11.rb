@@ -339,4 +339,33 @@ class Http11ParserTest < TestIntegration
 
     assert_equal "Valid\tValue", req['HTTP_DUMMY']
   end
+
+  def test_execute_does_not_modify_frozen_input
+    parser = Puma::HttpParser.new
+    req = {}
+    http = "GET / HTTP/1.1\r\ncontent-type: text/plain\r\nx-custom_header: 1\r\n\r\n".freeze
+    original = http.bytes
+
+    parser.execute(req, http, 0)
+
+    assert parser.finished?
+    assert_equal "text/plain", req['CONTENT_TYPE']
+    assert_equal "1", req['HTTP_X_CUSTOM,HEADER']
+    assert_equal original, http.bytes
+  end
+
+  def test_execute_does_not_modify_shared_input_buffer
+    parser = Puma::HttpParser.new
+    req = {}
+    source = "GET / HTTP/1.1\r\nx-long-name: #{'v' * 4096}\r\n\r\n"
+    original = source.bytes
+    copy = source.dup # shares source's buffer until one of them is written to
+
+    parser.execute(req, copy, 0)
+
+    assert parser.finished?
+    assert_equal 'v' * 4096, req['HTTP_X_LONG_NAME']
+    assert_equal original, source.bytes
+    assert_equal original, copy.bytes
+  end
 end
