@@ -39,7 +39,7 @@ class TestPersistent < PumaTest
       [status, @headers, @body]
     end
 
-    opts = {min_thread: 1, max_threads: 1}
+    opts = {min_thread: 1, max_threads: 1, date_header: false}
     @server = Puma::Server.new @simple, nil, opts
     @bind_port = (@server.add_tcp_listener HOST, 0).addr[1]
     @server.run

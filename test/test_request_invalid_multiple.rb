@@ -54,6 +54,7 @@ class TestRequestInvalidMultiple < PumaTest
     options[:log_writer]  = Puma::LogWriter.strings
     options[:min_threads] = 1
     options[:max_threads] = 1
+    options[:date_header] = false
     @server = Puma::Server.new app, nil, options
     @bind_port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
@@ -73,6 +74,7 @@ class TestRequestInvalidMultiple < PumaTest
     options[:log_writer]  ||= Puma::LogWriter.strings
     options[:min_threads] = 1
     options[:max_threads] = 1
+    options[:date_header] = false
     @server = Puma::Server.new block || @app, nil, options
     @bind_port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run

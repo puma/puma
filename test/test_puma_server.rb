@@ -30,7 +30,7 @@ class TestPumaServer < PumaTest
 
     @log_writer = Puma::LogWriter.strings
     @events = Puma::Events.new
-    @server = Puma::Server.new @app, @events, {log_writer: @log_writer}
+    @server = Puma::Server.new @app, @events, {log_writer: @log_writer, date_header: false}
   end
 
   def teardown
@@ -40,6 +40,7 @@ class TestPumaServer < PumaTest
   def server_run(**options, &block)
     options[:log_writer]  ||= @log_writer
     options[:min_threads] ||= 1
+    options[:date_header] ||= false
     @server = Puma::Server.new block || @app, @events, options
     @bind_port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
@@ -692,7 +693,7 @@ class TestPumaServer < PumaTest
   end
 
   def test_no_timeout_after_data_received_no_queue
-    @server = Puma::Server.new @app, @events, {log_writer: @log_writer, queue_requests: false}
+    @server = Puma::Server.new @app, @events, {log_writer: @log_writer, queue_requests: false, date_header: false}
     test_no_timeout_after_data_received
   end
 
@@ -1060,6 +1061,26 @@ class TestPumaServer < PumaTest
 
     assert_match %r{\AHTTP/1\.1 200 OK}, response
     assert_equal 0, calls
+  end
+
+  def test_origin_server_sends_date_header
+    server_run(date_header: true) { [200, {}, [""]] }
+
+    response = send_http_read_response "GET / HTTP/1.1\r\nHost: example.com\r\nConnection: close\r\n\r\n"
+
+    date = response[/^date: (.+)\r\n/, 1]
+    assert date, "Origin server MUST send a Date header in 2xx responses (RFC 9110 §6.6.1)"
+    assert_equal Time.httpdate(date).httpdate, date, "Date MUST be in IMF-fixdate format (RFC 9110 §5.6.7)"
+    assert_in_delta Time.now.to_i, Time.httpdate(date).to_i, 2, "Date MUST be the current time (RFC 9110 §6.6.1)"
+  end
+
+  def test_origin_server_does_not_duplicate_app_date_header
+    server_run(date_header: true) { [200, {'Date' => 'Sun, 06 Nov 1994 08:49:37 GMT'}, [""]] }
+
+    response = send_http_read_response "GET / HTTP/1.1\r\nHost: example.com\r\nConnection: close\r\n\r\n"
+
+    assert_equal 1, response.scan(/^date:/i).size, "Origin server MUST NOT add a second Date header when the app sends one (RFC 9110 §6.6.1)"
+    assert_includes response, "date: Sun, 06 Nov 1994 08:49:37 GMT\r\n"
   end
 
   def test_chunked_request
@@ -2080,7 +2101,7 @@ class TestPumaServer < PumaTest
   def test_custom_io_selector
     backend = NIO::Selector.backends.first
 
-    @server = Puma::Server.new @app, @events, {log_writer: @log_writer, :io_selector_backend => backend}
+    @server = Puma::Server.new @app, @events, {log_writer: @log_writer, :io_selector_backend => backend, date_header: false}
     @server.run
 
     selector = @server.instance_variable_get(:@reactor).instance_variable_get(:@selector)

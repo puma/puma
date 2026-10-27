@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "time"
+
 module Puma
   #———————————————————————— DO NOT USE — this class is for internal use only ———
 
@@ -484,6 +486,7 @@ module Puma
       resp_info[:keep_alive] &&= force_keep_alive
 
       resp_info[:response_hijack] = nil
+      has_date = false
 
       headers.each do |k, vs|
         next if illegal_header_key?(k)
@@ -502,6 +505,8 @@ module Puma
         when HIJACK
           resp_info[:response_hijack] = vs
           next
+        when DATE
+          has_date = true
         when BANNED_HEADER_KEY
           next
         end
@@ -522,6 +527,9 @@ module Puma
           io_buffer.append key, colon, line_ending
         end
       end
+
+      # RFC 9110 §6.6.1: an origin server with a clock must send a Date header
+      io_buffer.append "date: ", Time.now.httpdate, line_ending if @date_header && !has_date
 
       # HTTP/1.1 & 1.0 assume different defaults:
       # - HTTP 1.0 assumes the connection will be closed if not specified
