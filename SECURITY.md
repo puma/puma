@@ -18,7 +18,7 @@ This determines what becomes a security advisory in Puma. We may make separate h
 
 ### Who do we defend against?
 
-1. **Anyone who can reach the app port** (the Unix, TCP or SSL bind that Puma serves the Rack app over). They can send any bytes, split up their data however they like, at any rate, with as many requests as they like on one connection or many. Their data is untrusted after in reaches your app. Puma must build the Rack `env` accurately and according to the Rack spec, and attacker controlled values in your return value of `app.call` must not break the HTTP response.
+1. **Anyone who can reach the app port** (the Unix, TCP or SSL bind that Puma serves the Rack app over). They can send any bytes, split up their data however they like, at any rate, with as many requests as they like on one connection or many. Their data is untrusted after it reaches your app. Puma must hold up its side of the Rack spec: build the Rack `env` accurately, call `close` on every response body, and keep attacker controlled values in your return value of `app.call` from breaking the HTTP response. If an app that relies on the Rack spec leaks data between requests or users because Puma didn't follow it, that's in scope.
 2. **Anyone who can watch or change encrypted network traffic between the `pumactl` utility and a Puma control server**. 
 3. **Anyone who can reach Puma's control server without the control token.**
 
