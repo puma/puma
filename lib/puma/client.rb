@@ -348,11 +348,14 @@ module Puma
         # protocol is bad
         text = request_line[/[^ ]*\z/]
         raise HttpParserError, "Invalid HTTP format, parsing fails. Bad protocol #{text}"
-      elsif !headers.empty?
+      elsif headers && !headers.empty?
         # headers are bad
         hdrs = headers.split("\r\n").map { |h| h.gsub "\n", '\n'}.join "\n"
         raise HttpParserError, "Invalid HTTP format, parsing fails. Bad headers\n#{hdrs}"
       end
+
+      # nothing more specific to report, e.g. the request line doesn't end with CRLF
+      raise e
     end
 
     # processes the `env` and the request body
