@@ -2598,4 +2598,23 @@ class TestPumaServer < PumaTest
     assert_equal 5, @server.max_threads
     assert_equal 0, @server.min_threads
   end
+
+  def test_http10_keep_alive_closes_when_body_length_is_unknown
+    body = Object.new
+    body.define_singleton_method(:each) { |&blk| blk.call "hello" }
+    server_run { |env| [200, {}, body] }
+    socket = send_http "GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n"
+    response = socket.read_response
+    assert_equal "HTTP/1.0 200 OK\r\n\r\nhello", response
+    assert socket.wait_readable(3), "connection was kept alive after a body of unknown length"
+    assert_raises(EOFError) { socket.sysread 1 }
+  end
+
+  def test_http10_keep_alive_is_kept_when_body_length_is_known
+    server_run { |env| [200, {}, ["hello"]] }
+    socket = send_http "GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n"
+    assert_equal "HTTP/1.0 200 OK\r\nconnection: keep-alive\r\ncontent-length: 5\r\n\r\nhello", socket.read_response
+    assert_equal "HTTP/1.0 200 OK\r\nconnection: keep-alive\r\ncontent-length: 5\r\n\r\nhello",
+      socket.req_write("GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n").read_response
+  end
 end
