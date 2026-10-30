@@ -81,6 +81,4 @@ AI reports are welcome.
 
 Rejected out-scope reports can be filed as public issues or PRs, but we will probably do that for you.
 
-If you include the following you will be more likely to help us:
-
-1. Puma, Ruby, and OS versions, the config, a runnable reproduction, and for smuggling the proxy name, version and config.
+You'll help us most if you include Puma, Ruby, and OS versions, the config, a runnable reproduction, and, for smuggling, the proxy name, version and config.
