@@ -15,7 +15,7 @@ class TestPumaUnixSocket < PumaTest
 
   def server_unix(type)
     @tmp_socket_path = type == :unix ? tmp_path('.sock') : "@TestPumaUnixSocket"
-    @server = Puma::Server.new App
+    @server = Puma::Server.new App, nil, {date_header: false}
     @server.add_unix_listener @tmp_socket_path
     @server.run
   end

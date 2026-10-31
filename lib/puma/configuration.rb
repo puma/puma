@@ -148,6 +148,7 @@ module Puma
       # Number of seconds to wait until the next request before shutting down.
       idle_timeout: nil,
       io_selector_backend: :auto,
+      date_header: true,
       log_requests: false,
       logger: STDOUT,
       # Limits how many requests a keep alive connection can make.

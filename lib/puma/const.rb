@@ -271,6 +271,7 @@ module Puma
 
     HIJACK_P = "rack.hijack?"
     HIJACK = "rack.hijack"
+    DATE = "date"
     HIJACK_IO = "rack.hijack_io"
 
     EARLY_HINTS = "rack.early_hints"

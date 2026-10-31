@@ -1612,6 +1612,18 @@ module Puma
       @options[:allow_underscore_headers] = allowed
     end
 
+    # Add a +Date+ response header (RFC 9110 §6.6.1) when the application
+    # does not set one.
+    #
+    # The default is +true+.
+    #
+    # @example
+    #   date_header false
+    #
+    def date_header(enabled = true)
+      @options[:date_header] = enabled
+    end
+
     # Specify the backend for the IO selector.
     #
     # Provided values will be passed directly to +NIO::Selector.new+, with the
