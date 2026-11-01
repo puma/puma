@@ -331,8 +331,14 @@ module Puma
         false
       end
     rescue StandardError => e
-      client_error(e, client)
-      close_client_safely(client)
+      begin
+        client_error(e, client)
+      rescue StandardError => handler_error
+        # e.g. from lowlevel_error_handler; escaping would make the reactor retry this client forever
+        @log_writer.unknown_error handler_error, nil, "Reactor"
+      ensure
+        close_client_safely(client)
+      end
       true
     end
 

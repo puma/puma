@@ -2391,6 +2391,24 @@ class TestPumaServer < PumaTest
     assert_equal "something wrong happened", body
   end
 
+  # A lowlevel_error_handler that raises while the reactor handles a client
+  # error must not leave the client in the reactor, retried forever (#4065)
+  def test_lowlevel_error_handler_raising_in_reactor
+    handler = ->(_error) { raise "error tracker unavailable" }
+    server_run(lowlevel_error_handler: handler) { [200, {}, ["Hello"]] }
+
+    socket = new_socket
+    socket << "GET / HTTP/1.1\r\n"
+    sleep 0.5 # let the incomplete request go to the reactor
+    socket << "Host: test.com\r\nBad Header\r\n\r\n"
+
+    # EOFError - Ubuntu, Errno::ECONNRESET - macOS, Errno::ECONNABORTED - windows
+    assert_raises(EOFError, Errno::ECONNRESET, Errno::ECONNABORTED) do
+      socket.read_response timeout: 5
+    end
+    assert_includes @log_writer.stderr.string, "error tracker unavailable"
+  end
+
   def test_cl_empty_string
     server_run do |env|
       [200, {}, [""]]
