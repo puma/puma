@@ -2561,6 +2561,20 @@ class TestPumaServer < PumaTest
     assert_equal 3, @pool&.spawned
   end
 
+  def test_plugin_control_update_thread_pool_min_max_preserves_defaults
+    server_run(min_threads: 1, max_threads: 5)
+    control = Puma::ServerPluginControl.new(@server)
+
+    control.update_thread_pool_min_max(min: 2, max: 8)
+    control.update_thread_pool_min_max
+
+    assert_empty @log_writer.stdout.string
+    assert_equal 2, @server.min_threads
+    assert_equal 2, @pool.min
+    assert_equal 8, @server.max_threads
+    assert_equal 8, @pool.max
+  end
+
   def test_update_thread_pool_min_max_warns_if_min_greater_than_max
     server_run(min_threads: 1, max_threads: 1, auto_trim_time: 1)
 
