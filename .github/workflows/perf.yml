@@ -1,0 +1,55 @@
+name: Perf
+
+# Duel's performance regression guards, run by Duel's reusable workflow
+# (see Duel's docs/ci.md), which this one calls with what .duel.rb sets
+# that it needs: it compares a pull request with the branch it targets,
+# a merge queue's group with the queue's base, a push with what was there
+# before (or as c.push_base in .duel.rb says, the last commit Duel
+# passed), and on a schedule, the last release (slow creep).
+on:
+  pull_request:
+  merge_group: # (a merge queue's)
+  push:
+    branches: [main] # (and any other branch to guard, a stable one, say)
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+# A pull request's newer push cancels its run, if that's still going, as
+# only its newest commit's result counts. Every other run (a push's, say)
+# runs to the end, so that each push is compared.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions: {}
+
+jobs:
+  # Duel's job, which runs the branch's code, so it only reads.
+  duel:
+    uses: sferik/duel-ruby/.github/workflows/duel.yml@14e3fd0c230d19872715e4e3ecd30955825f1233 # v0.3.0
+    permissions:
+      contents: read
+      pull-requests: read # for the pull request's labels (see c.accept_label)
+    # (And with setup:, shell commands that set up whatever else your
+    # tests need: packages, services.)
+    with:
+      ruby-version: "4.0" # the newest Ruby, which those who care most about speed run
+
+  # For a push, the jobs that comment on the commit, mark it passed, or
+  # keep the badge, as the Duel job says, which run none of the code.
+  # They write, so they're a call of their own, and run only for a push:
+  # GitHub checks what each job of a workflow it calls asks for against
+  # what's granted, run or not, so the Duel job's call grants reading
+  # alone.
+  push:
+    needs: duel
+    if: ${{ !cancelled() && github.event_name == 'push' }}
+    uses: sferik/duel-ruby/.github/workflows/duel-push.yml@14e3fd0c230d19872715e4e3ecd30955825f1233 # v0.3.0
+    permissions:
+      contents: write # to comment on the commit, move the passed branch, and the badge's
+    with:
+      comment: ${{ needs.duel.outputs.comment }}
+      status: ${{ needs.duel.outputs.status }}
+      passed: ${{ needs.duel.outputs.passed }}
+      result: ${{ needs.duel.result }}
