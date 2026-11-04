@@ -25,6 +25,8 @@ module Puma
         @engine = engine
         @peercert = nil
         @reuse = nil
+        @write_buffer = +''
+        @write_owed = 0
       end
 
       # @!attribute [r] to_io
@@ -68,9 +70,8 @@ module Puma
 
           return output if output
 
-          while neg_data = @engine.extract
-            @socket.write neg_data
-          end
+          queue_ciphertext
+          flush_write_buffer
         end
       end
 
@@ -111,9 +112,8 @@ module Puma
 
           return output if output
 
-          while neg_data = @engine.extract
-            @socket.write neg_data
-          end
+          queue_ciphertext
+          flush_write_buffer_nonblock
         end
       end
 
@@ -122,15 +122,12 @@ module Puma
 
         data_size = data.bytesize
         need = data_size
+        @write_owed = 0
 
         while true
           wrote = @engine.write data
-
-          enc_wr = +''
-          while (enc = @engine.extract)
-            enc_wr << enc
-          end
-          @socket.write enc_wr unless enc_wr.empty?
+          queue_ciphertext
+          flush_write_buffer
 
           need -= wrote
 
@@ -143,21 +140,25 @@ module Puma
       alias_method :syswrite, :write
       alias_method :<<, :write
 
-      # This is a temporary fix to deal with websockets code using
-      # write_nonblock.
+      # As with SSL_write, retry with the same data after IO::EAGAINWaitWritable
+      def write_nonblock(data, exception: true)
+        if @write_owed == 0 && !data.empty?
+          @write_owed = @engine.write data
+          queue_ciphertext
+        end
 
-      # The problem with implementing it properly
-      # is that it means we'd have to have the ability to rewind
-      # an engine because after we write+extract, the socket
-      # write_nonblock call might raise an exception and later
-      # code would pass the same data in, but the engine would think
-      # it had already written the data in.
-      #
-      # So for the time being (and since write blocking is quite rare),
-      # go ahead and actually block in write_nonblock.
-      #
-      def write_nonblock(data, *_)
-        write data
+        unless flush_write_buffer_nonblock
+          raise IO::EAGAINWaitWritable if exception
+          return :wait_writable
+        end
+
+        wrote = @write_owed
+        @write_owed = 0
+        wrote
+      end
+
+      def wait_writable(timeout = nil)
+        @socket.wait_writable timeout
       end
 
       def flush
@@ -166,17 +167,40 @@ module Puma
 
       def close
         begin
-          unless @engine.shutdown
-            while alert_data = @engine.extract
-              @socket.write alert_data
-            end
-          end
+          queue_ciphertext unless @engine.shutdown
+          flush_write_buffer_nonblock
         rescue IOError, SystemCallError
           # nothing
         ensure
           @socket.close
         end
       end
+
+      def queue_ciphertext
+        while (enc = @engine.extract)
+          @write_buffer << enc
+        end
+      end
+      private :queue_ciphertext
+
+      def flush_write_buffer
+        return if @write_buffer.empty?
+
+        @socket.write @write_buffer
+        @write_buffer = +''
+      end
+      private :flush_write_buffer
+
+      def flush_write_buffer_nonblock
+        until @write_buffer.empty?
+          n = @socket.write_nonblock @write_buffer, exception: false
+          return false if n == :wait_writable
+
+          @write_buffer = @write_buffer.byteslice(n..-1)
+        end
+        true
+      end
+      private :flush_write_buffer_nonblock
 
       # @!attribute [r] peeraddr
       def peeraddr
