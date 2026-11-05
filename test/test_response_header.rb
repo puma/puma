@@ -185,4 +185,18 @@ class TestResponseHeader < PumaTest
     resp = "HTTP/1.1 200 OK\r\nset-cookie: z=1\r\nset-cookie: a=2\r\ncontent-length: 5\r\n\r\n"
     assert_includes data, resp
   end
+
+  def test_single_line_and_multiline_headers
+    headers = {
+      'x-custom-single' => 'single-value',
+      'x-custom-multi' => "val1\nval2",
+      'x-custom-empty' => ''
+    }
+    server_run app: ->(env) { [200, headers, ['Hello']] }
+    data = send_http_and_read "GET / HTTP/1.1\r\nHost: test.com\r\n\r\n"
+
+    assert_includes data, "x-custom-single: single-value\r\n"
+    assert_includes data, "x-custom-multi: val1\r\nx-custom-multi: val2\r\n"
+    assert_includes data, "x-custom-empty: \r\n"
+  end
 end
