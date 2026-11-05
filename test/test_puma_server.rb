@@ -1746,6 +1746,26 @@ class TestPumaServer < PumaTest
     assert_equal 'fd00::1', remote_addr
   end
 
+  def test_proxy_protocol_unknown_uses_the_socket_address
+    server_run(remote_address: :proxy_protocol, remote_address_proxy_protocol: :v1) do |env|
+      [200, {}, [env["REMOTE_ADDR"]]]
+    end
+
+    ["PROXY UNKNOWN\r\n", "PROXY UNKNOWN 1.2.3.4 5.6.7.8 10000 80\r\n"].each do |proxy_line|
+      response = send_http_read_response "#{proxy_line}GET / HTTP/1.0\r\n\r\n"
+
+      assert_equal '200', response.status[/\d{3}/], proxy_line
+      assert_equal @host, response.body, proxy_line
+    end
+
+    socket = new_socket
+    socket << "PROXY UNKNOWN\r\n"
+    sleep 0.15
+    socket << "GET / HTTP/1.0\r\n\r\n"
+
+    assert_equal @host, socket.read_body
+  end
+
   def test_proxy_protocol_rejects_line_without_crlf_at_max_length
     server_run(remote_address: :proxy_protocol, remote_address_proxy_protocol: :v1) do
       [200, {}, ["Hello"]]
