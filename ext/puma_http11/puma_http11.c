@@ -31,6 +31,17 @@ static VALUE global_query_string;
 static VALUE global_server_protocol;
 static VALUE global_request_path;
 
+static VALUE global_method_get;
+static VALUE global_method_post;
+static VALUE global_method_head;
+static VALUE global_method_put;
+static VALUE global_method_delete;
+static VALUE global_method_options;
+static VALUE global_method_patch;
+
+static VALUE global_http_11;
+static VALUE global_http_10;
+
 /** Defines common length and error messages for input length validation. */
 #define QUOTE(s) #s
 #define EXPAND_MAX_LENGTH_VALUE(s) QUOTE(s)
@@ -203,7 +214,29 @@ static void request_method(puma_parser* hp, const char *at, size_t length)
 {
   VALUE val = Qnil;
 
-  val = rb_str_new(at, length);
+  switch (length) {
+    case 3:
+      if (memcmp(at, "GET", 3) == 0) val = global_method_get;
+      else if (memcmp(at, "PUT", 3) == 0) val = global_method_put;
+      break;
+    case 4:
+      if (memcmp(at, "POST", 4) == 0) val = global_method_post;
+      else if (memcmp(at, "HEAD", 4) == 0) val = global_method_head;
+      break;
+    case 5:
+      if (memcmp(at, "PATCH", 5) == 0) val = global_method_patch;
+      break;
+    case 6:
+      if (memcmp(at, "DELETE", 6) == 0) val = global_method_delete;
+      break;
+    case 7:
+      if (memcmp(at, "OPTIONS", 7) == 0) val = global_method_options;
+      break;
+  }
+
+  if (val == Qnil) {
+    val = rb_str_new(at, length);
+  }
   rb_hash_aset(hp->request, global_request_method, val);
 }
 
@@ -249,7 +282,16 @@ static void query_string(puma_parser* hp, const char *at, size_t length)
 
 static void server_protocol(puma_parser* hp, const char *at, size_t length)
 {
-  VALUE val = rb_str_new(at, length);
+  VALUE val = Qnil;
+
+  if (length == 8) {
+    if (memcmp(at, "HTTP/1.1", 8) == 0) val = global_http_11;
+    else if (memcmp(at, "HTTP/1.0", 8) == 0) val = global_http_10;
+  }
+
+  if (val == Qnil) {
+    val = rb_str_new(at, length);
+  }
   rb_hash_aset(hp->request, global_server_protocol, val);
 }
 
@@ -500,6 +542,17 @@ RUBY_FUNC_EXPORTED void Init_puma_http11(void)
   DEF_GLOBAL(&global_query_string, "QUERY_STRING");
   DEF_GLOBAL(&global_server_protocol, "SERVER_PROTOCOL");
   DEF_GLOBAL(&global_request_path, "REQUEST_PATH");
+
+  DEF_GLOBAL(&global_method_get, "GET");
+  DEF_GLOBAL(&global_method_post, "POST");
+  DEF_GLOBAL(&global_method_head, "HEAD");
+  DEF_GLOBAL(&global_method_put, "PUT");
+  DEF_GLOBAL(&global_method_delete, "DELETE");
+  DEF_GLOBAL(&global_method_options, "OPTIONS");
+  DEF_GLOBAL(&global_method_patch, "PATCH");
+
+  DEF_GLOBAL(&global_http_11, "HTTP/1.1");
+  DEF_GLOBAL(&global_http_10, "HTTP/1.0");
 
   rb_global_variable(&eHttpParserError);
   eHttpParserError = rb_define_class_under(mPuma, "HttpParserError", rb_eStandardError);

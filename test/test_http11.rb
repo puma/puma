@@ -339,4 +339,18 @@ class Http11ParserTest < TestIntegration
 
     assert_equal "Valid\tValue", req['HTTP_DUMMY']
   end
+
+  def test_interned_method_and_protocol
+    skip_unless :mri
+    parser = Puma::HttpParser.new
+    req1 = {}
+    req2 = {}
+    parser.execute(req1, "GET / HTTP/1.1\r\n\r\n", 0)
+    parser.reset
+    parser.execute(req2, "GET / HTTP/1.1\r\n\r\n", 0)
+
+    assert_same req1['REQUEST_METHOD'], req2['REQUEST_METHOD']
+    assert_same req1['SERVER_PROTOCOL'], req2['SERVER_PROTOCOL']
+    refute_predicate req1['REQUEST_PATH'], :frozen?
+  end
 end
