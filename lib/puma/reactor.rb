@@ -33,7 +33,13 @@ module Puma
 
       @selector = ::NIO::Selector.new(NIO::Selector.backends.delete(backend))
       @input = Queue.new
-      @timeouts = []
+      @timeouts = {}
+      @early_timeouts = {}
+      @earliest = nil
+      @early_earliest = nil
+      @last_timeout_at = 0.0
+      @early_last_timeout_at = 0.0
+      @needs_early_sort = false
       @block = block
       @reactor_size = 0
       @reactor_max = 0
@@ -79,21 +85,30 @@ module Puma
         until @input.closed? && @input.empty?
           # Wakeup any registered object that receives incoming data.
           # Block until the earliest timeout or Selector#wakeup is called.
-          timeout = (earliest = @timeouts.first) && earliest.timeout
+          timeout = next_timeout
           @selector.select(timeout) do |monitor|
             wakeup!(monitor.value)
           end
 
           # Wakeup all objects that timed out.
-          timed_out = @timeouts.take_while { |client| client.timeout == 0 }
-          timed_out.each { |client| wakeup!(client) }
+          @early_earliest ||= @early_timeouts.each_key { |k| break k } unless @early_timeouts.empty?
+          expire_timeouts(@early_timeouts) if @early_earliest && @early_earliest.timeout == 0
+          @earliest ||= @timeouts.each_key { |k| break k } unless @timeouts.empty?
+          expire_timeouts(@timeouts) if @earliest && @earliest.timeout == 0
 
           unless @input.empty?
             until @input.empty?
               client = @input.pop
               register(client) if client.io_ok?
             end
-            @timeouts.sort_by!(&:timeout_at)
+            if @needs_early_sort
+              sorted = @early_timeouts.keys.sort_by!(&:timeout_at)
+              @early_timeouts.clear
+              sorted.each { |c| @early_timeouts[c] = true }
+              @early_earliest = sorted.first
+              @early_last_timeout_at = sorted.last&.timeout_at || 0.0
+              @needs_early_sort = false
+            end
           end
         end
       rescue StandardError => e
@@ -104,8 +119,35 @@ module Puma
       end
 
       # Wakeup all remaining objects on shutdown.
-      @timeouts.each(&@block)
+      @early_timeouts.each_key(&@block)
+      @timeouts.each_key(&@block)
       @selector.close
+    end
+
+    def next_timeout
+      @earliest ||= @timeouts.each_key { |k| break k } unless @timeouts.empty?
+      @early_earliest ||= @early_timeouts.each_key { |k| break k } unless @early_timeouts.empty?
+      t1 = @earliest&.timeout
+      t2 = @early_earliest&.timeout
+      if t1 && t2
+        t1 < t2 ? t1 : t2
+      else
+        t1 || t2
+      end
+    end
+
+    def expire_timeouts(map)
+      timed_out = []
+      map.each_key do |client|
+        break unless client.timeout == 0
+        timed_out << client
+      end
+      timed_out.each { |client| wakeup!(client) }
+      if map.equal?(@timeouts)
+        @earliest = (@timeouts.each_key { |k| break k } unless @timeouts.empty?)
+      else
+        @early_earliest = (@early_timeouts.each_key { |k| break k } unless @early_timeouts.empty?)
+      end
     end
 
     # Start monitoring the object.
@@ -113,7 +155,22 @@ module Puma
       @selector.register(client.to_io, :r).value = client
       @reactor_size += 1
       @reactor_max = @reactor_size if @reactor_max < @reactor_size
-      @timeouts << client
+      t_at = client.timeout_at
+      if @timeouts.empty? || t_at >= @last_timeout_at
+        @earliest = client if @timeouts.empty?
+        @last_timeout_at = t_at
+        @timeouts[client] = true
+      else
+        if @early_timeouts.empty?
+          @early_earliest = client
+          @early_last_timeout_at = t_at
+        elsif t_at < @early_last_timeout_at
+          @needs_early_sort = true
+        else
+          @early_last_timeout_at = t_at
+        end
+        @early_timeouts[client] = true
+      end
     rescue ArgumentError
       # unreadable clients raise error when processed by NIO
     end
@@ -124,7 +181,11 @@ module Puma
       if @block.call client
         @selector.deregister client.to_io
         @reactor_size -= 1
-        @timeouts.delete client
+        if @timeouts.delete client
+          @earliest = nil if @earliest.equal?(client)
+        elsif @early_timeouts.delete client
+          @early_earliest = nil if @early_earliest.equal?(client)
+        end
       end
     end
   end
