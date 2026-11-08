@@ -7,7 +7,6 @@ require_relative 'server_plugin_control'
 
 module Puma
 
-  # Add `Thread#puma_server` and `Thread#puma_server=`
   Thread.attr_accessor(:puma_server)
 
   # Internal Docs for A simple thread pool management object.

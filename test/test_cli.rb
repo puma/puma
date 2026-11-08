@@ -144,6 +144,7 @@ class TestCLI < PumaTest
 
   def test_control_for_unix
     skip_unless :unix
+
     url = "unix://#{@tmp_path}"
 
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
@@ -167,6 +168,7 @@ class TestCLI < PumaTest
 
   def test_control_stop
     skip_unless :unix
+
     url = "unix://#{@tmp_path}"
 
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
@@ -216,6 +218,7 @@ class TestCLI < PumaTest
 
   def test_control_thread_backtraces
     skip_unless :unix
+
     url = "unix://#{@tmp_path}"
 
     cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
@@ -272,6 +275,7 @@ class TestCLI < PumaTest
 
   def test_state_file_callback_filtering
     skip_unless :fork
+
     cli = Puma::CLI.new [ "--config", "test/config/state_file_testing_config.rb",
                           "--state", @tmp_path ]
     cli.launcher.write_state
@@ -330,6 +334,20 @@ class TestCLI < PumaTest
     $LOAD_PATH.shift
     assert_equal 'baz/qux', $LOAD_PATH[0]
     $LOAD_PATH.shift
+  end
+
+  def test_mold_worker
+    cli = Puma::CLI.new ['--mold-worker']
+    conf = cli.instance_variable_get(:@conf)
+
+    assert_equal [1000], conf.options[:mold_worker]
+  end
+
+  def test_mold_worker_thresholds
+    cli = Puma::CLI.new ['--mold-worker=400,800']
+    conf = cli.instance_variable_get(:@conf)
+
+    assert_equal [400, 800], conf.options[:mold_worker]
   end
 
   def test_extra_runtime_dependencies

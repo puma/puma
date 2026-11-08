@@ -108,6 +108,7 @@ module Puma
       @io_selector_backend       = @options[:io_selector_backend]
       @http_content_length_limit = @options[:http_content_length_limit]
       @http_parser               = @options[:http_parser] || default_http_parser
+      @continue_callback         = @options[:continue_callback]
       @allow_underscore_headers  = @options.fetch(:allow_underscore_headers, true)
       @cluster_accept_loop_delay = ClusterAcceptLoopDelay.new(
         workers: @options[:workers],
@@ -401,6 +402,9 @@ module Puma
                     end
                   else
                     pool.wait_until_not_full
+
+                    # A stop may have arrived while waiting for a thread
+                    break if check.wait_readable(0) && handle_check
                   end
                 end
 
@@ -468,6 +472,7 @@ module Puma
       client.http_content_length_limit = @http_content_length_limit
       client.supported_http_methods = @supported_http_methods
       client.allow_underscore_headers = @allow_underscore_headers
+      client.continue_callback = @continue_callback
       client
     end
 
@@ -609,6 +614,13 @@ module Puma
       when HttpParserError501
         response_to_error(client, requests, e, 501)
         @log_writer.parse_error e, client
+      when ContinueRejected
+        status, headers, res_body = e.response
+        begin
+          prepare_response(status, headers, res_body, requests, client)
+        ensure
+          res_body.close if res_body.respond_to? :close
+        end
       else
         response_to_error(client, requests, e, 500)
         @log_writer.unknown_error e, nil, "Read"

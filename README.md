@@ -28,7 +28,7 @@ $ puma
 ```
 
 Without arguments, puma will look for a rackup (.ru) file in
-working directory called `config.ru`.
+the working directory called `config.ru`.
 
 ## SSL Connection Support
 
@@ -171,7 +171,7 @@ after_worker_shutdown do |worker_handle|
 end
 ```
 
-In addition, there is an `before_refork` and `after_refork` hooks which are used only in [`fork_worker` mode](docs/fork_worker.md),
+In addition, there are `before_refork` and `after_refork` hooks which are used only in [`fork_worker` mode](docs/fork_worker.md),
 when the worker 0 child process forks a grandchild worker:
 
 ```ruby
@@ -257,6 +257,8 @@ Bind Puma to a socket with the `-b` (or `--bind`) flag:
 ```
 $ puma -b tcp://127.0.0.1:9292
 ```
+
+When using a TCP socket on Linux, Puma will automatically skip requests whose connection has closed by the time it's taken from the queue. If you'd like to avoid wasting time on connections that are closing after your app starts handling them, you can call `env["puma.connection_closed?"]` at any time during the lifecycle of a request. A `false` result does not guarantee that the connection will remain open. Puma cannot check this for you during a request: it is waiting for your app to return a response.
 
 To use a UNIX Socket instead of TCP:
 
@@ -392,7 +394,7 @@ Puma has a built-in status and control app that can be used to query and control
 $ puma --control-url tcp://127.0.0.1:9293 --control-token foo
 ```
 
-Puma will start the control server on localhost port 9293. All requests to the control server will need to include control token (in this case, `token=foo`) as a query parameter. This allows for simple authentication. Check out `Puma::App::Status` or [status.rb](https://github.com/puma/puma/blob/main/lib/puma/app/status.rb) to see what the status app has available.
+Puma will start the control server on localhost port 9293. All requests to the control server will need to include a control token (in this case, `token=foo`) as a query parameter. This allows for simple authentication. Check out `Puma::App::Status` or [status.rb](https://github.com/puma/puma/blob/main/lib/puma/app/status.rb) to see what the status app has available.
 
 You can also interact with the control server via `pumactl`. This command will restart Puma:
 

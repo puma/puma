@@ -99,11 +99,11 @@ jobs:
       - name: Compile Puma without SSL support
         if: matrix.no-ssl == ' no SSL'
         shell: bash
-        run: echo 'PUMA_DISABLE_SSL=true' >> $GITHUB_ENV
+        run: echo 'PUMA_DISABLE_SSL=true' >> "$GITHUB_ENV"
 
       - name: Set Rack version, see Gemfile
         shell: bash
-        run: echo 'PUMA_CI_RACK=${{ matrix.rack-v }}' >> $GITHUB_ENV
+        run: echo 'PUMA_CI_RACK=${{ matrix.rack-v }}' >> "$GITHUB_ENV"
 
       - name: load ruby
         uses: ruby/setup-ruby-pkgs@v1
@@ -125,15 +125,15 @@ jobs:
         if: |
           !(contains(matrix.os, 'ubuntu') && contains(matrix.os, 'arm'))
         shell: bash
-        run: echo 'PUMA_MAKE_WARNINGS_INTO_ERRORS=true' >> $GITHUB_ENV
+        run: echo 'PUMA_MAKE_WARNINGS_INTO_ERRORS=true' >> "$GITHUB_ENV"
 
       - name: compile
-        run:  bundle exec rake compile
+        run: bundle exec rake compile
 
       - name: Use yjit
         if: matrix.yjit == ' yjit'
         shell: bash
-        run: echo 'RUBYOPT=--yjit' >> $GITHUB_ENV
+        run: echo 'RUBYOPT=--yjit' >> "$GITHUB_ENV"
 
       - name: test
         timeout-minutes: 10
@@ -159,17 +159,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # tto - test timeout
-          - { tto: 8 , os: ubuntu-22.04  , ruby: jruby }
-          - { tto: 8 , os: ubuntu-22.04  , ruby: jruby, no-ssl: ' no SSL' }
-          - { tto: 8 , os: ubuntu-24.04  , ruby: jruby-head, allow-failure: false }
-          - { tto: 8 , os: ubuntu-22.04  , ruby: truffleruby, allow-failure: false } # Until https://github.com/oracle/truffleruby/issues/2700 is solved
-          - { tto: 8 , os: ubuntu-22.04  , ruby: truffleruby-head, allow-failure: false }
-          - { tto: 8 , os: ubuntu-24.04  , ruby: truffleruby, allow-failure: false } # Until https://github.com/oracle/truffleruby/issues/2700 is solved
-          - { tto: 8 , os: ubuntu-24.04  , ruby: truffleruby-head, allow-failure: false }
-          - { tto: 8 , os: macos-14      , ruby: jruby }
-          - { tto: 8 , os: macos-26      , ruby: jruby }
-          - { tto: 8 , os: macos-15      , ruby: truffleruby, allow-failure: false }
+          - { os: ubuntu-22.04 , ruby: jruby }
+          - { os: ubuntu-22.04 , ruby: jruby, no-ssl: ' no SSL' }
+          - { os: ubuntu-24.04 , ruby: jruby-head }
+          - { os: ubuntu-22.04 , ruby: truffleruby }
+          - { os: ubuntu-22.04 , ruby: truffleruby-head }
+          - { os: ubuntu-24.04 , ruby: truffleruby }
+          - { os: ubuntu-24.04 , ruby: truffleruby-head }
+          - { os: macos-14     , ruby: jruby }
+          - { os: macos-26     , ruby: jruby }
+          - { os: macos-15     , ruby: truffleruby }
 
     steps:
       - name: repo checkout
@@ -190,32 +189,17 @@ jobs:
       - name: Compile Puma without SSL support
         if: matrix.no-ssl == ' no SSL'
         shell: bash
-        run: echo 'PUMA_DISABLE_SSL=true' >> $GITHUB_ENV
+        run: echo 'PUMA_DISABLE_SSL=true' >> "$GITHUB_ENV"
 
       - name: set WERRORFLAG
         shell: bash
-        run: echo 'PUMA_MAKE_WARNINGS_INTO_ERRORS=true' >> $GITHUB_ENV
+        run: echo 'PUMA_MAKE_WARNINGS_INTO_ERRORS=true' >> "$GITHUB_ENV"
 
       - name: compile
-        id: compile
-        continue-on-error: ${{ matrix.allow-failure || false }}
-        run:  bundle exec rake compile
-
-      - name: >-
-          Compile outcome: ${{ steps.compile.outcome }}
-        # every step must define a `uses` or `run` key
-        run: echo NOOP
+        run: bundle exec rake compile
 
       - name: test
-        id: test
-        timeout-minutes: ${{ matrix.tto }}
-        continue-on-error: ${{ matrix.allow-failure || false }}
-        if: success() # only run if previous steps have succeeded
+        timeout-minutes: 8
         run: test/runner --verbose
         env:
           MT_CPU: 2
-
-      - name: >-
-          Test outcome: ${{ steps.test.outcome }}
-        # every step must define a `uses` or `run` key
-        run: echo NOOP

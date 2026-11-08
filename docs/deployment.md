@@ -66,7 +66,7 @@ If latency is important to you, you will have to accept lower utilization, and v
 
 You will have to make a decision about how "big" to make each pod/VPS/server/dyno.
 
-**TL:DR;**: 80% of Puma apps will end up deploying "pods" of 4 workers, 5 threads each, 4 vCPU and 8GB of RAM.
+**TL;DR**: 80% of Puma apps will end up deploying "pods" of 4 workers, 5 threads each, 4 vCPU and 8GB of RAM.
 
 For the rest of this discussion, we'll adopt the Kubernetes term of "pods".
 
@@ -109,11 +109,11 @@ to monitor them as child processes. This gives them fast response to crashes and
 makes it easy to figure out what is going on. Additionally, unlike `unicorn`,
 Puma does not require daemonization to do zero-downtime restarts.
 
-I see people using daemonization because they start puma directly via Capistrano
+I see people using daemonization because they start puma directly via a Capistrano
 task and thus want it to live on past the `cap deploy`. To these people, I say:
 You need to be using a process monitor. Nothing is making sure Puma stays up in
 this scenario! You're just waiting for something weird to happen, Puma to die,
-and to get paged at 3 AM. Do yourself a favor, at least the process monitoring
+and to get paged at 3 AM. Do yourself a favor, at least use the process monitoring
 your OS comes with, be it `sysvinit` or `systemd`. Or branch out and use `runit`
 or hell, even `monit`.
 

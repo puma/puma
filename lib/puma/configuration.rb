@@ -294,6 +294,7 @@ module Puma
       set_conditional_default_options
       @_options.finalize_values
       rewrite_unavailable_ipv6_binds!
+      validate_options
       @clamped = true
       warn_hooks
       options
@@ -362,8 +363,7 @@ module Puma
             block.call arg
           end
         rescue => e
-          log_writer.log "WARNING hook #{key} failed with exception (#{e.class}) #{e.message}"
-          log_writer.debug e.backtrace.join("\n")
+          handle_hook_error e, key, log_writer
         end
       end
     end
@@ -403,6 +403,15 @@ module Puma
     end
 
     private
+
+    def handle_hook_error(e, key, log_writer)
+      if (handler = options[:hook_error_handler])
+        handler.call(e, key)
+      else
+        log_writer.log "WARNING hook #{key} failed with exception (#{e.class}) #{e.message}"
+        log_writer.debug e.backtrace.join("\n")
+      end
+    end
 
     def rewrite_unavailable_ipv6_binds!
       return if self.class.ipv6_interface_available?
@@ -504,6 +513,10 @@ module Puma
     def set_conditional_default_options
       @_options.default_options[:preload_app] = !@_options[:prune_bundler] &&
         (@_options[:workers] > 1) && Puma.forkable?
+    end
+
+    def validate_options
+      raise "fork_worker and mold_worker cannot be used together" if @_options[:fork_worker] && @_options[:mold_worker]
     end
 
     def warn_hooks

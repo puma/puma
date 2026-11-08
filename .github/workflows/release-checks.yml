@@ -7,6 +7,10 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -24,8 +28,9 @@ jobs:
       # ── Parse the release version from the branch name ──────────────────────
       - name: Parse version from branch name
         id: rel
+        env:
+          branch: ${{ github.head_ref }}
         run: |
-          branch="${{ github.head_ref }}"
           version="${branch#release-v}"
           major="$(echo "$version" | cut -d. -f1)"
           minor="$(echo "$version" | cut -d. -f2)"
@@ -37,10 +42,12 @@ jobs:
             exit 1
           fi
 
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "major=$major"     >> "$GITHUB_OUTPUT"
-          echo "minor=$minor"     >> "$GITHUB_OUTPUT"
-          echo "patch=$patch"     >> "$GITHUB_OUTPUT"
+          {
+            echo "version=$version"
+            echo "major=$major"
+            echo "minor=$minor"
+            echo "patch=$patch"
+          } >> "$GITHUB_OUTPUT"
           echo "Releasing version: $version"
 
       # ── Check 1: VERSION in lib/puma/const.rb matches the branch ────────────

@@ -3,6 +3,7 @@
 require_relative "helper"
 require_relative "helpers/tmp_path"
 
+require "puma/binder"
 require "puma/configuration"
 require 'puma/log_writer'
 
@@ -148,6 +149,42 @@ class TestLauncher < PumaTest
     launcher.send(:do_graceful_stop)
 
     assert_equal [:requests_drained, :after_stopped], events
+  end
+
+  def test_control_server_uses_activated_socket
+    skip_unless :unix
+
+    port = UniquePort.call
+    ctl_url = "tcp://127.0.0.1:#{port}"
+    ctl_socket = Addrinfo.tcp("127.0.0.1", port).listen
+    ctl_socket.autoclose = false
+    conf = Puma::Configuration.new do |c|
+      c.app ->(_env) { [200, {}, ['ok']] }
+      c.activate_control_app ctl_url, auth_token: 'none'
+      c.bind_to_activated_sockets
+    end
+    log_writer = Puma::LogWriter.strings
+    env = { 'LISTEN_FDS' => '1', 'LISTEN_PID' => Process.pid.to_s }
+
+    binder_new = Puma::Binder.method(:new)
+    activated_binder = ->(*args) do
+      binder_new.call(*args).tap { |b| b.define_singleton_method(:socket_activation_fd) { |_| ctl_socket.fileno } }
+    end
+    launcher = Puma::Binder.stub(:new, activated_binder) { create_launcher(conf, log_writer, env: env) }
+    launcher.binder.parse conf.options[:binds]
+    runner = Puma::Single.new(launcher)
+    runner.start_control
+
+    client = TCPSocket.new "127.0.0.1", port
+    client.write "GET /stats HTTP/1.0\r\n\r\n"
+
+    assert_match(/\AHTTP\/1\.0 200 OK/, client.read)
+    assert_includes log_writer.stdout.string, "* Activated #{ctl_url}"
+    refute_includes log_writer.stdout.string, "Closing unused activated socket"
+  ensure
+    client&.close
+    runner&.stop_control
+    launcher&.binder&.close_listeners
   end
 
   private

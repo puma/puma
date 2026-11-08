@@ -55,24 +55,24 @@ end
 
 When Puma runs in single mode, these stats are available at the top level. When Puma runs in cluster mode, these stats are available within the `worker_status` array in a hash labeled `last_status`, in an array of hashes where one hash represents each worker.
 
-* backlog: requests that are waiting for an available thread to be available. if this is frequently above 0, you need more capacity.
+* backlog: requests that are waiting for an available thread to be available. If this is frequently above 0, you need more capacity.
 * running: how many threads are spawned. A spawned thread may be busy processing a request or waiting for a new request. If `min_threads` and `max_threads` are set to the same number,
   this will be a never-changing number (other than rare cases when a thread dies, etc).
 * busy_threads: `running` - `how many threads are waiting to receive work` + `how many requests are waiting for a thread to pick them up`.
-  this is a "wholistic" stat reflecting the overall current state of work to be done and the capacity to do it.
+  This is a "wholistic" stat reflecting the overall current state of work to be done and the capacity to do it.
 * pool_capacity: `how many threads are waiting to receive work` + `max_threads` - `running`. In a typical configuration where `min_threads`
   and `max_threads` are configured to the same number, this is simply `how many threads are waiting to receive work`. This number exists only as a stat
   and is not used for any internal decisions, unlike `busy_threads`, which is usually a more useful stat.
 * max_threads: the maximum number of threads Puma is configured to spool per worker
 * requests_count: the number of requests this worker has served since starting
-* reactor_max: the maximum observed number of requests held in Puma's "reactor" which is used for asyncronously buffering request bodies. This stat is reset on every call, so it's the maximum value observed since the last stat call.
+* reactor_max: the maximum observed number of requests held in Puma's "reactor" which is used for asynchronously buffering request bodies. This stat is reset on every call, so it's the maximum value observed since the last stat call.
 * backlog_max: the maximum number of requests that have been fully buffered by the reactor and placed in a ready queue, but have not yet been picked up by a server thread. This stat is reset on every call, so it's the maximum value observed since the last stat call.
 
 ### cluster mode
 
 * phase: which phase of restart the process is in, during [phased restart](https://github.com/puma/puma/blob/main/docs/restart.md)
 * workers: ??
-* booted_workers: how many workers currently running?
+* booted_workers: how many workers are currently running?
 * old_workers: ??
 * worker_status: array of hashes of info for each worker (see below)
 
@@ -80,7 +80,7 @@ When Puma runs in single mode, these stats are available at the top level. When 
 
 * started_at: when the worker started
 * pid: the process id of the worker process
-* index: each worker gets a number. if Puma is configured to have 3 workers, then this will be 0, 1, or 2
+* index: each worker gets a number. If Puma is configured to have 3 workers, then this will be 0, 1, or 2
 * booted: if it's done booting [?]
 * last_checkin: Last time the worker responded to the master process' heartbeat check.
 * last_status: a hash of info about the worker's state handling requests. See the explanation for this in "single mode and individual workers in cluster mode" section above.

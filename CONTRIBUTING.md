@@ -163,7 +163,7 @@ test/runner -v test_puma_server.rb
 
 #### File limits
 
-Puma's test suite opens up a lot of sockets. This may exceed the default limit of your operating system. If your file limits are low, you may experience "too many open file" errors when running the Puma test suite.
+Puma's test suite opens up a lot of sockets. This may exceed the default limit of your operating system. If your file limits are low, you may experience "too many open files" errors when running the Puma test suite.
 
 ```
 # check your file limit
@@ -179,13 +179,13 @@ We find that values of 4000 or more work well. [Learn more about your file limit
 
 Puma could use your help in several areas!
 
-**Don't worry about "claiming an issue". No issues are "claimed" in Puma.** Just start working on it. The issue tracker is almost always kept updated, so if there is an open issue, it is ready for you to contribute (unless you have questions about how to close issue - then please ask!). Once you have a few lines of code, post a draft PR. We are more than happy to help once you have a draft PR up.
+**Don't worry about "claiming an issue". No issues are "claimed" in Puma.** Just start working on it. The issue tracker is almost always kept updated, so if there is an open issue, it is ready for you to contribute (unless you have questions about how to close the issue - then please ask!). Once you have a few lines of code, post a draft PR. We are more than happy to help once you have a draft PR up.
 
 **New to systems programming? That's ok!** Puma deals with concepts you may not have been familiar with before, like sockets, TCP, UDP, SSL, and Threads. That's ok! You can learn by contributing. Also, see the "Bibliography" section at the end of this document.
 
-**The [contrib-wanted] label indicates that an issue might approachable to first-time contributors.**
+**The [contrib-wanted] label indicates that an issue might be approachable to first-time contributors.**
 
-**Reproducing bug reports**: The [needs-repro] label indicates than an issue lacks reproduction steps. You can help by reproducing the issue and sharing the steps you took in the comments.
+**Reproducing bug reports**: The [needs-repro] label indicates that an issue lacks reproduction steps. You can help by reproducing the issue and sharing the steps you took in the comments.
 
 **Helping with our native extensions**: If you are interested in writing C or Java, we could really use your help. Check out the issue labels for [c-ext] and [JRuby].
 
@@ -240,7 +240,7 @@ help.
 
 There's no need to update the changelog ([`History.md`](History.md)); that is done [when a new release is made](Release.md).
 
-Puma uses [GitHub Actions](https://docs.github.com/en/actions) for CI testing. Please consider running the workflows in your fork before creating a PR. It is possible to enable GitHub Actions on your fork in the repositories' `Actions` tab.
+Puma uses [GitHub Actions](https://docs.github.com/en/actions) for CI testing. Please consider running the workflows in your fork before creating a PR. It is possible to enable GitHub Actions on your fork in the repository's `Actions` tab.
 
 CI runs against the latest patch release of each supported Ruby minor version. When reporting bugs or reproducing issues, please use the latest patch release for your Ruby minor version so your environment matches CI coverage.
 
@@ -259,7 +259,7 @@ the bug exists.
 
 ## Backports
 
-Puma does not have a backport "policy" - maintainers will not consistently backport bugfixes to previous minor or major versions (we do treat security differently, see [`SECURITY.md`](SECURITY.md).
+Puma does not have a backport "policy" - maintainers will not consistently backport bugfixes to previous minor or major versions (we do treat security differently, see [`SECURITY.md`](SECURITY.md)).
 
 For Ruby patch-level bugs, we may add targeted workarounds. When we do, we keep those workarounds in place for the lifetime of the affected Ruby minor series, even if a later patch release fixes the underlying issue.
 
@@ -273,10 +273,10 @@ We govern this project according to the process in [GOVERNANCE.md](./GOVERNANCE.
 
 ## Bibliography/Reading
 
-Puma can be a bit intimidating for your first contribution because there's a lot of concepts here that you've probably never had to think about before - Rack, sockets, forking, threads etc. Here are some helpful links for learning more about things related to Puma:
+Puma can be a bit intimidating for your first contribution because there are a lot of concepts here that you've probably never had to think about before - Rack, sockets, forking, threads etc. Here are some helpful links for learning more about things related to Puma:
 
 * [Puma's Architecture docs](https://github.com/puma/puma/blob/main/docs/architecture.md)
 * [The Rack specification](https://github.com/rack/rack/blob/main/SPEC.rdoc)
-* [Working with...](https://workingwithruby.com/) "Working With" is a excellent (and now free) Ruby book series about working with Threads, TCP and Unix Sockets.
+* [Working with...](https://workingwithruby.com/) "Working With" is an excellent (and now free) Ruby book series about working with Threads, TCP and Unix Sockets.
 * The Ruby docs for IO.pipe, TCPServer/Socket.
 * [nio4r documentation](https://github.com/socketry/nio4r/wiki/Getting-Started)

@@ -308,6 +308,27 @@ class TestPumaServer < PumaTest
     assert_equal body, data
   end
 
+  def test_connection_closed
+    checking = false
+    server_run do |env|
+      checking = true
+      closed = env["puma.connection_closed?"].call
+      checking = false
+      [200, {}, [closed.to_s]]
+    end
+    socket = new_socket
+    client_port = socket.local_address.ip_port
+    @server.define_singleton_method(:closed_socket?) do |server_socket|
+      checking && server_socket.to_io.remote_address.ip_port == client_port
+    rescue SystemCallError
+      false
+    end
+
+    socket.send_http GET_10
+
+    assert_equal "true", socket.read_body
+  end
+
   def test_very_large_return
     giant = "x" * 2056610
 
@@ -653,6 +674,24 @@ class TestPumaServer < PumaTest
     assert_equal "HTTP/1.0 200 OK\r\ncontent-type: application/pdf\r\ncontent-length: 4242\r\n\r\n", response
   end
 
+  def test_304_with_empty_body_has_no_content_length
+    server_run { [304, {"Content-Type" => "text/plain"}, []] }
+
+    response = send_http_read_response "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\n\r\n"
+
+    assert_equal "HTTP/1.1 304 #{STATUS_CODES[304]}", response.status
+    assert_equal ["content-type: text/plain", "connection: close"], response.headers
+  end
+
+  def test_304_keeps_app_content_length
+    server_run { [304, {"Content-Length" => "4242"}, []] }
+
+    response = send_http_read_response "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\n\r\n"
+
+    assert_equal "HTTP/1.1 304 #{STATUS_CODES[304]}", response.status
+    assert_equal ["connection: close", "content-length: 4242"], response.headers
+  end
+
   def test_status_hook_fires_when_server_changes_states
 
     states = []
@@ -717,6 +756,7 @@ class TestPumaServer < PumaTest
     sleep 1.15
 
     assert @server.shutting_down?
+    assert @server.thread.join(1)
 
     assert_raises Errno::ECONNREFUSED do
       send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 12\r\n\r\n"
@@ -767,6 +807,7 @@ class TestPumaServer < PumaTest
     sleep 1.15
 
     assert @server.shutting_down?
+    assert @server.thread.join(1)
 
     assert socket.wait_readable(1), 'Unexpected timeout'
     assert_raises Errno::ECONNREFUSED do
@@ -802,6 +843,7 @@ class TestPumaServer < PumaTest
     sleep 1.15
 
     assert @server.shutting_down?
+    assert @server.thread.join(1)
 
     assert socket.wait_readable(1), 'Unexpected timeout'
     assert_raises Errno::ECONNREFUSED do
@@ -833,6 +875,7 @@ class TestPumaServer < PumaTest
     sleep 1.15
 
     assert @server.shutting_down?
+    assert @server.thread.join(1)
 
     assert socket.wait_readable(1), 'Unexpected timeout'
     assert_raises Errno::ECONNREFUSED do
@@ -856,6 +899,52 @@ class TestPumaServer < PumaTest
     response = send_http_read_response "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\n\r\n"
 
     assert_equal "HTTP/1.1 200 OK\r\ncontent-type: plain/text\r\nconnection: close\r\ncontent-length: 5\r\n\r\nhello", response
+  end
+
+  def test_http_11_close_with_body_and_other_connection_options
+    server_run { [200, {"Content-Type" => "plain/text"}, ["hello"]] }
+
+    req = "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: upgrade, close\r\n\r\n"
+    response = send_http_read_response req
+
+    assert_equal "HTTP/1.1 200 OK\r\ncontent-type: plain/text\r\nconnection: close\r\ncontent-length: 5\r\n\r\nhello", response
+  end
+
+  def test_http_11_close_with_body_and_repeated_connection_headers
+    server_run { [200, {"Content-Type" => "plain/text"}, ["hello"]] }
+
+    req = "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: keep-alive\r\nConnection: close\r\n\r\n"
+    response = send_http_read_response req
+
+    assert_equal "HTTP/1.1 200 OK\r\ncontent-type: plain/text\r\nconnection: close\r\ncontent-length: 5\r\n\r\nhello", response
+  end
+
+  def test_http_11_close_with_body_and_mixed_case_connection_option
+    server_run { [200, {"Content-Type" => "plain/text"}, ["hello"]] }
+
+    req = "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: Close\r\n\r\n"
+    response = send_http_read_response req
+
+    assert_equal "HTTP/1.1 200 OK\r\ncontent-type: plain/text\r\nconnection: close\r\ncontent-length: 5\r\n\r\nhello", response
+  end
+
+  def test_http_11_close_with_body_and_mixed_case_connection_options
+    server_run { [200, {"Content-Type" => "plain/text"}, ["hello"]] }
+
+    req = "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: Upgrade, Close\r\n\r\n"
+    response = send_http_read_response req
+
+    assert_equal "HTTP/1.1 200 OK\r\ncontent-type: plain/text\r\nconnection: close\r\ncontent-length: 5\r\n\r\nhello", response
+  end
+
+  def test_http_11_keep_alive_with_body_and_connection_option_containing_close
+    server_run { [200, {"Content-Type" => "plain/text"}, ["hello"]] }
+
+    req = "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: x-closed-by-client\r\n\r\n"
+    response = send_http_read_response req
+
+    assert_equal ["content-type: plain/text", "content-length: 5"], response.headers
+    assert_equal "hello", response.body
   end
 
   def test_http_11_keep_alive_without_body
@@ -954,6 +1043,77 @@ class TestPumaServer < PumaTest
     response = send_http_read_all "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\nExpect: 100-continue\r\n\r\n"
 
     assert_equal "HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
+  end
+
+  def test_Expect_100_continue_callback_false_sends_continue
+    seen = Queue.new
+    callback = ->(env) { seen << env; false }
+    server_run(continue_callback: callback) { [200, {}, [""]] }
+
+    response = send_http_read_all "GET /upload HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\nExpect: 100-continue\r\n\r\n"
+
+    assert_equal "HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
+    assert_equal '/upload', seen.pop(true)['PATH_INFO']
+  end
+
+  def test_Expect_100_continue_callback_response_skips_body
+    app_called = false
+    callback = ->(_env) { [307, { 'location' => 'https://uploads.example.com/' }, []] }
+    server_run(continue_callback: callback) { app_called = true; [200, {}, ["OK"]] }
+
+    socket = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: 10\r\nExpect: 100-continue\r\n\r\n"
+    response = socket.read_all
+
+    refute_includes response, "100 Continue"
+    assert_match %r{\AHTTP/1\.1 307 Temporary Redirect\r\n}, response
+    assert_includes response, "location: https://uploads.example.com/\r\n"
+    assert_includes response, "connection: close\r\n"
+    refute app_called, "the app must not run for a request the callback answered"
+  end
+
+  def test_Expect_100_continue_callback_can_reject
+    callback = ->(env) { env['CONTENT_LENGTH'].to_i > 5 ? [413, {}, ['too big']] : false }
+    server_run(continue_callback: callback) { [200, {}, ["OK"]] }
+
+    response = send_http("POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: 10\r\nExpect: 100-continue\r\n\r\n").read_all
+
+    refute_includes response, "100 Continue"
+    assert_match %r{\AHTTP/1\.1 413 }, response
+    assert response.end_with?("too big")
+  end
+
+  def test_Expect_100_continue_callback_response_body_is_closed
+    body_closed = false
+    body = ['too big']
+    body.define_singleton_method(:close) { body_closed = true }
+    callback = ->(_env) { [413, {}, body] }
+    server_run(continue_callback: callback) { [200, {}, ["OK"]] }
+
+    response = send_http("POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: 10\r\nExpect: 100-continue\r\n\r\n").read_all
+
+    assert_match %r{\AHTTP/1\.1 413 }, response
+    assert body_closed, "the callback's response body must be closed"
+  end
+
+  def test_Expect_100_continue_callback_raising_is_a_500
+    callback = ->(_env) { raise "callback blew up" }
+    server_run(continue_callback: callback) { [200, {}, ["OK"]] }
+
+    response = send_http("POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: 10\r\nExpect: 100-continue\r\n\r\n").read_all
+
+    refute_includes response, "100 Continue"
+    assert_match %r{\AHTTP/1\.1 500 }, response
+  end
+
+  def test_Expect_100_continue_callback_not_called_without_expect
+    calls = 0
+    callback = ->(_env) { calls += 1; false }
+    server_run(continue_callback: callback) { [200, {}, ["OK"]] }
+
+    response = send_http_read_all "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\n\r\n"
+
+    assert_match %r{\AHTTP/1\.1 200 OK}, response
+    assert_equal 0, calls
   end
 
   def test_chunked_request
@@ -2014,6 +2174,41 @@ class TestPumaServer < PumaTest
 
   def test_not_drain_on_shutdown
     test_drain_on_shutdown false
+  end
+
+  def test_no_accept_after_stop_while_waiting_for_thread
+    started_connections = Queue.new
+    wait = Queue.new
+
+    server_run(queue_requests: false, max_threads: 1, drain_on_shutdown: false) do
+      started_connections << true
+      wait.pop
+      [200, {}, ["DONE"]]
+    end
+
+    busy = send_http GET_10
+    started_connections.pop
+
+    waiting_for_thread = Queue.new
+    @pool.define_singleton_method(:wait_until_not_full) do
+      waiting_for_thread << true
+      super()
+    end
+
+    pending = send_http GET_10
+    waiting_for_thread.pop
+
+    @server.stop
+    wait.close
+    assert_match 'DONE', busy.read_body
+
+    served = begin
+      pending.wait_readable(1) && pending.read_body.include?('DONE')
+    rescue Errno::ECONNRESET, EOFError
+      false
+    end
+
+    refute served, 'Connection accepted after stop command was served'
   end
 
   def test_remote_address_header

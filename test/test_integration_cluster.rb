@@ -46,6 +46,11 @@ class TestIntegrationCluster < TestIntegration
       config: "fork_worker; preload_app! false"
   end
 
+  def test_phased_restart_does_not_drop_connections_threads_mold_worker
+    restart_does_not_drop_connections num_threads: 10, signal: :USR1,
+      config: "mold_worker; preload_app! false"
+  end
+
   def test_phased_restart_does_not_drop_connections_unix
     restart_does_not_drop_connections num_threads: 1, signal: :USR1, unix: true,
       config: "preload_app! false"
@@ -264,6 +269,7 @@ class TestIntegrationCluster < TestIntegration
 
   def test_worker_timeout
     skip 'Thread#name not available' unless Thread.current.respond_to?(:name)
+
     timeout = Puma::Configuration::DEFAULTS[:worker_check_interval] + 1
     config = <<~CONFIG
       worker_timeout #{timeout}
@@ -404,6 +410,203 @@ class TestIntegrationCluster < TestIntegration
     refute_includes pids, get_worker_pids(1, wrkrs - 1)
   end
 
+  def test_mold_worker_reforks_at_each_threshold
+    wrkrs = 3
+    cli_server "-w #{wrkrs} test/rackup/hello.ru", config: <<~CONFIG
+      worker_check_interval 1
+      mold_worker 10, 20
+      after_mold_promotion { puts "after_mold_promotion" }
+      before_mold_shutdown { puts "before_mold_shutdown" }
+    CONFIG
+
+    get_worker_pids 0, wrkrs
+    phase1_pids = send_requests_until_phase 1, wrkrs
+    phase2_pids = send_requests_until_phase 2, wrkrs
+    wait_for_server_to_include "before_mold_shutdown"
+
+    assert_empty phase1_pids & phase2_pids
+    assert_equal %w[after_mold_promotion after_mold_promotion before_mold_shutdown],
+      @server_log.scan(/after_mold_promotion|before_mold_shutdown/)
+  end
+
+  def test_mold_worker_refork_replaces_workers_forked_by_previous_mold
+    cli_server "-w #{workers} test/rackup/hello.ru", config: <<~CONFIG
+      worker_check_interval 30
+      mold_worker 1_000_000
+    CONFIG
+
+    get_worker_pids 0
+    Process.kill :URG, @pid
+    phase1_pids = get_worker_pids 1
+    Process.kill :URG, @pid
+
+    assert_empty phase1_pids & get_worker_pids(2)
+  end
+
+  def test_mold_worker_refork_does_not_trigger_idle_timeout
+    cli_server "-w 1 test/rackup/hello.ru", config: <<~CONFIG
+      idle_timeout 30
+      mold_worker 1_000_000
+    CONFIG
+
+    get_worker_pids 0, 1
+    Process.kill :URG, @pid
+    get_worker_pids 1, 1
+
+    assert_equal "Hello World", read_body(connect)
+  end
+
+  def test_mold_worker_promotion_does_not_trigger_idle_timeout
+    cli_server "-w #{workers} test/rackup/hello.ru", config: <<~CONFIG
+      idle_timeout 1
+      mold_worker 1_000_000
+      after_mold_promotion { sleep 2 }
+    CONFIG
+
+    get_worker_pids 0
+    Process.kill :URG, @pid
+    get_worker_pids 1
+
+    assert_equal "Hello World", read_body(connect)
+  end
+
+  def test_mold_worker_refork_does_not_leak_file_descriptors
+    cli_server "-w 1", config: <<~CONFIG
+      mold_worker 1_000_000
+      app { |_| [200, {}, [Dir.children('/dev/fd').size.to_s]] }
+    CONFIG
+
+    get_worker_pids 0, 1
+    descriptors = read_body(connect).to_i
+
+    3.times do |phase|
+      Process.kill :URG, @pid
+      get_worker_pids phase + 1, 1
+
+      assert_equal descriptors, read_body(connect).to_i
+    end
+  end
+
+  def test_mold_worker_ignores_mold_requests_for_threshold
+    cli_server "-w #{workers} -t 1:1 test/rackup/hello.ru", config: <<~CONFIG
+      worker_check_interval 0.5
+      mold_worker 10, 11
+    CONFIG
+
+    get_worker_pids 0
+    send_requests_until_phase 1
+
+    assert_raises(Minitest::Assertion) { wait_for_server_to_include "phase: 2", timeout: 3 }
+  end
+
+  def test_mold_worker_replaces_workers_after_mold_dies
+    cli_server "-w #{workers} test/rackup/hello.ru", config: <<~CONFIG
+      worker_check_interval 1
+      mold_worker 10
+    CONFIG
+
+    get_worker_pids 0
+    phase1_pids = send_requests_until_phase 1
+
+    Process.kill :KILL, promoted_mold_pid
+    Process.kill :KILL, phase1_pids.first
+
+    get_worker_pids 1, 1
+    assert_equal "Hello World", read_body(connect)
+  end
+
+  def test_mold_worker_replaces_pending_workers_after_mold_dies
+    cli_server "-w #{workers} test/rackup/hello.ru", config: <<~CONFIG
+      master = Process.pid
+      mold_worker 1_000_000
+      before_worker_fork do
+        if Process.pid != master
+          puts "mold about to fork"
+          sleep
+        end
+      end
+    CONFIG
+
+    get_worker_pids 0
+    Process.kill :URG, @pid
+    wait_for_server_to_include "mold about to fork"
+    Process.kill :KILL, promoted_mold_pid
+    get_worker_pids 1
+
+    assert_equal "Hello World", read_body(connect)
+  end
+
+  def test_mold_worker_refork_waits_for_all_workers_after_worker_dies
+    boot_gate = tmp_path
+    cli_server "-w 3 test/rackup/hello.ru", config: <<~CONFIG
+      master = Process.pid
+      mold_worker 1_000_000
+      after_booted { puts "cluster ready" }
+      before_worker_boot do |index|
+        if Process.ppid != master && index == 1
+          puts "waiting for boot gate"
+          sleep 0.01 until File.exist? '#{boot_gate}'
+        end
+      end
+    CONFIG
+
+    get_worker_pids 0, 3
+    wait_for_server_to_include "cluster ready"
+    Process.kill :URG, @pid
+    first_worker = get_worker_pids(1, 1).first
+    wait_for_server_to_include "waiting for boot gate"
+    Process.kill :KILL, first_worker
+    get_worker_pids 1, 1
+    File.write boot_gate, ''
+    wait_for_server_to_include "cluster ready"
+
+    assert_equal 4, @server_log.scan(/booted in [.0-9]+s, phase: 1/).size
+    assert_equal "Hello World", read_body(connect)
+  end
+
+  def test_mold_worker_refork_completes_after_mold_dies_during_promotion
+    cli_server "-w 1 test/rackup/hello.ru", config: <<~CONFIG
+      mold_worker 1_000_000
+      after_mold_promotion { sleep 2 }
+    CONFIG
+
+    get_worker_pids 0, 1
+    Process.kill :URG, @pid
+    wait_for_server_to_include "to mold"
+    Process.kill :KILL, promoted_mold_pid
+
+    get_worker_pids 1, 1
+    assert_equal "Hello World", read_body(connect)
+  end
+
+  def test_mold_worker_exits_cleanly_when_master_dies
+    cli_server "-w 1 test/rackup/hello.ru", merge_err: true, config: "mold_worker 1_000_000"
+
+    get_worker_pids 0, 1
+    Process.kill :URG, @pid
+    get_worker_pids 1, 1
+    stop_server signal: :KILL
+
+    refute_includes "#{@server_line_buffer}#{@server.read}", "EOFError"
+  end
+
+  def test_mold_worker_phased_restart_retires_mold
+    cli_server "-w #{workers} test/rackup/hello.ru", config: <<~CONFIG
+      worker_check_interval 1
+      preload_app! false
+      mold_worker 10
+    CONFIG
+
+    get_worker_pids 0
+    send_requests_until_phase 1
+    mold_pid = promoted_mold_pid
+
+    Process.kill :USR1, @pid
+
+    get_worker_pids 2
+    assert_raises(Errno::ESRCH) { 20.times { Process.kill(0, mold_pid); sleep 0.1 } }
+  end
+
   def test_fork_worker_spawn
     cli_server '', config: <<~CONFIG
       workers 1
@@ -416,6 +619,97 @@ class TestIntegrationCluster < TestIntegration
       end
     CONFIG
     assert_equal '0', read_body(connect)
+  end
+
+  def test_fork_worker_replaces_worker_zero_without_losing_pending_forks
+    paused = tmp_path
+    cli_server "-w 4 test/rackup/hello.ru", no_wait: true, config: <<~CONFIG
+      master = Process.pid
+      fork_worker 0
+      after_worker_fork do |index|
+        if Process.pid != master && index == 1 && !File.exist?('#{paused}')
+          File.write '#{paused}', ''
+          puts "Fork paused in \#{Process.pid}"
+          sleep
+        end
+      end
+    CONFIG
+
+    worker_zero = wait_for_server_to_match(/Fork paused in (\d+)/, 1).to_i
+    Process.kill :KILL, worker_zero
+
+    wait_for_server_to_match(/Worker 0 \(PID: (?!#{worker_zero}\))\d+\) booted/)
+    [1, 2, 3].each do |index|
+      booted = /Worker #{index} \(PID: \d+\) booted/
+      wait_for_server_to_match(booted) unless @server_log.match?(booted)
+    end
+    assert_equal "Hello World", read_body(connect)
+  end
+
+  def test_fork_worker_phased_restart_does_not_wait_for_check_interval
+    cli_server "-w 3 test/rackup/hello.ru", config: <<~CONFIG
+      fork_worker 0
+      preload_app! false
+      worker_check_interval 30
+    CONFIG
+
+    get_worker_pids 0, 3
+    Process.kill :USR1, @pid
+
+    get_worker_pids 1, 3, timeout: 3
+    assert_equal "Hello World", read_body(connect)
+  end
+
+  def test_fork_worker_coalesces_pending_reforks
+    boot_gate = tmp_path
+    cli_server "-w 3 #{set_pumactl_args} test/rackup/hello.ru", config: <<~CONFIG
+      fork_worker 0
+      after_booted do
+        puts "cluster ready"
+        sleep 0.01 until File.exist? '#{boot_gate}'
+      end
+      after_refork { puts "refork complete" }
+    CONFIG
+
+    get_worker_pids 0, 3
+    wait_for_server_to_include "cluster ready"
+    2.times { cli_pumactl "refork" }
+    File.write boot_gate, ''
+    get_worker_pids 1, 2
+    wait_for_server_to_include "refork complete" unless @server_log.include? "refork complete"
+
+    assert_equal [1], get_stats['worker_status'].map { |w| w['phase'] }.uniq
+    assert_equal "Hello World", read_body(connect)
+  end
+
+  def test_fork_worker_refork_waits_for_all_workers_after_worker_dies
+    boot_gate = tmp_path
+    File.write boot_gate, ''
+    cli_server "-w 4 test/rackup/hello.ru", config: <<~CONFIG
+      master = Process.pid
+      fork_worker 0
+      after_booted { puts "cluster ready" }
+      before_worker_boot do |index|
+        if Process.ppid != master && index == 2
+          puts "waiting for boot gate"
+          sleep 0.01 until File.exist? '#{boot_gate}'
+        end
+      end
+    CONFIG
+
+    get_worker_pids 0, 4
+    wait_for_server_to_include "cluster ready"
+    File.unlink boot_gate
+    Process.kill :URG, @pid
+    first_worker = get_worker_pids(1, 1).first
+    wait_for_server_to_include "waiting for boot gate"
+    Process.kill :KILL, first_worker
+    get_worker_pids 1, 1
+    File.write boot_gate, ''
+    wait_for_server_to_include "cluster ready"
+
+    assert_equal 4, @server_log.scan(/booted in [.0-9]+s, phase: 1/).size
+    assert_equal "Hello World", read_body(connect)
   end
 
   def test_phased_restart_with_fork_worker_and_high_worker_count
@@ -690,6 +984,23 @@ class TestIntegrationCluster < TestIntegration
     assert_equal 'after_worker_shutdown worker=1 status=0', ary[1]
   end
 
+  def test_hook_error_handler_reraise_crashes_worker
+    cli_server "-w 1 test/rackup/hello.ru", merge_err: true, no_wait: true, config: <<~'CONFIG'
+      before_worker_boot do
+        raise "hook_error_handler test failure"
+      end
+
+      hook_error_handler do |err, hook|
+        puts "handler saw #{hook}"
+        raise err
+      end
+    CONFIG
+
+    assert wait_for_server_to_include('handler saw before_worker_boot')
+    assert wait_for_server_to_include('handler saw before_worker_boot')
+    refute_includes @server_log, 'booted in'
+  end
+
   def test_worker_hook_warning_cli
     cli_server "-w2 test/rackup/hello.ru", config: <<~CONFIG
       before_worker_boot(:test) do |index, data|
@@ -731,6 +1042,30 @@ class TestIntegrationCluster < TestIntegration
   end
 
   private
+
+  def promoted_mold_pid
+    @server_log.scan(/Promoting worker \d \(PID: (\d+)\) to mold/).last.first.to_i
+  end
+
+  def send_requests_until_phase(phase, size = workers)
+    sending = true
+    sender = Thread.new do
+      while sending
+        begin
+          socket = connect
+          read_body socket
+        rescue IOError, SystemCallError
+        ensure
+          socket&.close
+        end
+        sleep 0.005
+      end
+    end
+    get_worker_pids phase, size
+  ensure
+    sending = false
+    sender&.join
+  end
 
   def worker_timeout(timeout, iterations, details, config, log: nil)
     cli_server "-w #{workers} -t 1:1 test/rackup/hello.ru", config: config

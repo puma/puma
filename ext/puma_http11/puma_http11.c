@@ -13,6 +13,10 @@
 #include <ctype.h>
 #include "http11_parser.h"
 
+#ifdef HAVE_PRCTL
+#include <sys/prctl.h>
+#endif
+
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
 static VALUE eHttpParserError;
@@ -459,6 +463,24 @@ static VALUE HttpParser_body(VALUE self) {
   return http->body;
 }
 
+/**
+ * call-seq:
+ *    Puma.enable_child_subreaper -> true or false
+ *
+ * Marks the calling process as a child subreaper so that orphaned descendants
+ * are reparented to it. Returns false where this is unsupported.
+ */
+static VALUE Puma_enable_child_subreaper(VALUE self) {
+#ifdef HAVE_PRCTL
+  if (prctl(PR_SET_CHILD_SUBREAPER, 1) < 0) {
+    rb_sys_fail("prctl(PR_SET_CHILD_SUBREAPER)");
+  }
+  return Qtrue;
+#else
+  return Qfalse;
+#endif
+}
+
 #ifdef HAVE_OPENSSL_BIO_H
 void Init_mini_ssl(VALUE mod);
 #endif
@@ -481,6 +503,8 @@ RUBY_FUNC_EXPORTED void Init_puma_http11(void)
 
   rb_global_variable(&eHttpParserError);
   eHttpParserError = rb_define_class_under(mPuma, "HttpParserError", rb_eStandardError);
+
+  rb_define_singleton_method(mPuma, "enable_child_subreaper", Puma_enable_child_subreaper, 0);
 
   rb_define_alloc_func(cHttpParser, HttpParser_alloc);
   rb_define_method(cHttpParser, "initialize", HttpParser_init, 0);

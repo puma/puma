@@ -138,6 +138,12 @@ module Puma
             user_config.fork_worker(*args.compact)
           end
 
+          o.on "--mold-worker=[REQUESTS]", Array,
+            "Fork new workers from a mold promoted from an existing worker. Cluster mode only",
+            "Promote a new mold at each comma-separated REQUESTS threshold (default 1000)" do |thresholds|
+            user_config.mold_worker(*thresholds)
+          end
+
           o.on "-I", "--include PATH", "Specify $LOAD_PATH directories" do |arg|
             $LOAD_PATH.unshift(*arg.split(':'))
           end

@@ -6,6 +6,10 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read # to fetch code (actions/checkout)
 
@@ -18,10 +22,7 @@ jobs:
       ${{ matrix.os }} Ruby ${{ matrix.ruby }} rack-conform
     needs: skip_duplicate_runs
     runs-on: ${{ matrix.os }}
-    if: |
-      !(   contains(github.event.pull_request.title,  '[ci skip]')
-        || contains(github.event.pull_request.title,  '[skip ci]')
-        || (needs.skip_duplicate_runs.outputs.should_skip == 'true'))
+    if: needs.skip_duplicate_runs.outputs.should_skip != 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -66,9 +67,7 @@ jobs:
         timeout-minutes: 10
         run: bundle exec bake test
         continue-on-error: true
-        if: success()
 
       - name: >-
           Test outcome: ${{ steps.test.outcome }}
-        # every step must define a `uses` or `run` key
         run: cat server.log

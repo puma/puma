@@ -438,6 +438,25 @@ class TestBinderParallel < TestBinderBase
     refute binder.proto_env["rack.multithread"]
   end
 
+  def test_take_activated_socket
+    sock = Object.new
+    @binder.activated_sockets[[:tcp, '127.0.0.1', 9293]] = sock
+
+    assert_nil @binder.take_activated_socket('tcp://127.0.0.1:9294')
+    assert_nil @binder.take_activated_socket('unix:///tmp/puma-ctl.sock')
+    assert_equal [[:tcp, '127.0.0.1', 9293], sock], @binder.take_activated_socket('tcp://127.0.0.1:9293')
+    assert_empty @binder.activated_sockets
+  end
+
+  def test_take_activated_socket_unix_path_with_space
+    sock = Object.new
+    @binder.activated_sockets[[:unix, '/tmp/puma control.sock']] = sock
+
+    assert_equal [[:unix, '/tmp/puma control.sock'], sock],
+                 @binder.take_activated_socket('unix:///tmp/puma%20control.sock')
+    assert_empty @binder.activated_sockets
+  end
+
   def test_rack_multiprocess_default_configuration
     refute @binder.proto_env["rack.multiprocess"]
   end
@@ -457,6 +476,7 @@ class TestBinderParallel < TestBinderBase
     hash = { "LISTEN_FDS" => 1, "LISTEN_PID" => $$ }
     @log_writer.instance_variable_set(:@debug, true)
 
+    sock.autoclose = false
     @binder.instance_variable_set(:@sock_fd, sock.fileno)
     def @binder.socket_activation_fd(int); @sock_fd; end
     @result = @binder.create_activated_fds(hash)
@@ -467,6 +487,8 @@ class TestBinderParallel < TestBinderBase
     assert_kind_of TCPServer, @binder.activated_sockets[ary]
     assert_match "Registered #{ary.join(":")} for activation from LISTEN_FDS", @log_writer.stdout.string
     assert_equal ["LISTEN_FDS", "LISTEN_PID"], @result
+  ensure
+    @binder.activated_sockets.each_value(&:close)
   end
 
   def assert_parsing_logs_uri(order = [:unix, :tcp])
