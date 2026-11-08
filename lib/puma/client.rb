@@ -63,7 +63,7 @@ module Puma
     CHUNK_VALID_ENDING_SIZE = CHUNK_VALID_ENDING.bytesize
 
     # The maximum number of bytes we'll buffer looking for a valid
-    # chunk header.
+    # chunk header, and the maximum size of a trailer section.
     MAX_CHUNK_HEADER_SIZE = 4096
 
     # The maximum amount of excess data the client sends
@@ -758,9 +758,14 @@ module Puma
         trailer_end = CHUNK_VALID_ENDING_SIZE
       elsif idx = rest.index(CHUNK_VALID_ENDING * 2)
         trailer_end = idx + CHUNK_VALID_ENDING_SIZE * 2
-      else
+      elsif rest.bytesize < MAX_CHUNK_HEADER_SIZE
         @prev_chunk = rest
         return false
+      end
+
+      if trailer_end.nil? || trailer_end > MAX_CHUNK_HEADER_SIZE
+        @env[HTTP_CONNECTION] = CLOSE
+        raise HttpParserError, "maximum size of chunk trailer exceeded"
       end
 
       @prev_chunk = ""

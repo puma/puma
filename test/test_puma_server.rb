@@ -2433,6 +2433,77 @@ class TestPumaServer < PumaTest
     assert_equal 2, response.scan("HTTP/1.1 200 OK").size
   end
 
+  def test_chunked_request_trailer_exceeds_max_header_size
+    app_called = false
+    server_run(environment: :production) { |env|
+      app_called = true
+      [200, {}, [""]]
+    }
+
+    # a trailer section that never terminates must be rejected once it exceeds
+    # the limit, not buffered until the client stops sending
+    trailer = "X-Trailer: #{'x' * (Puma::Client::MAX_CHUNK_HEADER_SIZE + 2)}"
+    header = "GET / HTTP/1.1\r\nHost: test.com\r\nTransfer-Encoding: chunked\r\n\r\n"
+    response = send_http_read_response "#{header}1\r\nh\r\n0\r\n#{trailer}", timeout: 3
+
+    assert_equal "HTTP/1.1 400 Bad Request\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
+    refute app_called
+  end
+
+  def test_chunked_request_trailer_exceeds_max_header_size_split
+    app_called = false
+    server_run(environment: :production) { |env|
+      app_called = true
+      [200, {}, [""]]
+    }
+
+    socket = send_http "GET / HTTP/1.1\r\nHost: test.com\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n0\r\nX-Trailer: "
+
+    # the last write takes the buffered trailer past the limit
+    junk = "x" * 1_024
+    (Puma::Client::MAX_CHUNK_HEADER_SIZE / junk.bytesize).times do
+      sleep 0.1
+      socket << junk
+    end
+
+    assert_equal "HTTP/1.1 400 Bad Request\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", socket.read_response(timeout: 3)
+    refute app_called
+  end
+
+  def test_chunked_request_terminated_trailer_exceeds_max_header_size
+    app_called = false
+    server_run(environment: :production) { |env|
+      app_called = true
+      [200, {}, [""]]
+    }
+
+    # one byte over the limit, terminator included, sent in a single write
+    trailer = "X-Trailer: #{'x' * (Puma::Client::MAX_CHUNK_HEADER_SIZE - 14)}\r\n\r\n"
+    assert_equal Puma::Client::MAX_CHUNK_HEADER_SIZE + 1, trailer.bytesize
+    header = "GET / HTTP/1.1\r\nHost: test.com\r\nTransfer-Encoding: chunked\r\n\r\n"
+    response = send_http_read_response "#{header}1\r\nh\r\n0\r\n#{trailer}"
+
+    assert_equal "HTTP/1.1 400 Bad Request\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
+    refute app_called
+  end
+
+  def test_chunked_request_trailer_at_max_header_size_split
+    body = nil
+    server_run { |env|
+      body = env['rack.input'].read
+      [200, {}, [""]]
+    }
+
+    trailer = "X-Trailer: #{'x' * (Puma::Client::MAX_CHUNK_HEADER_SIZE - 15)}\r\n\r\n"
+    assert_equal Puma::Client::MAX_CHUNK_HEADER_SIZE, trailer.bytesize
+    socket = send_http "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n1\r\nh\r\n0\r\n#{trailer[0..-5]}"
+    sleep 0.1
+    socket << trailer[-4..]
+
+    assert_equal "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", socket.read_response
+    assert_equal "h", body
+  end
+
   # test to check if content-length is ignored when 'transfer-encoding: chunked'
   # is used.  See also test_large_chunked_request
   def test_cl_and_te_smuggle
