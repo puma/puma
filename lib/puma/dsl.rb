@@ -88,7 +88,7 @@ module Puma
         "ssl://#{host}:#{port}?#{keystore_additions}#{truststore_additions}#{cipher_suites}#{protocols}" \
           "&verify_mode=#{verify}#{tls_str}#{ca_additions}#{backlog_str}"
       else
-        ssl_cipher_filter = opts[:ssl_cipher_filter] ? "&ssl_cipher_filter=#{opts[:ssl_cipher_filter]}" : nil
+        ssl_cipher_filter = opts[:ssl_cipher_filter] ? "&ssl_cipher_filter=#{Puma::Util.escape(opts[:ssl_cipher_filter])}" : nil
         ssl_ciphersuites = opts[:ssl_ciphersuites] ? "&ssl_ciphersuites=#{opts[:ssl_ciphersuites]}" : nil
         v_flags = (ary = opts[:verification_flags]) ? "&verification_flags=#{Array(ary).join ','}" : nil
 

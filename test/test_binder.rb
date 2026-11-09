@@ -577,6 +577,18 @@ class TestBinderMRI < TestBinderBase
     assert_equal ssl_cipher_filter, ssl_context_for_binder.ssl_cipher_filter
   end
 
+  def test_binder_parses_ssl_bind_str_cipher_filter_with_plus
+    skip_unless :ssl
+
+    ssl_cipher_filter = "ECDHE+AESGCM"
+    ssl_query
+    bind = Puma::DSL.ssl_bind_str "0.0.0.0", 0, { cert: @cert, key: @key, ssl_cipher_filter: ssl_cipher_filter }
+
+    @binder.parse [bind], @log_writer
+
+    assert_equal ssl_cipher_filter, ssl_context_for_binder.ssl_cipher_filter
+  end
+
   def test_binder_parses_ssl_ciphersuites
     skip_unless :ssl
     skip('Requires TLSv1.3') unless Puma::MiniSSL::HAS_TLS1_3

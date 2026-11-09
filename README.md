@@ -320,7 +320,7 @@ To use or avoid specific SSL ciphers for TLSv1.2 and below, use `ssl_cipher_filt
 ##### Ruby:
 
 ```
-$ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert&ssl_cipher_filter=!aNULL:AES+SHA'
+$ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert&ssl_cipher_filter=!aNULL:AES%2BSHA'
 ```
 
 ##### JRuby:
