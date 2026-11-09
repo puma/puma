@@ -296,8 +296,8 @@ class TestConfigFile < PumaTest
 
     conf.clamp
 
-    ssl_binding = conf.options[:binds].first
-    assert ssl_binding.include?("&ssl_cipher_filter=#{cipher_filter}")
+    params = Puma::Util.parse_query URI.parse(conf.options[:binds].first).query
+    assert_equal cipher_filter, params["ssl_cipher_filter"]
   end
 
   def test_ssl_bind_with_ciphersuites
