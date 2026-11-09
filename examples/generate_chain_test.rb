@@ -83,6 +83,8 @@ module GenerateChainCerts
       cert.subject.common_name  = common_name
       cert.serial_number.number = parent.serial_number.number + 100
       cert.parent               = parent
+      cert.not_before           = before_after[:not_before]
+      cert.not_after            = before_after[:not_after]
 
       cert.key_material.generate_key
       cert.sign!

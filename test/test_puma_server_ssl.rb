@@ -32,9 +32,6 @@ class TestPumaServerSSL < PumaTest
   include TestPuma
   include TestPuma::PumaSocket
 
-  PROTOCOL_USE_MIN_MAX =
-    OpenSSL::SSL::SSLContext.public_instance_methods(false).include?(:min_version=)
-
   OPENSSL_3 = OpenSSL::OPENSSL_LIBRARY_VERSION.match?(/OpenSSL 3\.\d\.\d/)
 
   def setup
@@ -124,7 +121,7 @@ class TestPumaServerSSL < PumaTest
     assert_equal "https\na=1&b=2", body
   end
 
-  def rejection(server_ctx, min_max, ssl_version)
+  def rejection(server_ctx, min_max)
     if server_ctx
       start_server(&server_ctx)
     else
@@ -135,13 +132,7 @@ class TestPumaServerSSL < PumaTest
 
     assert_raises(OpenSSL::SSL::SSLError) do
       begin
-        send_http_read_response ctx: new_ctx { |ctx|
-          if PROTOCOL_USE_MIN_MAX && min_max
-            ctx.max_version = min_max
-          else
-            ctx.ssl_version = ssl_version
-          end
-        }
+        send_http_read_response ctx: new_ctx { |ctx| ctx.max_version = min_max }
       rescue => e
         msg = e.message
         raise e
@@ -160,29 +151,21 @@ class TestPumaServerSSL < PumaTest
   def test_ssl_v3_rejection
     skip("SSLv3 protocol is unavailable") if Puma::MiniSSL::OPENSSL_NO_SSL3
 
-    rejection nil, nil, :SSLv3
+    rejection nil, :SSL3
   end
 
   def test_tls_v1_rejection
-    rejection ->(ctx) { ctx.no_tlsv1 = true }, :TLS1, :TLSv1
+    rejection ->(ctx) { ctx.no_tlsv1 = true }, :TLS1
   end
 
   def test_tls_v1_1_rejection
-    rejection ->(ctx) { ctx.no_tlsv1_1 = true }, :TLS1_1, :TLSv1_1
+    rejection ->(ctx) { ctx.no_tlsv1_1 = true }, :TLS1_1
   end
 
   def test_tls_v1_3
-    skip("TLSv1.3 protocol can not be set") unless OpenSSL::SSL::SSLContext.instance_methods(false).include?(:min_version=)
-
     start_server
 
-    body = send_http_read_resp_body ctx: new_ctx { |c|
-      if PROTOCOL_USE_MIN_MAX
-        c.min_version = :TLS1_3
-      else
-        c.ssl_version = :TLSv1_3
-      end
-    }
+    body = send_http_read_resp_body ctx: new_ctx { |c| c.min_version = :TLS1_3 }
 
     assert_equal "https", body
   end
@@ -462,8 +445,9 @@ class TestPumaServerSSLClient < PumaTest
   end if Puma.jruby?
 
   def test_allows_to_specify_cipher_suites_and_protocols
+    cipher_suite = ['TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256']
     ctx = CTX.dup
-    ctx.cipher_suites = [ 'TLS_RSA_WITH_AES_128_GCM_SHA256' ]
+    ctx.cipher_suites = cipher_suite
     ctx.protocols = 'TLSv1.2'
 
     assert_ssl_client_error_match(false, context: ctx) do |client_ctx|
@@ -474,8 +458,8 @@ class TestPumaServerSSLClient < PumaTest
       client_ctx.ca_file = "#{CERT_PATH}/ca.crt"
       client_ctx.verify_mode = OpenSSL::SSL::VERIFY_PEER
 
-      client_ctx.ssl_version = :TLSv1_2
-      client_ctx.ciphers = [ 'TLS_RSA_WITH_AES_128_GCM_SHA256' ]
+      client_ctx.max_version = :TLS1_2
+      client_ctx.ciphers = cipher_suite
     end
   end if Puma.jruby?
 
@@ -484,7 +468,9 @@ class TestPumaServerSSLClient < PumaTest
     ctx.cipher_suites = [ 'TLS_RSA_WITH_AES_128_GCM_SHA256' ]
     ctx.protocols = 'TLSv1.2'
 
-    assert_ssl_client_error_match(/no cipher suites in common/, context: ctx) do |client_ctx|
+    error_msg = /no cipher suites in common|cipher suites are inappropriate/
+
+    assert_ssl_client_error_match(error_msg, context: ctx) do |client_ctx|
       key = "#{CERT_PATH}/client.key"
       crt = "#{CERT_PATH}/client.crt"
       client_ctx.key = OpenSSL::PKey::RSA.new File.read(key)
@@ -492,7 +478,7 @@ class TestPumaServerSSLClient < PumaTest
       client_ctx.ca_file = "#{CERT_PATH}/ca.crt"
       client_ctx.verify_mode = OpenSSL::SSL::VERIFY_PEER
 
-      client_ctx.ssl_version = :TLSv1_2
+      client_ctx.max_version = :TLS1_2
       client_ctx.ciphers = [ 'TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384' ]
     end
   end if Puma.jruby?

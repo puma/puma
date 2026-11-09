@@ -13,6 +13,7 @@ class TestOutOfBandServer < PumaTest
   end
 
   def teardown
+    @app_released = true
     @oob_finished.broadcast
     @app_finished.broadcast
     @server&.stop true
@@ -64,7 +65,10 @@ class TestOutOfBandServer < PumaTest
       @mutex.synchronize do
         @request_count += 1
         @app_finished.signal
-        @app_finished.wait(@mutex, 1) if app_wait
+        if app_wait
+          count = @request_count
+          @app_finished.wait(@mutex, 1) until @request_count > count || @app_released
+        end
       end
       [200, {}, [""]]
     end
@@ -101,7 +105,8 @@ class TestOutOfBandServer < PumaTest
     Array.new(n) {send_http("GET / HTTP/1.0\r\n\r\n")}
     Thread.pass until @request_count == n
     @mutex.synchronize do
-      @app_finished.signal
+      @app_released = true
+      @app_finished.broadcast
       @oob_finished.wait(@mutex, 1)
     end
     assert_equal n, @request_count
