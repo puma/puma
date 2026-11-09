@@ -41,6 +41,8 @@ module Puma
     include Const
     include Response
 
+    OUT_OF_FDS_DELAY = 0.1
+
     attr_reader :options
     attr_reader :thread
     attr_reader :log_writer
@@ -346,6 +348,7 @@ module Puma
         pool = @thread_pool
         queue_requests = @queue_requests
         drain = options[:drain_on_shutdown] ? 0 : nil
+        out_of_fds = false
 
         addr_send_name, addr_value = case options[:remote_address]
         when :value
@@ -411,7 +414,15 @@ module Puma
                   sock.accept_nonblock
                 rescue IO::WaitReadable
                   next
+                rescue Errno::EMFILE, Errno::ENFILE => e
+                  unless out_of_fds
+                    @log_writer.unknown_error e, nil, "Listen loop"
+                    out_of_fds = true
+                  end
+                  break if check.wait_readable(OUT_OF_FDS_DELAY) && handle_check
+                  next
                 end
+                out_of_fds = false
                 drain += 1 if shutting_down?
 
                 client = new_client(io, sock)
