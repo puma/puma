@@ -1213,7 +1213,7 @@ class TestPumaServer < PumaTest
       ["delivered in one read", "5\r\nhelloXX0\r\n\r\n", nil],
       ["split inside the chunk data", "5\r\nhel", "loXX0\r\n\r\n"],
       ["split right after the chunk data", "5\r\nhello", "XX0\r\n\r\n"],
-      ["one-byte chunk split inside its data", "1\r\na", "XX0\r\n\r\n"],
+      ["one-byte chunk split after its data", "1\r\na", "XX0\r\n\r\n"],
     ]
 
     cases.each do |label, part1, part2|
@@ -1238,7 +1238,7 @@ class TestPumaServer < PumaTest
       "large chunk split before its terminator: chunk data must be followed by CRLF"
   end
 
-  def test_chunked_request_rejects_invalid_chunk_data_terminator_when_read_ends_on_last_data_byte
+  def test_chunked_request_rejects_invalid_chunk_data_terminator_when_read_ends_inside_terminator
     server_run { |env|
       env['rack.input'].read
       [200, {}, [""]]
