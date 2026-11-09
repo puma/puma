@@ -644,10 +644,21 @@ module Puma
       @chunked_content_length += @body.write(str)
     end
 
+    def check_chunk_ending(str, left)
+      (left - CHUNK_VALID_ENDING_SIZE...left).each do |i|
+        next if i < 0 || i >= str.bytesize
+
+        unless str.getbyte(i) == CHUNK_VALID_ENDING.getbyte(i - left + CHUNK_VALID_ENDING_SIZE)
+          raise HttpParserError, "Chunk size mismatch"
+        end
+      end
+    end
+
     def decode_chunk(chunk)
       return finish_last_chunk(@prev_chunk + chunk) if @in_last_chunk
 
       if @partial_part_left > 0
+        check_chunk_ending(chunk, @partial_part_left)
         if @partial_part_left <= chunk.size
           if @partial_part_left > 2
             write_chunk(chunk[0..(@partial_part_left-3)]) # skip the \r\n
@@ -733,6 +744,7 @@ module Puma
             write_chunk(part)
             @partial_part_left = len - part.size
           when got == len - 1 # edge where we get just \r but not \n
+            check_chunk_ending(part, len)
             write_chunk(part[0..-2])
             @partial_part_left = len - part.size
           end
