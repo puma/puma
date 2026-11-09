@@ -227,29 +227,61 @@ class TestPumaControlCli < PumaTest
     refute_includes log, 'send_request'
   end
 
+  def control_ssl_certificate(ip)
+    require 'openssl'
+    key = OpenSSL::PKey::RSA.generate(2048)
+    cert = OpenSSL::X509::Certificate.new
+    cert.version = 2
+    cert.serial = 1
+    cert.subject = cert.issuer = OpenSSL::X509::Name.parse('/CN=localhost')
+    cert.public_key = key.public_key
+    cert.not_before = Time.now - 60
+    cert.not_after = Time.now + 3600
+    factory = OpenSSL::X509::ExtensionFactory.new
+    factory.subject_certificate = factory.issuer_certificate = cert
+    cert.add_extension factory.create_extension('subjectAltName', "IP:#{ip}")
+    cert.add_extension factory.create_extension('basicConstraints', 'CA:FALSE', true)
+    cert.sign(key, OpenSSL::Digest::SHA256.new)
+    [key, cert]
+  end
+
   def control_ssl(host)
     skip_unless :ssl
     ip = host&.start_with?('[') ? host[1..-2] : host
     port = UniquePort.call(ip)
-    url = "ssl://#{host}:#{port}?#{ssl_query}"
 
-    opts = [
-      "--control-url", url,
-      "--control-token", "ctrl",
-      "--config-file", "test/config/app.rb"
-    ]
+    Dir.mktmpdir do |dir|
+      key, cert = control_ssl_certificate(ip)
+      cert_path = File.join(dir, 'cert.pem')
+      File.write(cert_path, cert.to_pem)
+      query = if Puma.jruby?
+        keystore = File.join(dir, 'control.p12')
+        File.binwrite(keystore, OpenSSL::PKCS12.create('password', 'puma', key, cert).to_der)
+        "keystore=#{keystore}&keystore-pass=password&keystore-type=PKCS12"
+      else
+        key_path = File.join(dir, 'key.pem')
+        File.write(key_path, key.to_pem)
+        "key=#{key_path}&cert=#{cert_path}"
+      end
 
-    control_cli = Puma::ControlCLI.new (opts + ["start"]), @ready, @ready
-    t = Thread.new do
-      control_cli.run
+      url = "ssl://#{host}:#{port}?#{query}"
+      opts = [
+        "--control-url", url,
+        "--control-token", "ctrl",
+        "--control-ca-file", cert_path,
+        "--config-file", "test/config/app.rb"
+      ]
+
+      control_cli = Puma::ControlCLI.new (opts + ["start"]), @ready, @ready
+      t = Thread.new { control_cli.run }
+
+      wait_booted
+
+      assert_command_cli_output opts + ["status"], "Puma is started"
+      assert_command_cli_output opts + ["stop"], "Command stop sent success"
+
+      assert_kind_of Thread, t.join, "server didn't stop"
     end
-
-    wait_booted
-
-    assert_command_cli_output opts + ["status"], "Puma is started"
-    assert_command_cli_output opts + ["stop"], "Command stop sent success"
-
-    assert_kind_of Thread, t.join, "server didn't stop"
   end
 
 
@@ -261,6 +293,50 @@ class TestPumaControlCli < PumaTest
   def test_control_ssl_ipv6
     skip_unless :ssl
     control_ssl '[::1]'
+  end
+
+  def assert_control_ssl_rejected(cert_ip, trusted:)
+    key, cert = control_ssl_certificate(cert_ip)
+    ctx = OpenSSL::SSL::SSLContext.new
+    ctx.cert = cert
+    ctx.key = key
+    server = TCPServer.new('127.0.0.1', 0)
+    thread = Thread.new do
+      socket = OpenSSL::SSL::SSLSocket.new(server.accept, ctx)
+      socket.sync_close = true
+      socket.accept
+      socket.gets
+    rescue OpenSSL::SSL::SSLError, EOFError, Errno::ECONNRESET
+      nil
+    ensure
+      socket&.sysclose
+    end
+
+    Dir.mktmpdir do |dir|
+      cert_path = File.join(dir, 'cert.pem')
+      File.write(cert_path, cert.to_pem)
+      opts = ['--control-url', "ssl://127.0.0.1:#{server.addr[1]}", '--control-token', 'secret']
+      opts.concat(['--control-ca-file', cert_path]) if trusted
+
+      assert_raises(OpenSSL::SSL::SSLError) do
+        Puma::ControlCLI.new(opts + ['stats'], @ready, @ready).send_request
+      end
+      assert_kind_of Thread, thread.join(5), 'control server did not finish'
+      assert_nil thread.value
+    end
+  ensure
+    thread&.kill&.join
+    server&.close
+  end
+
+  def test_control_ssl_rejects_untrusted_certificate
+    skip_unless :ssl
+    assert_control_ssl_rejected('127.0.0.1', trusted: false)
+  end
+
+  def test_control_ssl_rejects_wrong_host
+    skip_unless :ssl
+    assert_control_ssl_rejected('127.0.0.2', trusted: true)
   end
 
   def test_control_aunix
