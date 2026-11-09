@@ -974,6 +974,15 @@ class TestPumaServer < PumaTest
     assert_equal "HTTP/1.0 204 No Content\r\nconnection: keep-alive\r\n\r\n", response
   end
 
+  def test_http_10_keep_alive_unknown_length
+    server_run { [200, {"Content-Type" => "plain/text"}, ["hello", "world"].each] }
+
+    socket = send_http "GET / HTTP/1.0\r\nConnection: Keep-Alive\r\n\r\n"
+
+    assert_equal "HTTP/1.0 200 OK\r\ncontent-type: plain/text\r\n\r\nhelloworld", socket.read_all
+    assert_raises(EOFError) { socket.read_response }
+  end
+
   def test_http_10_close_without_body
     server_run { [204, {}, []] }
 

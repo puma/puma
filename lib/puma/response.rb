@@ -203,6 +203,22 @@ module Puma
         response_hijack = resp_info[:response_hijack] || res_body
       end
 
+      if !resp_info[:no_body] && !content_length && !resp_info[:allow_chunked] &&
+          !resp_info[:transfer_encoding] && !response_hijack
+        keep_alive = false
+      end
+
+      # HTTP/1.1 & 1.0 assume different defaults:
+      # - HTTP 1.0 assumes the connection will be closed if not specified
+      # - HTTP 1.1 assumes the connection will be kept alive if not specified.
+      # Only set the header if we're doing something which is not the default
+      # for this protocol version
+      if resp_info[:http_11]
+        io_buffer << CONNECTION_CLOSE if !keep_alive
+      else
+        io_buffer << CONNECTION_KEEP_ALIVE if keep_alive
+      end
+
       line_ending = LINE_END
 
       cork_socket socket
@@ -523,16 +539,7 @@ module Puma
         end
       end
 
-      # HTTP/1.1 & 1.0 assume different defaults:
-      # - HTTP 1.0 assumes the connection will be closed if not specified
-      # - HTTP 1.1 assumes the connection will be kept alive if not specified.
-      # Only set the header if we're doing something which is not the default
-      # for this protocol version
-      if http_11
-        io_buffer << CONNECTION_CLOSE if !resp_info[:keep_alive]
-      else
-        io_buffer << CONNECTION_KEEP_ALIVE if resp_info[:keep_alive]
-      end
+      resp_info[:http_11] = http_11
       resp_info
     end
     private :str_headers
