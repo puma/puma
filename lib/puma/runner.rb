@@ -82,7 +82,7 @@ module Puma
       end
 
       begin
-        control.binder.parse [str], nil, 'Starting control server'
+        control.binder.parse [control_url_with_umask(str)], nil, 'Starting control server'
       rescue Errno::EADDRINUSE, Errno::EACCES => e
         raise e, "Error: Control server address '#{str}' is already in use. Original error: #{e.message}"
       end
@@ -182,6 +182,18 @@ module Puma
     end
 
     private
+
+    # Applies the +umask+ option of +activate_control_app+ to a unix control
+    # url, using the same +umask+ query param that +bind+ urls support. A
+    # +umask+ already present in the url takes precedence.
+    def control_url_with_umask(url)
+      umask = @options[:control_url_umask]
+      return url unless umask && url.start_with?('unix://') && !url.match?(/[?&]umask=/)
+
+      umask = format('0%o', umask) if umask.is_a?(Integer)
+      "#{url}#{url.include?('?') ? '&' : '?'}umask=#{umask}"
+    end
+
     def ensure_output_directory_exists(path, io_name)
       unless Dir.exist?(File.dirname(path))
         raise "Cannot redirect #{io_name} to #{path}"
