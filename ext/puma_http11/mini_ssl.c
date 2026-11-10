@@ -378,7 +378,7 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
 
     if (SSL_CTX_use_PrivateKey(ctx, pkey) != 1) {
       BIO_free(bio);
-      raise_file_error("SSL_CTX_use_PrivateKey", RSTRING_PTR(key_pem));
+      raise_param_error("SSL_CTX_use_PrivateKey", "key_pem");
     }
     EVP_PKEY_free(pkey);
     BIO_free(bio);
