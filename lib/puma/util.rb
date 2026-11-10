@@ -13,21 +13,25 @@ module Puma
     # Escapes and unescapes a URI escaped string with
     # +encoding+. +encoding+ will be the target encoding of the string
     # returned, and it defaults to UTF-8
+    #
+    # Unlike form encoding, escape writes a space as '%20' and unescape
+    # keeps a literal '+', so values such as OpenSSL cipher strings
+    # ("AES+SHA") survive.
     if defined?(::Encoding)
       def escape(s, encoding = Encoding::UTF_8)
-        URI.encode_www_form_component(s, encoding)
+        URI.encode_www_form_component(s, encoding).gsub('+', '%20')
       end
 
       def unescape(s, encoding = Encoding::UTF_8)
-        URI.decode_www_form_component(s, encoding)
+        URI.decode_www_form_component(s.gsub('+', '%2B'), encoding)
       end
     else
       def escape(s, encoding = nil)
-        URI.encode_www_form_component(s, encoding)
+        URI.encode_www_form_component(s, encoding).gsub('+', '%20')
       end
 
       def unescape(s, encoding = nil)
-        URI.decode_www_form_component(s, encoding)
+        URI.decode_www_form_component(s.gsub('+', '%2B'), encoding)
       end
     end
     module_function :unescape, :escape

@@ -577,6 +577,93 @@ class TestBinderMRI < TestBinderBase
     assert_equal ssl_cipher_filter, ssl_context_for_binder.ssl_cipher_filter
   end
 
+  # OpenSSL cipher strings use '+' to require both properties, as in
+  # "AES+SHA". A bind query holds configuration values, not form data, so a
+  # literal '+' must reach the SSL context unchanged.
+  def test_binder_parses_ssl_cipher_filter_with_plus
+    skip_unless :ssl
+
+    ssl_cipher_filter = "!aNULL:AES+SHA"
+
+    @binder.parse ["ssl://0.0.0.0?#{ssl_query}&ssl_cipher_filter=#{ssl_cipher_filter}"], @log_writer
+
+    assert_equal ssl_cipher_filter, ssl_context_for_binder.ssl_cipher_filter
+  end
+
+  # The ssl_bind DSL builds a bind query that the Binder parses, so a '+' in
+  # ssl_cipher_filter must survive that round trip too.
+  def test_ssl_bind_keeps_plus_in_ssl_cipher_filter
+    skip_unless :ssl
+
+    ssl_cipher_filter = "!aNULL:AES+SHA"
+    cert = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
+    key  = File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
+
+    config = Puma::Configuration.new do |c|
+      c.ssl_bind "0.0.0.0", "0", {
+        cert: cert,
+        key: key,
+        ssl_cipher_filter: ssl_cipher_filter,
+        verify_mode: "none"
+      }
+    end
+    config.clamp
+
+    @binder.parse config.options[:binds], @log_writer
+
+    assert_equal ssl_cipher_filter, ssl_context_for_binder.ssl_cipher_filter
+  end
+
+  def test_binder_raises_on_invalid_ssl_cipher_filter
+    skip_if :jruby
+    skip_unless :ssl
+
+    assert_raises(Puma::MiniSSL::SSLError) do
+      @binder.parse ["ssl://0.0.0.0?#{ssl_query}&ssl_cipher_filter=DEFAULT+!AES"], @log_writer
+    end
+  end
+
+  def test_binder_allows_ssl_cipher_filter_that_leaves_only_tls1_3
+    skip_if :jruby
+    skip_unless :ssl
+    skip('Requires TLSv1.3') unless Puma::MiniSSL::HAS_TLS1_3
+
+    @binder.parse ["ssl://0.0.0.0?#{ssl_query}&ssl_cipher_filter=!ALL"], @log_writer
+
+    assert_equal "!ALL", ssl_context_for_binder.ssl_cipher_filter
+  end
+
+  def test_binder_decodes_percent_escapes_in_ssl_cipher_filter
+    skip_if :jruby
+    skip_unless :ssl
+
+    @binder.parse ["ssl://0.0.0.0?#{ssl_query}&ssl_cipher_filter=DEFAULT%20!AES%3AAES%2BSHA"], @log_writer
+
+    assert_equal "DEFAULT !AES:AES+SHA", ssl_context_for_binder.ssl_cipher_filter
+  end
+
+  def test_ssl_bind_round_trips_spaces_and_plus_signs
+    skip_if :jruby
+    skip_unless :ssl
+
+    values = {
+      cert: "/a b/c+d.pem",
+      key: "/a b/k+e y.pem",
+      ca: "/a b/c+a.pem",
+      key_password_command: "echo x y+z"
+    }
+
+    config = Puma::Configuration.new do |c|
+      c.ssl_bind "0.0.0.0", "0", values.merge(verify_mode: "peer")
+    end
+    config.clamp
+
+    query = URI.parse(config.options[:binds].first).query
+    params = Puma::Util.parse_query query
+
+    values.each { |name, value| assert_equal value, params[name.to_s] }
+  end
+
   def test_binder_parses_ssl_ciphersuites
     skip_unless :ssl
     skip('Requires TLSv1.3') unless Puma::MiniSSL::HAS_TLS1_3
