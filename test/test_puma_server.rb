@@ -1247,15 +1247,16 @@ class TestPumaServer < PumaTest
     header = "PUT /path HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n"
 
     cases = [
-      ["5\r\nhelloX", "Y0\r\n\r\n"],
-      ["5\r\nhelloX", "\n0\r\n\r\n"],
+      ["5\r\nhelloX", nil],
       ["5\r\nhello\r", "Y0\r\n\r\n"],
     ]
 
     cases.each do |part1, part2|
       socket = send_http "#{header}#{part1}"
-      sleep 0.2
-      socket << part2
+      if part2
+        sleep 0.2
+        socket << part2
+      end
       response = socket.read_response
 
       assert_match %r{\AHTTP/1\.1 400 }, response,
