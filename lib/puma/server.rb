@@ -548,7 +548,11 @@ module Puma
                 end
               end
             elsif @queue_requests
-              client.set_timeout @persistent_timeout
+              if client.can_close?
+                client.set_timeout @persistent_timeout
+              else
+                client.set_read_timeout @first_data_timeout
+              end
               if @reactor.add client
                 close_socket = false
               end

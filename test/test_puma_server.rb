@@ -723,7 +723,9 @@ class TestPumaServer < PumaTest
   def test_header_deadline_resets_for_keep_alive_request
     server_run(first_data_timeout: 1, persistent_timeout: 5)
 
-    socket = send_http "GET / HTTP/1.1\r\nHost: test.com\r\n\r\n"
+    socket = send_http "GET / HTTP/1.1\r\n"
+    sleep 0.5
+    socket << "Host: test.com\r\n\r\n"
     assert_equal "HTTP/1.1 200 OK", socket.read_response.status
 
     sleep 1.5
@@ -733,6 +735,16 @@ class TestPumaServer < PumaTest
     socket << "Host: test.com\r\n\r\n"
 
     assert_equal "HTTP/1.1 200 OK", socket.read_response.status
+  end
+
+  def test_header_deadline_applies_to_partial_pipelined_request
+    server_run(first_data_timeout: 1, persistent_timeout: 10)
+
+    socket = send_http "GET / HTTP/1.1\r\nHost: test.com\r\n\r\nGET / HTTP/1.1\r\n"
+    assert_equal "HTTP/1.1 200 OK", socket.read_response.status
+
+    assert socket.wait_readable(2.5), "partial pipelined request outlived first_data_timeout"
+    assert_empty socket.read_nonblock(1024, exception: false).to_s
   end
 
   def test_no_timeout_after_data_received_no_queue
