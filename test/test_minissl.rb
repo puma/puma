@@ -66,6 +66,28 @@ class TestMiniSSL < PumaTest
       assert_equal("'key_pem' is not a String", exception.message)
     end
 
+    # Regression test for https://github.com/puma/puma/issues/4082
+    # A key_pem that does not match cert_pem must not be echoed back in the
+    # error message, only the name of the offending parameter.
+    def test_raises_with_mismatched_key_pem_without_leaking_its_contents
+      _, cert_pem = self_signed_cert_pem
+      other_key_pem = OpenSSL::PKey::RSA.new(2048).to_pem
+
+      ctx = Puma::MiniSSL::Context.new
+      ctx.cert_pem = cert_pem
+      ctx.key_pem = other_key_pem
+
+      # `MiniSSL::Server#initialize` builds its engine context the same way.
+      exception = assert_raises(Puma::MiniSSL::SSLError) do
+        Puma::MiniSSL::SSLContext.new ctx
+      end
+
+      assert_includes exception.message, "SSL_CTX_use_PrivateKey"
+      assert_includes exception.message, "key_pem"
+      refute_includes exception.message, "PRIVATE KEY"
+      refute_includes exception.message, other_key_pem.lines[1].chomp
+    end
+
     def test_raises_with_unreadable_ca_file
       ctx = Puma::MiniSSL::Context.new
 
@@ -89,6 +111,19 @@ class TestMiniSSL < PumaTest
       ctx.key_password_command = '/unreadable/decrypt_command'
 
       assert_raises(Errno::ENOENT) { ctx.key_password }
+    end
+
+    def self_signed_cert_pem
+      key = OpenSSL::PKey::RSA.new 2048
+      cert = OpenSSL::X509::Certificate.new
+      cert.version = 2
+      cert.serial = 1
+      cert.subject = cert.issuer = OpenSSL::X509::Name.parse "/CN=localhost"
+      cert.public_key = key.public_key
+      cert.not_before = Time.now
+      cert.not_after = Time.now + 3600
+      cert.sign key, OpenSSL::Digest::SHA256.new
+      [key, cert.to_pem]
     end
   end
 end if ::Puma::HAS_SSL
