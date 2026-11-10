@@ -163,6 +163,28 @@ class TestMiniSSLSocket < PumaTest
     assert received == sent, "TLS data arrived out of order or duplicated"
   end
 
+  def test_empty_write_nonblock_keeps_pending_write
+    chunk = "x" * 64 * 1024
+    sent = 0
+    n = nil
+    sent += n until (n = @server.write_nonblock(chunk, exception: false)) == :wait_writable
+
+    assert_equal 0, @server.write_nonblock("")
+
+    reader = Thread.new do
+      buf = +""
+      buf << @client.readpartial(64 * 1024) until buf.end_with?("end")
+      buf
+    end
+    Timeout.timeout(5) do
+      @server.wait_writable 1 while (n = @server.write_nonblock(chunk, exception: false)) == :wait_writable
+      sent += n
+      @server.write "end"
+    end
+
+    assert_equal sent + 3, reader.value.bytesize
+  end
+
   def test_wait_writable
     assert @server.wait_writable(1)
 

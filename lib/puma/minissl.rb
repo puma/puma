@@ -142,9 +142,11 @@ module Puma
 
       # As with SSL_write, retry with the same data after IO::EAGAINWaitWritable
       def write_nonblock(data, exception: true)
+        return 0 if data.empty?
+
         @write_owed = 0 if @write_owed_data && data.byteslice(0, @write_owed_data.bytesize).b != @write_owed_data
 
-        if @write_owed == 0 && !data.empty?
+        if @write_owed == 0
           @write_owed = @engine.write data
           @write_owed_data = nil
           queue_ciphertext
