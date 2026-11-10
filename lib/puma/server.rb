@@ -327,7 +327,7 @@ module Puma
       elsif shutdown || client.timeout == 0
         client.timeout!
       else
-        client.set_timeout(@first_data_timeout)
+        client.set_read_timeout(@first_data_timeout)
         false
       end
     rescue StandardError => e
@@ -502,7 +502,7 @@ module Puma
       begin
         if @queue_requests && !client.eagerly_finish
 
-          client.set_timeout(@first_data_timeout)
+          client.set_read_timeout(@first_data_timeout)
           if @reactor.add client
             close_socket = false
             return false

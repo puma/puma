@@ -336,6 +336,12 @@ module Puma
 
     # Define how long the TCP socket stays open when no data has been received.
     #
+    # This is also the maximum time a client may take to send its request line
+    # and headers (and PROXY protocol line, if enabled), even if it keeps
+    # sending data. The deadline starts when the connection is accepted, and
+    # again at the first byte of each keep-alive request. Reading the request
+    # body is only subject to the idle timeout.
+    #
     # The default is 30 seconds.
     #
     # @example
