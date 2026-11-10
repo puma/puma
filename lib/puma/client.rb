@@ -91,7 +91,8 @@ module Puma
     attr_writer :peerip, :http_content_length_limit, :supported_http_methods,
                 :allow_underscore_headers, :continue_callback
 
-    attr_accessor :remote_addr_header, :listener, :env_set_http_version
+    attr_accessor :remote_addr_header, :listener, :env_set_http_version,
+                  :reactor_error
 
     def initialize(io, env=nil)
       @io = io
@@ -121,6 +122,7 @@ module Puma
       @allow_underscore_headers = true
       @continue_callback = nil
       @error_status_code = nil
+      @reactor_error = nil
 
       @peerip = nil
       @peer_family = nil
@@ -372,7 +374,7 @@ module Puma
 
     def write_error(status_code)
       begin
-        @io << ERROR_RESPONSE[status_code]
+        @io.write_nonblock ERROR_RESPONSE[status_code], exception: false
       rescue StandardError
       end
     end
@@ -455,8 +457,11 @@ module Puma
         if @continue_callback && (response = @continue_callback.call(@env))
           reject_continue response
         end
-        @io << HTTP_11_100
-        @io.flush
+        # Don't block the reactor on a client that is not reading. A partial
+        # write would corrupt the response stream, so close the connection.
+        unless @io.write_nonblock(HTTP_11_100, exception: false) == HTTP_11_100.bytesize
+          raise ConnectionError, "Connection error detected during write"
+        end
       end
 
       @read_header = false

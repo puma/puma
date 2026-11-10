@@ -314,6 +314,9 @@ module Puma
     # If a client object times out, a 408 response is written, its connection is closed,
     # and the object is removed from the reactor (return `true`).
     #
+    # If the request cannot be read, the Client is passed to the ThreadPool with its
+    # `reactor_error` set, so that a processor thread writes the error response.
+    #
     # If the Reactor is shutting down, all Clients are either timed out or passed to the
     # ThreadPool, depending on their current state (#can_close?).
     #
@@ -330,9 +333,14 @@ module Puma
         client.set_timeout(@first_data_timeout)
         false
       end
-    rescue StandardError => e
-      client_error(e, client)
+    rescue ConnectionError, EOFError
       close_client_safely(client)
+      true
+    rescue StandardError => e
+      # Writing the error response may block on a client that is not reading,
+      # so leave it to a thread pool thread.
+      client.reactor_error = e
+      @thread_pool << client
       true
     end
 
@@ -500,6 +508,8 @@ module Puma
       requests = 0
 
       begin
+        raise client.reactor_error if client.reactor_error
+
         if @queue_requests && !client.eagerly_finish
 
           client.set_timeout(@first_data_timeout)

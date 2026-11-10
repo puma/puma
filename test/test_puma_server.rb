@@ -672,6 +672,91 @@ class TestPumaServer < PumaTest
     test_timeout_in_data_phase(queue_requests: false)
   end
 
+  # Every connection queued in the reactor is closed when its own deadline
+  # passes. A client that keeps sending a few bytes of an incomplete request
+  # must not delay the timeout of the connections behind it.
+  def test_idle_connection_timeout_is_not_delayed_by_a_slow_request
+    server_run(first_data_timeout: 1)
+
+    slow = new_socket
+    slow << "GET / HTTP/1.1\r\nHost: test.com\r\nX-Slow: "
+    sleep 0.1
+    slow << "."
+
+    idle = new_socket
+
+    stop = false
+    dribble = Thread.new do
+      until stop
+        sleep 0.2
+        begin
+          slow << "."
+        rescue StandardError
+          break
+        end
+      end
+    end
+
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 2.5
+    closed = false
+    while Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
+      next unless idle.wait_readable(0.05)
+      if idle.read_nonblock(1, exception: false).nil?
+        closed = true
+        break
+      end
+    end
+
+    assert closed, "the idle connection was not closed within 2.5 s, " \
+      "although its first_data_timeout is 1 s and only a different client was sending data"
+  ensure
+    stop = true
+    dribble&.join(1)
+    slow&.close
+    idle&.close
+  end
+
+  # A request whose headers cannot be parsed is completed by the reactor while
+  # the connection is parked there, and the error response is written from
+  # inside reactor_wakeup. The write must not wait for a client that is not
+  # reading.
+  def test_error_response_in_reactor_does_not_wait_for_a_client_that_is_not_reading
+    skip_unless :unix
+
+    pool = []
+    @server.instance_variable_set :@thread_pool, pool
+
+    rd, wr = UNIXSocket.pair
+    rd.define_singleton_method(:peeraddr) { ["AF_INET", 80, "127.0.0.1", "127.0.0.1"] }
+    client = Puma::Client.new rd, {}
+    client.supported_http_methods = @server.instance_variable_get(:@supported_http_methods)
+
+    filler = "x" * 65_536
+    loop { break if rd.write_nonblock(filler, exception: false) == :wait_writable }
+
+    wr.syswrite "GET / HTTP/1.1\r\nHost: test.com\r\nBad Header: x\r\n\r\n"
+
+    thread = Thread.new do
+      begin
+        @server.send :reactor_wakeup, client
+      rescue EOFError, Puma::ConnectionError
+        :closed
+      end
+    end
+
+    assert thread.join(2), "writing the error response blocked for more than 2 s " \
+      "while the client was not reading, so nothing else on that thread could run"
+  ensure
+    # Let a still-blocked write finish, then clean up.
+    if wr && !wr.closed?
+      loop { break if wr.read_nonblock(65_536, exception: false) == :wait_readable }
+    end
+    thread&.join(3)
+    thread&.kill
+    wr&.close
+    rd&.close
+  end
+
   # https://github.com/puma/puma/issues/2574
   def test_no_timeout_after_data_received
     @server.instance_variable_set(:@first_data_timeout, 1)

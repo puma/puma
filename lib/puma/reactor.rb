@@ -120,11 +120,17 @@ module Puma
 
     # 'Wake up' a monitored object by calling the provided block.
     # Stop monitoring the object if the block returns `true`.
+    # Otherwise the block may have changed its timeout, so move it to keep
+    # `@timeouts` sorted.
     def wakeup!(client)
       if @block.call client
         @selector.deregister client.to_io
         @reactor_size -= 1
         @timeouts.delete client
+      else
+        @timeouts.delete client
+        index = @timeouts.bsearch_index { |c| c.timeout_at > client.timeout_at } || @timeouts.size
+        @timeouts.insert index, client
       end
     end
   end
