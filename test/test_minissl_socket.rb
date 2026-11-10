@@ -15,8 +15,6 @@ class TestMiniSSLSocket < PumaTest
   EXAMPLES = File.expand_path "../examples/puma", __dir__
 
   def setup
-    skip_unless :unix
-
     ctx = Puma::MiniSSL::Context.new
     if Puma.jruby?
       ctx.keystore = "#{EXAMPLES}/keystore.jks"
@@ -27,7 +25,10 @@ class TestMiniSSLSocket < PumaTest
     end
     ctx.verify_mode = Puma::MiniSSL::VERIFY_NONE
 
-    @raw_server, raw_client = UNIXSocket.pair
+    listener = TCPServer.new "127.0.0.1", 0
+    raw_client = TCPSocket.new "127.0.0.1", listener.addr[1]
+    @raw_server = listener.accept
+    listener.close
     eng_ctx = Puma.jruby? ? ctx : Puma::MiniSSL::SSLContext.new(ctx)
     @server = Puma::MiniSSL::Socket.new @raw_server, Puma::MiniSSL::Engine.server(eng_ctx)
 
@@ -79,7 +80,14 @@ class TestMiniSSLSocket < PumaTest
   end
 
   def test_write_nonblock_retry_delivers_data_once
-    data = Random.new(42).bytes(1024 * 1024)
+    assert_retries_deliver_data_once Random.new(42).bytes(16 * 1024 * 1024)
+  end
+
+  def test_write_nonblock_retry_delivers_multibyte_data_once
+    assert_retries_deliver_data_once "\u20ac" * 2 * 1024 * 1024
+  end
+
+  def assert_retries_deliver_data_once(data)
     received = +""
     reader = Thread.new do
       sleep 0.2 # let the writer hit EAGAIN first
@@ -103,7 +111,7 @@ class TestMiniSSLSocket < PumaTest
 
     assert_operator eagain, :>, 0
     assert_equal data.bytesize, received.bytesize
-    assert_equal data, received
+    assert_equal data.b, received.b
   end
 
   def test_write_after_eagain_sends_pending_ciphertext_first
@@ -122,9 +130,44 @@ class TestMiniSSLSocket < PumaTest
     assert_equal "next", @client.readpartial(4)
   end
 
+  def test_write_between_write_nonblock_retries_keeps_data_in_order
+    sent = +""
+    frame = nil
+    index = 0
+    loop do
+      frame = format("%08d", index) * 2_000
+      begin
+        @server.write_nonblock frame
+      rescue IO::EAGAINWaitWritable
+        break
+      end
+      sent << frame
+      index += 1
+    end
+    sent << frame << "marker" << "end"
+
+    reader = Thread.new { @client.read sent.bytesize }
+    Timeout.timeout(5) do
+      @server.write "marker"
+      begin
+        @server.write_nonblock frame
+      rescue IO::EAGAINWaitWritable
+        @server.wait_writable 1
+        retry
+      end
+      @server.write "end"
+    end
+
+    received = reader.value
+    assert_equal sent.bytesize, received.bytesize
+    assert received == sent, "TLS data arrived out of order or duplicated"
+  end
+
   def test_wait_writable
     assert @server.wait_writable(1)
 
+    fill_until_eagain "x" * 64 * 1024
+    sleep 0.05
     fill_until_eagain "x" * 64 * 1024
 
     refute @server.wait_writable(0.1)

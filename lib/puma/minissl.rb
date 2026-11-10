@@ -27,6 +27,7 @@ module Puma
         @reuse = nil
         @write_buffer = +''
         @write_owed = 0
+        @write_owed_data = nil
       end
 
       # @!attribute [r] to_io
@@ -122,7 +123,6 @@ module Puma
 
         data_size = data.bytesize
         need = data_size
-        @write_owed = 0
 
         while true
           wrote = @engine.write data
@@ -142,18 +142,23 @@ module Puma
 
       # As with SSL_write, retry with the same data after IO::EAGAINWaitWritable
       def write_nonblock(data, exception: true)
+        @write_owed = 0 if @write_owed_data && data.byteslice(0, @write_owed_data.bytesize).b != @write_owed_data
+
         if @write_owed == 0 && !data.empty?
           @write_owed = @engine.write data
+          @write_owed_data = nil
           queue_ciphertext
         end
 
         unless flush_write_buffer_nonblock
+          @write_owed_data ||= data.byteslice(0, @write_owed).b
           raise IO::EAGAINWaitWritable if exception
           return :wait_writable
         end
 
         wrote = @write_owed
         @write_owed = 0
+        @write_owed_data = nil
         wrote
       end
 
