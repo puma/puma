@@ -326,7 +326,7 @@ module Puma
     def reactor_wakeup(client)
       shutdown = !@queue_requests
       if client.try_to_finish || (shutdown && !client.can_close?)
-        @thread_pool << client
+        hand_to_thread_pool client
       elsif shutdown || client.timeout == 0
         client.timeout!
       else
@@ -340,7 +340,16 @@ module Puma
       # Writing the error response may block on a client that is not reading,
       # so leave it to a thread pool thread.
       client.reactor_error = e
+      hand_to_thread_pool client
+    end
+
+    def hand_to_thread_pool(client)
       @thread_pool << client
+      true
+    rescue ThreadError
+      true
+    rescue StandardError
+      close_client_safely client
       true
     end
 
