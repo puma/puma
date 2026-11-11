@@ -433,7 +433,10 @@ module Puma
           end
         end
 
-        @log_writer.debug { "Drained #{drain} additional connections." } if drain
+        begin
+          @log_writer.debug { "Drained #{drain} additional connections." } if drain
+        rescue StandardError
+        end
         @events.fire :state, @status
 
         if queue_requests
@@ -443,7 +446,10 @@ module Puma
 
         graceful_shutdown if @status == :stop || @status == :restart
       rescue Exception => e
-        @log_writer.unknown_error e, nil, "Exception handling servers"
+        begin
+          @log_writer.unknown_error e, nil, "Exception handling servers"
+        rescue StandardError
+        end
       ensure
         # Errno::EBADF is infrequently raised
         [@check, @notify].each do |io|
