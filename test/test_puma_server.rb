@@ -1993,6 +1993,30 @@ class TestPumaServer < PumaTest
     assert_equal "HTTP/1.1 200 OK", send_http_read_response(GET_11, timeout: 5).status
   end
 
+  def test_shutdown_survives_a_failing_log_write
+    @log_writer.define_singleton_method(:debug) { |*| raise Errno::ENOSPC }
+    @log_writer.define_singleton_method(:unknown_error) { |*| raise Errno::ENOSPC }
+    server_run drain_on_shutdown: true
+
+    assert_equal "HTTP/1.1 200 OK", send_http_read_response(GET_11).status
+
+    @server.stop
+    assert @server.thread.join(5), "server thread did not stop"
+    assert @server.instance_variable_get(:@thread_pool).instance_variable_get(:@shutdown),
+      "graceful shutdown did not run"
+  end
+
+  def test_server_thread_survives_a_failing_log_write_after_a_shutdown_error
+    @log_writer.define_singleton_method(:unknown_error) { |*| raise Errno::ENOSPC }
+    @events.define_singleton_method(:fire) { |_, state = nil| raise "state hook failed" if state == :stop }
+    server_run
+
+    @server.stop
+    thread = @server.thread
+    assert thread.join(5), "server thread did not stop"
+    thread.value
+  end
+
   # Retryable errors such as ECONNABORTED should be silently swallowed by accept loop.
   def test_accept_econnaborted
     # Match Ruby #accept_nonblock implementation, ECONNABORTED error is extended by IO::WaitReadable.
