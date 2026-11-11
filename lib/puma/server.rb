@@ -662,16 +662,16 @@ module Puma
     end
 
     def notify_safely(message)
-      # Use syswrite (a single write(2) syscall) rather than `<<` to
-      # bypass MRI's buffered-IO write lock. That lock can deadlock with
-      # IO#close running in handle_servers' ensure block — the closer
-      # parks in sleep_forever while a buffered writer is mid-write,
-      # even though the writer is woken with IOError (puma#3677).
-      # syswrite is also async-signal-safe, so notify_safely remains
-      # callable from puma's signal handlers (TERM/USR2/INT/HUP) without
-      # raising "can't be called from trap context".
+      # Use write_nonblock rather than `<<` or `syswrite`. This method is
+      # called from signal handlers (TERM/USR2/INT/HUP, and the cluster
+      # worker's SIGTERM trap). On Ruby < 4.0, a blocking write from trap
+      # context that is still in flight when handle_servers' ensure block
+      # runs IO#close leaves the closing thread parked in IO#close forever
+      # (puma#3677). write_nonblock is a single write(2) that never waits,
+      # so IO#close has nothing to wait for. If the pipe is full a command
+      # is already pending, so dropping this one is harmless.
       notify = @notify
-      notify.syswrite(message) if notify && !notify.closed?
+      notify.write_nonblock(message, exception: false) if notify && !notify.closed?
     rescue IOError, NoMethodError, Errno::EPIPE, Errno::EBADF => e
       @log_writer.unknown_error(e, nil, "notify_safely error") if Puma::IS_MRI && RUBY_VERSION > '3.3'
     end
