@@ -115,12 +115,8 @@ class TestIntegrationSSLSession < TestIntegration
     ctx.verify_mode = OSSL::VERIFY_NONE
     ctx.session_cache_mode = OSSL::SSLContext::SESSION_CACHE_CLIENT
     if tls_vers
-      if ctx.respond_to? :max_version=
-        ctx.max_version = tls_vers
-        ctx.min_version = tls_vers
-      else
-        ctx.ssl_version = tls_vers.to_s.sub('TLS', 'TLSv').to_sym
-      end
+      ctx.max_version = tls_vers
+      ctx.min_version = tls_vers
     end
     ctx.session_new_cb = ->(ary) {
       queue << true if queue
