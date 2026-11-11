@@ -122,7 +122,16 @@ module Puma
         return 0 if data.empty?
 
         data_size = data.bytesize
-        need = data_size
+
+        flush_write_buffer
+        if @write_owed_data && data.byteslice(0, @write_owed_data.bytesize).b == @write_owed_data
+          data = data.byteslice(@write_owed..-1)
+          @write_owed = 0
+          @write_owed_data = nil
+          return data_size if data.empty?
+        end
+
+        need = data.bytesize
 
         while true
           wrote = @engine.write data
@@ -169,6 +178,7 @@ module Puma
       end
 
       def flush
+        flush_write_buffer
         @socket.flush
       end
 
