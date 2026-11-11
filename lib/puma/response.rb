@@ -299,7 +299,11 @@ module Puma
             fast_write_str socket, io_buffer.read_and_reset
           else
             fast_write_str socket, io_buffer.read_and_reset
-            IO.copy_stream body, socket
+            remaining = content_length
+            while remaining > 0 && (chunk = body.read([remaining, BODY_LEN_MAX].min))
+              fast_write_str socket, chunk
+              remaining -= chunk.bytesize
+            end
           end
         end
       elsif body.is_a?(::Array) && body.length == 1
