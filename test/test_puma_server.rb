@@ -757,6 +757,50 @@ class TestPumaServer < PumaTest
     rd&.close
   end
 
+  def test_reactor_wakeup_closes_client_when_thread_pool_rejects_it
+    skip_unless :unix
+
+    pool = Object.new
+    pool.define_singleton_method(:<<) { |_| raise "Unable to add work while shutting down" }
+    @server.instance_variable_set :@thread_pool, pool
+
+    rd, wr = UNIXSocket.pair
+    rd.define_singleton_method(:peeraddr) { ["AF_INET", 80, "127.0.0.1", "127.0.0.1"] }
+    client = Puma::Client.new rd, {}
+    client.supported_http_methods = @server.instance_variable_get(:@supported_http_methods)
+
+    wr.syswrite "GET / HTTP/1.1\r\nHost: test.com\r\n\r\n"
+
+    assert_equal true, @server.send(:reactor_wakeup, client)
+    assert rd.closed?
+  ensure
+    wr&.close
+    rd&.close
+  end
+
+  def test_reactor_wakeup_keeps_client_queued_when_thread_spawn_fails
+    skip_unless :unix
+
+    queued = []
+    pool = Object.new
+    pool.define_singleton_method(:<<) { |c| queued << c; raise ThreadError, "can't create Thread" }
+    @server.instance_variable_set :@thread_pool, pool
+
+    rd, wr = UNIXSocket.pair
+    rd.define_singleton_method(:peeraddr) { ["AF_INET", 80, "127.0.0.1", "127.0.0.1"] }
+    client = Puma::Client.new rd, {}
+    client.supported_http_methods = @server.instance_variable_get(:@supported_http_methods)
+
+    wr.syswrite "GET / HTTP/1.1\r\nHost: test.com\r\nBad Header: x\r\n\r\n"
+
+    assert_equal true, @server.send(:reactor_wakeup, client)
+    assert_equal [client], queued
+    refute rd.closed?
+  ensure
+    wr&.close
+    rd&.close
+  end
+
   # https://github.com/puma/puma/issues/2574
   def test_no_timeout_after_data_received
     @server.instance_variable_set(:@first_data_timeout, 1)
