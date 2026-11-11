@@ -1733,7 +1733,7 @@ class TestPumaServer < PumaTest
   # System-resource errors such as EMFILE should not be silently swallowed by accept loop.
   def test_accept_emfile
     stub_accept_nonblock Errno::EMFILE.new('accept(2)')
-    sleep 0.1 if Puma::IS_WINDOWS && Puma::IS_ARM
+    sleep 0.1 if Puma::IS_WINDOWS
     refute_empty @log_writer.stderr.string, "Expected EMFILE error not logged"
   end
 
@@ -2178,9 +2178,10 @@ class TestPumaServer < PumaTest
   end
 
   def test_update_thread_pool_min_max
-    # add a small delay so requests back up
+    # delay enough that 5 requests back up faster than threads finish them,
+    # so the pool spawns up to max rather than reusing the existing thread
     @app = ->(env) do
-      sleep 0.001
+      sleep 0.1
       [200, {}, [env['rack.url_scheme']]]
     end
 
