@@ -34,6 +34,7 @@ module Puma
       @selector = ::NIO::Selector.new(NIO::Selector.backends.delete(backend))
       @input = Queue.new
       @timeouts = []
+      @timeout_keys = {}.compare_by_identity
       @block = block
       @reactor_size = 0
       @reactor_max = 0
@@ -77,6 +78,8 @@ module Puma
     def select_loop
       begin
         until @input.closed? && @input.empty?
+          requeue_moved_timeouts
+
           # Wakeup any registered object that receives incoming data.
           # Block until the earliest timeout or Selector#wakeup is called.
           timeout = (earliest = @timeouts.first) && earliest.timeout
@@ -93,7 +96,7 @@ module Puma
               client = @input.pop
               register(client) if client.io_ok?
             end
-            @timeouts.sort_by!(&:timeout_at)
+            @timeouts.sort_by! { |client| @timeout_keys[client] }
           end
         end
       rescue StandardError => e
@@ -114,24 +117,39 @@ module Puma
       @reactor_size += 1
       @reactor_max = @reactor_size if @reactor_max < @reactor_size
       @timeouts << client
+      @timeout_keys[client] = client.timeout_at
     rescue ArgumentError
       # unreadable clients raise error when processed by NIO
     end
 
     # 'Wake up' a monitored object by calling the provided block.
     # Stop monitoring the object if the block returns `true`.
-    # Otherwise the block may have changed its timeout, so move it to keep
-    # `@timeouts` sorted.
     def wakeup!(client)
       if @block.call client
         @selector.deregister client.to_io
         @reactor_size -= 1
         @timeouts.delete client
-      else
+        @timeout_keys.delete client
+      elsif client.timeout_at < @timeout_keys[client]
         @timeouts.delete client
-        index = @timeouts.bsearch_index { |c| c.timeout_at > client.timeout_at } || @timeouts.size
-        @timeouts.insert index, client
+        requeue client
       end
+    end
+
+    # `@timeouts` is sorted by the timeout each client had when it was queued.
+    # Timeouts that moved earlier are requeued in `wakeup!`. Timeouts that moved
+    # later are requeued here, once the client reaches the front.
+    def requeue_moved_timeouts
+      while (client = @timeouts.first) && @timeout_keys[client] < client.timeout_at
+        @timeouts.shift
+        requeue client
+      end
+    end
+
+    def requeue(client)
+      key = @timeout_keys[client] = client.timeout_at
+      index = @timeouts.bsearch_index { |c| @timeout_keys[c] > key } || @timeouts.size
+      @timeouts.insert index, client
     end
   end
 end
