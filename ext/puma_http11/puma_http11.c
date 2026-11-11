@@ -385,7 +385,8 @@ static VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data, VALUE st
   long dlen = 0;
 
   from = FIX2INT(start);
-  RSTRING_GETMEM(data, dptr, dlen);
+  dptr = RSTRING_PTR(data);
+  dlen = (long)RSTRING_LEN(data);
 
   if(from >= dlen) {
     rb_raise(eHttpParserError, "%s", "Requested start is after data buffer end.");
@@ -398,7 +399,7 @@ static VALUE HttpParser_execute(VALUE self, VALUE req_hash, VALUE data, VALUE st
     if(puma_parser_has_error(http)) {
       rb_raise(eHttpParserError, "%s", "Invalid HTTP format, parsing fails. Are you trying to open an SSL connection to a non-SSL Puma?");
     } else {
-      return INT2FIX(puma_parser_nread(http));
+      return SIZET2NUM(puma_parser_nread(http));
     }
   }
 }
@@ -444,7 +445,7 @@ static VALUE HttpParser_nread(VALUE self)
 {
   puma_parser *http = HttpParser_unwrap(self);
 
-  return INT2FIX(http->nread);
+  return SIZET2NUM(http->nread);
 }
 
 /**
