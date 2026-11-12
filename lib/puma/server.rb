@@ -359,12 +359,14 @@ module Puma
             ios = IO.select sockets, nil, nil, (shutting_down? ? 0 : @idle_timeout)
             unless ios
               unless shutting_down?
-                @idle_timeout_reached = true
-
                 if @clustered
-                  @worker_write << "#{PipeRequest::PIPE_IDLE}#{Process.pid}\n" rescue nil
+                  unless @idle_timeout_reached
+                    @idle_timeout_reached = true
+                    @worker_write << "#{PipeRequest::PIPE_IDLE}#{Process.pid}\n" rescue nil
+                  end
                   next
                 else
+                  @idle_timeout_reached = true
                   @log_writer.log "- Idle timeout reached"
                   @status = :stop
                 end

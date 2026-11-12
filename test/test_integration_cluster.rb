@@ -75,10 +75,13 @@ class TestIntegrationCluster < TestIntegration
     File.open(@bind_path, mode: 'wb') { |f| f.puts 'pre existing' }
 
     cli_server "-w #{workers} -q test/rackup/sleep_step.ru", unix: :unix, config: "preload_app! false"
-    connection = connect(nil, unix: true)
-    restart_server connection
+    assert_equal "Slept 0.0 0", read_body(connect(nil, unix: true))
 
-    connect(nil, unix: true)
+    Process.kill :USR2, @pid
+    wait_for_server_to_include 'Restarting'
+    wait_for_server_to_boot
+
+    assert_equal "Slept 0.0 0", read_body(connect(nil, unix: true))
     stop_server
 
     assert File.exist?(@bind_path)
@@ -276,11 +279,14 @@ class TestIntegrationCluster < TestIntegration
     get_worker_pids # wait for workers to boot
 
     10.times {
-      fast_connect
+      connection = connect
+      assert_equal "Hello World", read_body(connection)
+      connection.close
       sleep 0.5
     }
 
-    sleep 1.15
+    assert wait_for_server_to_include '- All workers reached idle timeout'
+    wait_server
 
     assert_raises Errno::ECONNREFUSED, "Connection refused" do
       connect
