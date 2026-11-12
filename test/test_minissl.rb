@@ -84,6 +84,17 @@ class TestMiniSSL < PumaTest
       assert_equal("'cert_pem' is not a String", exception.message)
     end
 
+    def test_key_pem_error_does_not_include_the_key
+      examples = File.expand_path "../examples/puma", __dir__
+      ctx = Puma::MiniSSL::Context.new
+      ctx.cert = "#{examples}/client_certs/server.crt" # does not match the key below
+      ctx.key_pem = File.read "#{examples}/puma_keypair.pem"
+
+      error = assert_raises(Puma::MiniSSL::SSLError) { Puma::MiniSSL::SSLContext.new ctx }
+      assert_includes error.message, "key_pem"
+      refute_includes error.message, "PRIVATE KEY"
+    end
+
     def test_raises_with_invalid_key_password_command
       ctx = Puma::MiniSSL::Context.new
       ctx.key_password_command = '/unreadable/decrypt_command'
