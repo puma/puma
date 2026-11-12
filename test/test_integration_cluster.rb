@@ -293,11 +293,14 @@ class TestIntegrationCluster < TestIntegration
     get_worker_pids # wait for workers to boot
 
     10.times {
-      fast_connect
+      connection = connect
+      assert_equal "Hello World", read_body(connection)
+      connection.close
       sleep 0.5
     }
 
-    sleep 1.15
+    assert wait_for_server_to_include '- All workers reached idle timeout'
+    wait_server
 
     assert_raises Errno::ECONNREFUSED, "Connection refused" do
       connect
