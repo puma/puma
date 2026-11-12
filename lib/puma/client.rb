@@ -316,7 +316,7 @@ module Puma
 
     def wait_io(timeout)
       return @to_io.wait_readable(timeout) unless write_pending?
-      IO.select([@to_io], [@to_io], nil, timeout)
+      @to_io.wait_writable(timeout)
     end
     private :wait_io
 

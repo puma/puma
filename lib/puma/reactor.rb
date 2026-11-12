@@ -119,7 +119,7 @@ module Puma
     end
 
     def interests(client)
-      client.write_pending? ? :rw : :r
+      client.write_pending? ? :w : :r
     end
 
     # 'Wake up' a monitored object by calling the provided block.
