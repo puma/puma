@@ -299,7 +299,7 @@ module Puma
 
     def eagerly_finish
       return true if @ready
-      while @to_io.wait_readable(0) # rubocop: disable Style/WhileUntilModifier
+      while !write_pending? && @to_io.wait_readable(0)
         return true if try_to_finish
       end
       false
@@ -307,8 +307,18 @@ module Puma
 
     def finish(timeout)
       return if @ready
-      @to_io.wait_readable(timeout) || timeout! until try_to_finish
+      wait_io(timeout) || timeout! until try_to_finish
     end
+
+    def write_pending?
+      @io.respond_to?(:write_pending?) && @io.write_pending?
+    end
+
+    def wait_io(timeout)
+      return @to_io.wait_readable(timeout) unless write_pending?
+      IO.select([@to_io], [@to_io], nil, timeout)
+    end
+    private :wait_io
 
     # Wraps `@parser.execute` and adds meaningful error messages
     # @return [Integer] bytes of buffer read by parser
