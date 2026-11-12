@@ -382,7 +382,7 @@ module Puma
 
     def write_error(status_code)
       begin
-        @io << ERROR_RESPONSE[status_code]
+        @io.write_nonblock ERROR_RESPONSE[status_code], exception: false
       rescue StandardError
       end
     end
@@ -465,8 +465,10 @@ module Puma
         if @continue_callback && (response = @continue_callback.call(@env))
           reject_continue response
         end
-        @io << HTTP_11_100
-        @io.flush
+        written = @io.write_nonblock(HTTP_11_100, exception: false)
+        unless written == HTTP_11_100.bytesize || (written == :wait_writable && write_pending?)
+          raise ConnectionError, "Connection error detected during write"
+        end
       end
 
       @read_header = false
