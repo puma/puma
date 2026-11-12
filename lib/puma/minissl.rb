@@ -91,6 +91,8 @@ module Puma
           output = engine_read_all
           return output if output
 
+          raise IO::EAGAINWaitReadable unless flush_write_buffer_nonblock
+
           data = @socket.read_nonblock(size, exception: false)
           if data == :wait_readable || data == :wait_writable
             # It would make more sense to let @socket.read_nonblock raise
@@ -114,8 +116,11 @@ module Puma
           return output if output
 
           queue_ciphertext
-          flush_write_buffer_nonblock
         end
+      end
+
+      def write_pending?
+        !@write_buffer.empty?
       end
 
       def write(data)
