@@ -2433,6 +2433,88 @@ class TestPumaServer < PumaTest
     assert_equal 2, response.scan("HTTP/1.1 200 OK").size
   end
 
+  def test_chunked_request_trailer_without_blank_line_does_not_swallow_next_request
+    paths = []
+    server_run(environment: :production) { |env|
+      paths << env['PATH_INFO']
+      [200, {}, [""]]
+    }
+
+    # the trailer has no blank line, so the next request line is not a trailer field
+    req = "GET /first HTTP/1.1\r\nTransfer-Encoding: chunked\r\nHost: h\r\n\r\n" \
+          "0\r\nX: y\r\n" \
+          "GET /second HTTP/1.1\r\nHost: h\r\n\r\n"
+    response = send_http_read_all req
+
+    assert_equal "HTTP/1.1 400 Bad Request\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
+    assert_empty paths
+  end
+
+  def test_chunked_request_junk_after_last_chunk_is_rejected
+    paths = []
+    server_run(environment: :production) { |env|
+      paths << env['PATH_INFO']
+      [200, {}, [""]]
+    }
+
+    req = "GET /first HTTP/1.1\r\nTransfer-Encoding: chunked\r\nHost: h\r\n\r\n" \
+          "0\r\nXX\r\n" \
+          "GET /second HTTP/1.1\r\nHost: h\r\n\r\n"
+    response = send_http_read_all req
+
+    assert_equal "HTTP/1.1 400 Bad Request\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
+    assert_empty paths
+  end
+
+  def test_chunked_request_invalid_trailer_field_lines
+    paths = []
+    server_run(environment: :production) { |env|
+      paths << env['PATH_INFO']
+      [200, {}, [""]]
+    }
+
+    ["X : y", "X y", ": y", " X: y", "X: y\0z", "X(: y"].each do |field|
+      req = "GET / HTTP/1.1\r\nTransfer-Encoding: chunked\r\nHost: h\r\nConnection: close\r\n\r\n0\r\n#{field}\r\n\r\n"
+      response = send_http_read_all req
+
+      assert_start_with response, "HTTP/1.1 400 Bad Request", "trailer #{field.inspect}"
+    end
+
+    assert_empty paths
+  end
+
+  def test_chunked_request_valid_trailer_fields_keep_pipelined_request
+    paths = []
+    server_run(environment: :production) { |env|
+      paths << env['PATH_INFO']
+      [200, {}, [""]]
+    }
+
+    req = "GET /first HTTP/1.1\r\nTransfer-Encoding: chunked\r\nHost: h\r\n\r\n" \
+          "1\r\nh\r\n0\r\nX-One: a b\r\nX_Two:\r\nX-Three: \"q\"; r=s\r\n" \
+          "X-Four: caf\xC3\xA9\r\nX-Five: \xFF\r\n\r\n" \
+          "GET /second HTTP/1.1\r\nHost: h\r\n\r\n"
+    response = send_http_read_all req
+
+    assert_equal 2, response.scan("HTTP/1.1 200 OK").size
+    assert_equal ["/first", "/second"], paths
+  end
+
+  def test_chunked_request_invalid_trailer_split_across_reads
+    paths = []
+    server_run(environment: :production) { |env|
+      paths << env['PATH_INFO']
+      [200, {}, [""]]
+    }
+
+    socket = send_http "GET /first HTTP/1.1\r\nTransfer-Encoding: chunked\r\nHost: h\r\n\r\n0\r\nX: y\r\nGET /sec"
+    sleep 0.1
+    socket << "ond HTTP/1.1\r\nHost: h\r\n\r\n"
+
+    assert_equal "HTTP/1.1 400 Bad Request\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", socket.read_response(timeout: 3)
+    assert_empty paths
+  end
+
   def test_chunked_request_trailer_exceeds_max_header_size
     app_called = false
     server_run(environment: :production) { |env|

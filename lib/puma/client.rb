@@ -59,6 +59,8 @@ module Puma
 
     # chunked body validation
     CHUNK_SIZE_VALID = /\A\h+\z/.freeze
+    # A chunked trailer field line: a token, a colon and a value (RFC 9112 7.1.2, RFC 9110 5.1).
+    CHUNK_TRAILER_FIELD_VALID = /\A[!#$%&'*+\-.^_`|~0-9A-Za-z]+:[^\r\n\0]*\z/.freeze
     CHUNK_VALID_ENDING = Const::LINE_END
     CHUNK_VALID_ENDING_SIZE = CHUNK_VALID_ENDING.bytesize
 
@@ -758,6 +760,12 @@ module Puma
         trailer_end = CHUNK_VALID_ENDING_SIZE
       elsif idx = rest.index(CHUNK_VALID_ENDING * 2)
         trailer_end = idx + CHUNK_VALID_ENDING_SIZE * 2
+        # Without this, junk after the last chunk, or a trailer missing its blank line,
+        # would swallow the next pipelined request.
+        unless trailer_valid?(rest.byteslice(0, idx))
+          @env[HTTP_CONNECTION] = CLOSE
+          raise HttpParserError, "invalid chunk trailer"
+        end
       elsif rest.bytesize < MAX_CHUNK_HEADER_SIZE
         @prev_chunk = rest
         return false
@@ -773,6 +781,11 @@ module Puma
       @buffer = nil if @buffer.empty?
       set_ready
       true
+    end
+
+    # Every line of a trailer section (without its final CRLF) must be a field line
+    def trailer_valid?(section)
+      section.split(CHUNK_VALID_ENDING, -1).all? { |line| CHUNK_TRAILER_FIELD_VALID.match? line }
     end
 
     def set_ready
