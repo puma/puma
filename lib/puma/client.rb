@@ -86,7 +86,7 @@ module Puma
 
     attr_reader :env, :to_io, :body, :io, :timeout_at, :ready, :hijacked,
                 :tempfile, :io_buffer, :http_content_length_limit_exceeded,
-                :requests_served, :error_status_code
+                :requests_served, :error_status_code, :bytes_read
 
     attr_writer :peerip, :http_content_length_limit, :supported_http_methods,
                 :allow_underscore_headers, :continue_callback
@@ -129,6 +129,7 @@ module Puma
       @expect_proxy_proto = false
 
       @body_remain = 0
+      @bytes_read = 0
 
       @in_last_chunk = false
 
@@ -284,6 +285,7 @@ module Puma
         raise EOFError
       end
 
+      @bytes_read += data.bytesize
       if @buffer
         @buffer << data
       else
@@ -300,14 +302,25 @@ module Puma
     def eagerly_finish
       return true if @ready
       while !write_pending? && @to_io.wait_readable(0)
+        read = @bytes_read
         return true if try_to_finish
+        return false if @bytes_read == read
       end
       false
     end
 
     def finish(timeout)
       return if @ready
-      wait_io(timeout) || timeout! until try_to_finish
+      set_timeout timeout
+      read = @bytes_read
+      until try_to_finish
+        if @bytes_read > read
+          set_timeout timeout
+          read = @bytes_read
+        end
+        remaining = self.timeout
+        timeout! if remaining == 0 || !wait_io(remaining)
+      end
     end
 
     def write_pending?
@@ -590,6 +603,7 @@ module Puma
           raise EOFError
         end
 
+        @bytes_read += chunk.bytesize
         remain -= @body.write(chunk)
       end
 
@@ -622,6 +636,7 @@ module Puma
           raise EOFError
         end
 
+        @bytes_read += chunk.bytesize
         if decode_chunk(chunk)
           @env[CONTENT_LENGTH] = @chunked_content_length.to_s
           return true

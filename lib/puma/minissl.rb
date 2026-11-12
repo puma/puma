@@ -20,6 +20,8 @@ module Puma
          (OPENSSL_LIBRARY_VERSION[/ \d+\.\d+\.\d+/].split('.').map(&:to_i) <=> [1,1,1]) !=-1)
 
     class Socket
+      TLS_RECORD_HEADER_SIZE = 5
+
       def initialize(socket, engine)
         @socket = socket
         @engine = engine
@@ -87,36 +89,37 @@ module Puma
       def read_nonblock(size, *_)
         # *_ is to deal with keyword args that were added
         # at some point (and being used in the wild)
-        while true
-          output = engine_read_all
-          return output if output
+        output = engine_read_all
+        return output if output
 
-          raise IO::EAGAINWaitReadable unless flush_write_buffer_nonblock
+        raise IO::EAGAINWaitReadable unless flush_write_buffer_nonblock
 
-          data = @socket.read_nonblock(size, exception: false)
-          if data == :wait_readable || data == :wait_writable
-            # It would make more sense to let @socket.read_nonblock raise
-            # EAGAIN if necessary but it seems like it'll misbehave on Windows.
-            # I don't have a Windows machine to debug this so I can't explain
-            # exactly what's happening in that OS. Please let me know if you
-            # find out!
-            #
-            # In the meantime, we can emulate the correct behavior by
-            # capturing :wait_readable & :wait_writable and raising EAGAIN
-            # ourselves.
-            raise IO::EAGAINWaitReadable
-          elsif data.nil?
-            raise SSLError.exception "HTTP connection?" if bad_tlsv1_3?
-            return nil
-          end
-
-          @engine.inject(data)
-          output = engine_read_all
-
-          return output if output
-
-          queue_ciphertext
+        data = @socket.read_nonblock(size, exception: false)
+        if data == :wait_readable || data == :wait_writable
+          # It would make more sense to let @socket.read_nonblock raise
+          # EAGAIN if necessary but it seems like it'll misbehave on Windows.
+          # I don't have a Windows machine to debug this so I can't explain
+          # exactly what's happening in that OS. Please let me know if you
+          # find out!
+          #
+          # In the meantime, we can emulate the correct behavior by
+          # capturing :wait_readable & :wait_writable and raising EAGAIN
+          # ourselves.
+          raise IO::EAGAINWaitReadable
+        elsif data.nil?
+          raise SSLError.exception "HTTP connection?" if bad_tlsv1_3?
+          return nil
         end
+
+        @engine.inject(data)
+        (data.bytesize / TLS_RECORD_HEADER_SIZE + 1).times do
+          output = engine_read_all
+          return output if output
+        end
+
+        queue_ciphertext
+        flush_write_buffer_nonblock
+        raise IO::EAGAINWaitReadable
       end
 
       def write_pending?
