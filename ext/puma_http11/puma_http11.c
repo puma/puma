@@ -154,29 +154,50 @@ static int is_ows(const char c) {
     return c == ' ' || c == '\t';
 }
 
+/*
+ * capitalizes a lower-case ASCII character,
+ * converts a dash to an underscore, and an underscore to a comma.
+ */
+static inline char snake_upcase_char(char c)
+{
+    if (c >= 'a' && c <= 'z')
+      return c & ~0x20;
+    else if (c == '_')
+      return ',';
+    else if (c == '-')
+      return '_';
+    return c;
+}
+
 static void http_field(puma_parser* hp, const char *field, size_t flen,
                                  const char *value, size_t vlen)
 {
   VALUE f = Qnil;
   VALUE v;
+  size_t i;
+  size_t new_size = HTTP_PREFIX_LEN + flen;
+  char *name = hp->buf + HTTP_PREFIX_LEN;
 
   VALIDATE_MAX_LENGTH(flen, FIELD_NAME);
   VALIDATE_MAX_LENGTH(vlen, FIELD_VALUE);
 
-  f = find_common_field_value(field, flen);
+  /*
+   * Normalize the field name into the parser's scratch buffer, after the
+   * HTTP_ prefix, leaving the caller's String untouched.
+   */
+  assert(new_size < BUFFER_LEN);
+  memcpy(hp->buf, HTTP_PREFIX, HTTP_PREFIX_LEN);
+  for (i = 0; i < flen; i++) {
+    name[i] = snake_upcase_char(field[i]);
+  }
+
+  f = find_common_field_value(name, flen);
 
   if (f == Qnil) {
     /*
      * We got a strange header that we don't have a memoized value for.
      * Fallback to creating a new string to use as a hash key.
      */
-
-    size_t new_size = HTTP_PREFIX_LEN + flen;
-    assert(new_size < BUFFER_LEN);
-
-    memcpy(hp->buf, HTTP_PREFIX, HTTP_PREFIX_LEN);
-    memcpy(hp->buf + HTTP_PREFIX_LEN, field, flen);
-
     f = rb_enc_interned_str(hp->buf, new_size, rb_utf8_encoding());
   }
 

@@ -10,20 +10,6 @@
 #include <ctype.h>
 #include <string.h>
 
-/*
- * capitalizes all lower-case ASCII characters,
- * converts dashes to underscores, and underscores to commas.
- */
-static void snake_upcase_char(char *c)
-{
-    if (*c >= 'a' && *c <= 'z')
-      *c &= ~0x20;
-    else if (*c == '_')
-      *c = ',';
-    else if (*c == '-')
-      *c = '_';
-}
-
 #define LEN(AT, FPC) (FPC - buffer - parser->AT)
 #define MARK(M,FPC) (parser->M = (FPC) - buffer)
 #define PTR_TO(F) (buffer + parser->F)
@@ -38,7 +24,7 @@ static void snake_upcase_char(char *c)
 
 
   action start_field { MARK(field_start, fpc); }
-  action snake_upcase_field { snake_upcase_char((char *)fpc); }
+  action snake_upcase_field { /* the name is normalized into parser->buf by http_field */ }
   action write_field {
     parser->field_len = LEN(field_start, fpc);
   }
