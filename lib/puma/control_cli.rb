@@ -188,9 +188,9 @@ module Puma
           host = host[1..-2] if host&.start_with? '['
           TCPSocket.new host, uri.port
         when 'unix'
+          path = "#{host}#{uri.path}".gsub("%20", " ")
           # check for abstract UNIXSocket
-          UNIXSocket.new(@control_url.start_with?('unix://@') ?
-            "\0#{host}#{uri.path}" : "#{host}#{uri.path}")
+          UNIXSocket.new(@control_url.start_with?('unix://@') ? "\0#{path}" : path)
         else
           raise "Invalid scheme: #{uri.scheme}"
         end

@@ -385,6 +385,37 @@ class TestBinderParallel < TestBinderBase
     refute File.socket?(unix_path)
   end
 
+  def test_listeners_file_unlink_if_unix_listener_path_has_space
+    skip_unless :unix
+
+    dir = Dir.mktmpdir nil, PUMA_TMPDIR
+    unix_path = File.join(dir, 'puma space.sock')
+    @binder.parse ["unix://#{unix_path.gsub(' ', '%20')}"], @log_writer
+    assert File.socket?(unix_path)
+
+    @binder.close_listeners
+    refute File.socket?(unix_path)
+  ensure
+    FileUtils.rm_rf dir if dir
+  end
+
+  def test_unused_inherited_unix_listener_path_has_space
+    skip_unless :unix
+
+    dir = Dir.mktmpdir nil, PUMA_TMPDIR
+    unix_path = File.join(dir, 'puma space.sock')
+    server = UNIXServer.new unix_path
+    server.autoclose = false
+    @binder.inherited_fds["unix://#{unix_path.gsub(' ', '%20')}"] = server.to_i
+
+    @binder.parse [], @log_writer
+
+    assert_match "Closing unused inherited connection", @log_writer.stdout.string
+    refute File.exist?(unix_path)
+  ensure
+    FileUtils.rm_rf dir if dir
+  end
+
   def test_import_from_env_listen_inherit
     @binder.parse ["tcp://127.0.0.1:0"], @log_writer
     removals = @binder.create_inherited_fds(@binder.redirects_for_restart_env)
