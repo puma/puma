@@ -207,6 +207,15 @@ module Puma
 
       cork_socket socket
 
+      http_10_keep_alive = resp_info[:http_10_keep_alive]
+      if http_10_keep_alive && !resp_info[:no_body] && !content_length &&
+          !resp_info[:transfer_encoding] && !response_hijack
+        # a body of unknown length can only be delimited by closing the
+        # connection (RFC 9112 §6.3), so it cannot be kept alive
+        keep_alive = http_10_keep_alive = false
+      end
+      io_buffer << CONNECTION_KEEP_ALIVE if http_10_keep_alive
+
       if resp_info[:no_body]
         # 101 (Switching Protocols) doesn't return here or have content_length,
         # it should be using `response_hijack`
@@ -528,11 +537,10 @@ module Puma
       # - HTTP 1.1 assumes the connection will be kept alive if not specified.
       # Only set the header if we're doing something which is not the default
       # for this protocol version
-      if http_11
-        io_buffer << CONNECTION_CLOSE if !resp_info[:keep_alive]
-      else
-        io_buffer << CONNECTION_KEEP_ALIVE if resp_info[:keep_alive]
-      end
+      # HTTP/1.0 keep-alive is written by prepare_response, which knows whether
+      # the body can be delimited without closing the connection
+      io_buffer << CONNECTION_CLOSE if http_11 && !resp_info[:keep_alive]
+      resp_info[:http_10_keep_alive] = !http_11 && resp_info[:keep_alive]
       resp_info
     end
     private :str_headers
