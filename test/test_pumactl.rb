@@ -257,7 +257,7 @@ class TestPumaControlCli < PumaTest
       query = if Puma.jruby?
         keystore = File.join(dir, 'control.p12')
         File.binwrite(keystore, OpenSSL::PKCS12.create('password', 'puma', key, cert).to_der)
-        "keystore=#{keystore}&keystore-pass=password&keystore-type=PKCS12"
+        "keystore=#{keystore}&keystore-pass=password&keystore-type=pkcs12"
       else
         key_path = File.join(dir, 'key.pem')
         File.write(key_path, key.to_pem)
