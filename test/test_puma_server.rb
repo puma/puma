@@ -2015,6 +2015,9 @@ class TestPumaServer < PumaTest
     thread = @server.thread
     assert thread.join(5), "server thread did not stop"
     thread.value
+  ensure
+    @server.instance_variable_get(:@reactor)&.shutdown
+    @pool&.shutdown 1
   end
 
   # Retryable errors such as ECONNABORTED should be silently swallowed by accept loop.
