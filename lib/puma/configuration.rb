@@ -145,7 +145,6 @@ module Puma
       first_data_timeout: 30,
       force_shutdown_after: -1,
       http_content_length_limit: nil,
-      # Number of seconds to wait for an incomplete request to finish during shutdown.
       shutdown_body_timeout: 25,
       # Number of seconds to wait until the next request before shutting down.
       idle_timeout: nil,
