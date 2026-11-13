@@ -130,6 +130,7 @@ module Puma
 
       @body_remain = 0
       @bytes_read = 0
+      @pending_write = nil
 
       @in_last_chunk = false
 
@@ -265,6 +266,7 @@ module Puma
     end
 
     def try_to_finish
+      return false unless flush_pending_write
       return read_body if in_data_phase
 
       data = nil
@@ -325,7 +327,13 @@ module Puma
     end
 
     def write_pending?
-      @io.respond_to?(:write_pending?) && @io.write_pending?
+      !@pending_write.nil? || (@io.respond_to?(:write_pending?) && @io.write_pending?)
+    end
+
+    def take_pending_write
+      str = @pending_write
+      @pending_write = nil
+      str
     end
 
     def wait_io(timeout)
@@ -396,10 +404,40 @@ module Puma
 
     def write_error(status_code)
       begin
-        @io.write_nonblock ERROR_RESPONSE[status_code], exception: false
+        write_interim ERROR_RESPONSE[status_code]
       rescue StandardError
       end
     end
+
+    def write_interim(str)
+      if @pending_write
+        @pending_write << str
+        return flush_pending_write
+      end
+
+      n = @io.write_nonblock(str, exception: false)
+      if n == :wait_writable
+        @pending_write = +str unless @io.respond_to?(:write_pending?) && @io.write_pending?
+      elsif n < str.bytesize
+        @pending_write = str.byteslice(n..-1)
+      end
+    rescue SystemCallError, IOError
+      raise ConnectionError, "Connection error detected during write"
+    end
+    private :write_interim
+
+    def flush_pending_write
+      return true unless @pending_write
+
+      n = @io.write_nonblock(@pending_write, exception: false)
+      return false if n == :wait_writable
+
+      @pending_write = n == @pending_write.bytesize ? nil : @pending_write.byteslice(n..-1)
+      @pending_write.nil?
+    rescue SystemCallError, IOError
+      raise ConnectionError, "Connection error detected during write"
+    end
+    private :flush_pending_write
 
     def peerip
       return @peerip if @peerip
@@ -479,10 +517,7 @@ module Puma
         if @continue_callback && (response = @continue_callback.call(@env))
           reject_continue response
         end
-        written = @io.write_nonblock(HTTP_11_100, exception: false)
-        unless written == HTTP_11_100.bytesize || (written == :wait_writable && write_pending?)
-          raise ConnectionError, "Connection error detected during write"
-        end
+        write_interim HTTP_11_100
       end
 
       @read_header = false

@@ -59,6 +59,8 @@ module Puma
 
       return :close if closed_socket?(socket)
 
+      write_pending_interim socket, client
+
       if @early_hints
         env[EARLY_HINTS] = lambda { |headers|
           begin
@@ -148,6 +150,8 @@ module Puma
       io_buffer = client.io_buffer
 
       return :close if closed_socket?(socket)
+
+      write_pending_interim socket, client
 
       # Close the connection after a reasonable number of inline requests
       force_keep_alive = @enable_keep_alives && client.requests_served < @max_keep_alive
@@ -249,6 +253,12 @@ module Puma
     ensure
       body.close if close_body
     end
+
+    def write_pending_interim(socket, client)
+      pending = client.take_pending_write
+      fast_write_str socket, pending if pending
+    end
+    private :write_pending_interim
 
     # Used to write 'early hints', 'no body' responses, 'hijacked' responses,
     # and body segments (called by `fast_write_response`).
