@@ -44,6 +44,7 @@ module Puma
       @pid = nil
       @control_url = nil
       @control_auth_token = nil
+      @control_ca_file = nil
       @config_file = nil
       @command = nil
       @environment = env['APP_ENV'] || env['RACK_ENV'] || env['RAILS_ENV']
@@ -78,6 +79,10 @@ module Puma
 
         o.on "-T", "--control-token TOKEN", "The token to use as authentication for the control server" do |arg|
           @control_auth_token = arg
+        end
+
+        o.on "--control-ca-file PATH", "CA certificate bundle for the TLS control server" do |arg|
+          @control_ca_file = arg
         end
 
         o.on "-F", "--config-file PATH", "Puma config script" do |arg|
@@ -179,11 +184,16 @@ module Puma
         when 'ssl'
           require 'openssl'
           host = host[1..-2] if host&.start_with? '['
-          OpenSSL::SSL::SSLSocket.new(
+          ctx = OpenSSL::SSL::SSLContext.new
+          ctx.ca_file = @control_ca_file if @control_ca_file
+          ctx.set_params
+          ssl = OpenSSL::SSL::SSLSocket.new(
             TCPSocket.new(host, uri.port),
-            OpenSSL::SSL::SSLContext.new)
-            .tap { |ssl| ssl.sync_close = true }  # default is false
+            ctx)
+          ssl.tap { |socket| socket.sync_close = true }
+            .tap { |socket| socket.hostname = host }
             .tap(&:connect)
+            .tap { |socket| socket.post_connection_check host }
         when 'tcp'
           host = host[1..-2] if host&.start_with? '['
           TCPSocket.new host, uri.port
@@ -230,6 +240,7 @@ module Puma
         message response.last if PRINTABLE_COMMANDS.include?(@command)
       end
     ensure
+      server ||= ssl
       if server
         if uri.scheme == 'ssl'
           server.sysclose
