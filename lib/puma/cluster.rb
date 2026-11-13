@@ -23,7 +23,7 @@ module Puma
 
       @phase = 0
       @workers = []
-      @next_check = Time.now
+      @next_check = monotonic_now
 
       @worker_max = [] # keeps track of 'max' stat values
       @pending_phased_restart = false
@@ -140,7 +140,7 @@ module Puma
     end
 
     def workers_to_cull(diff)
-      workers = @workers.sort_by(&:started_at)
+      workers = @workers.sort_by(&:started_at_mono)
 
       # In fork_worker mode, worker 0 acts as our master process.
       # We should avoid culling it to preserve copy-on-write memory gains.
@@ -185,9 +185,9 @@ module Puma
     end
 
     def check_workers(refork = false)
-      return if @next_check >= Time.now
+      return if @next_check >= monotonic_now
 
-      @next_check = Time.now + @options[:worker_check_interval]
+      @next_check = monotonic_now + @options[:worker_check_interval]
 
       timeout_workers
       wait_workers
@@ -221,7 +221,7 @@ module Puma
       @next_check = [t.min, @next_check].compact.min
       if @options[:fork_worker] && @workers.any?(&:term?)
         # Orphaned workers cannot wake the master through worker 0 as they exit.
-        @next_check = [@next_check, Time.now + 0.1].min
+        @next_check = [@next_check, monotonic_now + 0.1].min
       end
     end
 
@@ -509,12 +509,12 @@ module Puma
 
             check_workers(in_phased_restart == :refork)
 
-            if read.wait_readable([0, @next_check - Time.now].max)
+            if read.wait_readable([0, @next_check - monotonic_now].max)
               req = read.read_nonblock(1)
               next unless req
 
               if req == PIPE_WAKEUP
-                @next_check = Time.now
+                @next_check = monotonic_now
                 next
               end
 
@@ -541,7 +541,7 @@ module Puma
                 when PIPE_BOOT
                   w.boot!
                   log "- Worker #{w.index} (PID: #{pid}) booted in #{w.uptime.round(2)}s, phase: #{w.phase}"
-                  @next_check = Time.now
+                  @next_check = monotonic_now
                 when PIPE_EXTERNAL_TERM
                   # external term, see worker method, Signal.trap "SIGTERM"
                   w.term!
@@ -570,7 +570,7 @@ module Puma
                   end
                 when PIPE_MOLD
                   activate_mold(w)
-                  @next_check = Time.now
+                  @next_check = monotonic_now
                 end
               else
                 log "! Out-of-sync worker list, no #{pid} worker"
@@ -598,6 +598,10 @@ module Puma
     end
 
     private
+
+    def monotonic_now
+      Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    end
 
     def single_worker_warning
       return if @options[:workers] != 1 || @options[:silence_single_worker_warning]
@@ -740,7 +744,7 @@ module Puma
     # @version 5.0.0
     def timeout_workers
       (@workers + molds).each do |w|
-        if !w.term? && w.ping_timeout <= Time.now
+        if !w.term? && w.ping_timeout <= monotonic_now
           details = if w.booted?
                       "(Worker #{w.index} failed to check in within #{@options[:worker_timeout]} seconds)"
                     else
