@@ -58,6 +58,8 @@ module Puma
 
       return :close if closed_socket?(socket)
 
+      write_pending_interim socket, client
+
       if client.http_content_length_limit_exceeded
         return prepare_response(413, {}, ["Payload Too Large"], requests, client)
       end
@@ -177,6 +179,8 @@ module Puma
 
       return :close if closed_socket?(socket)
 
+      write_pending_interim socket, client
+
       # Close the connection after a reasonable number of inline requests
       force_keep_alive = @enable_keep_alives && client.requests_served < @max_keep_alive
 
@@ -292,6 +296,12 @@ module Puma
       end
     end
 
+    def write_pending_interim(socket, client)
+      pending = client.take_pending_write
+      fast_write_str socket, pending if pending
+    end
+    private :write_pending_interim
+
     # Used to write 'early hints', 'no body' responses, 'hijacked' responses,
     # and body segments (called by `fast_write_response`).
     # Writes a string to a socket (normally `Client#io`) using `write_nonblock`.
@@ -341,7 +351,11 @@ module Puma
             fast_write_str socket, io_buffer.read_and_reset
           else
             fast_write_str socket, io_buffer.read_and_reset
-            IO.copy_stream body, socket
+            remaining = content_length
+            while remaining > 0 && (chunk = body.read([remaining, BODY_LEN_MAX].min))
+              fast_write_str socket, chunk
+              remaining -= chunk.bytesize
+            end
           end
         end
       elsif body.is_a?(::Array) && body.length == 1
