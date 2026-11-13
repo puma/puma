@@ -66,6 +66,8 @@ module Puma
     # chunk header, and the maximum size of a trailer section.
     MAX_CHUNK_HEADER_SIZE = 4096
 
+    SHUTDOWN_READ_GRACE = 1
+
     # The maximum amount of excess data the client sends
     # using chunk size extensions before we abort the connection.
     MAX_CHUNK_EXCESS = 16 * 1024
@@ -86,12 +88,13 @@ module Puma
 
     attr_reader :env, :to_io, :body, :io, :timeout_at, :ready, :hijacked,
                 :tempfile, :io_buffer, :http_content_length_limit_exceeded,
-                :requests_served, :error_status_code
+                :requests_served, :error_status_code, :bytes_read
 
     attr_writer :peerip, :http_content_length_limit, :supported_http_methods,
                 :allow_underscore_headers, :continue_callback
 
-    attr_accessor :remote_addr_header, :listener, :env_set_http_version
+    attr_accessor :remote_addr_header, :listener, :env_set_http_version,
+                  :reactor_error
 
     def initialize(io, env=nil)
       @io = io
@@ -121,6 +124,7 @@ module Puma
       @allow_underscore_headers = true
       @continue_callback = nil
       @error_status_code = nil
+      @reactor_error = nil
 
       @peerip = nil
       @peer_family = nil
@@ -129,6 +133,8 @@ module Puma
       @expect_proxy_proto = false
 
       @body_remain = 0
+      @bytes_read = 0
+      @pending_write = nil
 
       @in_last_chunk = false
 
@@ -263,8 +269,9 @@ module Puma
       true
     end
 
-    def try_to_finish
-      return read_body if in_data_phase
+    def try_to_finish(&deadline)
+      return false unless flush_pending_write
+      return read_body(&deadline) if in_data_phase
 
       data = nil
       begin
@@ -284,6 +291,7 @@ module Puma
         raise EOFError
       end
 
+      @bytes_read += data.bytesize
       if @buffer
         @buffer << data
       else
@@ -297,18 +305,54 @@ module Puma
       @parser.finished? ? process_env_body : false
     end
 
-    def eagerly_finish
+    def eagerly_finish(&deadline)
       return true if @ready
-      while @to_io.wait_readable(0) # rubocop: disable Style/WhileUntilModifier
-        return true if try_to_finish
+      while !write_pending? && @to_io.wait_readable(0)
+        read = @bytes_read
+        return true if try_to_finish(&deadline)
+        check_deadline(&deadline) if deadline
+        return false if @bytes_read == read
       end
       false
     end
 
-    def finish(timeout)
+    def finish(timeout, &deadline)
       return if @ready
-      @to_io.wait_readable(timeout) || timeout! until try_to_finish
+      set_timeout timeout
+      read = @bytes_read
+      until try_to_finish(&deadline)
+        if @bytes_read > read
+          set_timeout timeout
+          read = @bytes_read
+        elsif self.timeout == 0
+          timeout!
+        end
+        if deadline
+          check_deadline(&deadline)
+          limit = yield
+          wait = [self.timeout, limit ? limit - Process.clock_gettime(Process::CLOCK_MONOTONIC) : 0.1].min
+          wait_io(wait) if wait > 0
+        else
+          wait_io(self.timeout) || timeout!
+        end
+      end
     end
+
+    def write_pending?
+      !@pending_write.nil? || (@io.respond_to?(:write_pending?) && @io.write_pending?)
+    end
+
+    def take_pending_write
+      str = @pending_write
+      @pending_write = nil
+      str
+    end
+
+    def wait_io(timeout)
+      return @to_io.wait_readable(timeout) unless write_pending?
+      @to_io.wait_writable(timeout)
+    end
+    private :wait_io
 
     # Wraps `@parser.execute` and adds meaningful error messages
     # @return [Integer] bytes of buffer read by parser
@@ -372,10 +416,40 @@ module Puma
 
     def write_error(status_code)
       begin
-        @io << ERROR_RESPONSE[status_code]
+        write_interim ERROR_RESPONSE[status_code]
       rescue StandardError
       end
     end
+
+    def write_interim(str)
+      if @pending_write
+        @pending_write << str
+        return flush_pending_write
+      end
+
+      n = @io.write_nonblock(str, exception: false)
+      if n == :wait_writable
+        @pending_write = +str unless @io.respond_to?(:write_pending?) && @io.write_pending?
+      elsif n < str.bytesize
+        @pending_write = str.byteslice(n..-1)
+      end
+    rescue SystemCallError, IOError
+      raise ConnectionError, "Connection error detected during write"
+    end
+    private :write_interim
+
+    def flush_pending_write
+      return true unless @pending_write
+
+      n = @io.write_nonblock(@pending_write, exception: false)
+      return false if n == :wait_writable
+
+      @pending_write = n == @pending_write.bytesize ? nil : @pending_write.byteslice(n..-1)
+      @pending_write.nil?
+    rescue SystemCallError, IOError
+      raise ConnectionError, "Connection error detected during write"
+    end
+    private :flush_pending_write
 
     def peerip
       return @peerip if @peerip
@@ -455,8 +529,7 @@ module Puma
         if @continue_callback && (response = @continue_callback.call(@env))
           reject_continue response
         end
-        @io << HTTP_11_100
-        @io.flush
+        write_interim HTTP_11_100
       end
 
       @read_header = false
@@ -551,9 +624,9 @@ module Puma
       false
     end
 
-    def read_body
+    def read_body(&deadline)
       if @chunked_body
-        return read_chunked_body
+        return read_chunked_body(&deadline)
       end
 
       # Read an odd sized chunk so we can read even sized ones
@@ -578,6 +651,7 @@ module Puma
           raise EOFError
         end
 
+        @bytes_read += chunk.bytesize
         remain -= @body.write(chunk)
       end
 
@@ -592,7 +666,7 @@ module Puma
       end
     end
 
-    def read_chunked_body
+    def read_chunked_body(&deadline)
       while true
         begin
           chunk = @io.read_nonblock(CHUNK_SIZE, @read_buffer)
@@ -610,11 +684,25 @@ module Puma
           raise EOFError
         end
 
+        @bytes_read += chunk.bytesize
         if decode_chunk(chunk)
           @env[CONTENT_LENGTH] = @chunked_content_length.to_s
           return true
         end
+
+        check_deadline(&deadline) if deadline
       end
+    end
+
+    def check_deadline
+      limit = yield
+      return unless limit
+
+      now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      return if now < limit
+      return if now < limit + SHUTDOWN_READ_GRACE && @to_io.wait_readable(0)
+
+      timeout!
     end
 
     def setup_chunked_body(body)

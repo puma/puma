@@ -51,7 +51,7 @@ module Puma
     # @todo the following may be deprecated in the future
     attr_reader :auto_trim_time, :early_hints, :first_data_timeout,
       :leak_stack_on_error,
-      :persistent_timeout, :reaping_time
+      :persistent_timeout, :reaping_time, :shutdown_body_timeout
 
     attr_accessor :app
     attr_accessor :binder
@@ -98,6 +98,8 @@ module Puma
       @early_hints               = @options[:early_hints]
       @first_data_timeout        = @options[:first_data_timeout]
       @persistent_timeout        = @options[:persistent_timeout]
+      @shutdown_body_timeout     = @options[:shutdown_body_timeout]
+      @shutdown_body_deadline    = nil
       @idle_timeout              = @options[:idle_timeout]
       @min_threads               = @options[:min_threads]
       @max_threads               = @options[:max_threads]
@@ -260,6 +262,7 @@ module Puma
       @events.fire :state, :booting
 
       @status = :run
+      @shutdown_body_deadline = nil
 
       @thread_pool = ThreadPool.new(thread_name, options, server: self) do |processor, client|
         process_client(processor, client)
@@ -314,6 +317,9 @@ module Puma
     # If a client object times out, a 408 response is written, its connection is closed,
     # and the object is removed from the reactor (return `true`).
     #
+    # If the request cannot be read, the Client is passed to the ThreadPool with its
+    # `reactor_error` set, so that a processor thread writes the error response.
+    #
     # If the Reactor is shutting down, all Clients are either timed out or passed to the
     # ThreadPool, depending on their current state (#can_close?).
     #
@@ -322,17 +328,32 @@ module Puma
     # will wake up and again be checked to see if it's ready to be passed to the thread pool.
     def reactor_wakeup(client)
       shutdown = !@queue_requests
-      if client.try_to_finish || (shutdown && !client.can_close?)
-        @thread_pool << client
+      read = client.bytes_read
+      if client.try_to_finish { shutdown_body_limit } || (shutdown && !client.can_close?)
+        hand_to_thread_pool client
       elsif shutdown || client.timeout == 0
         client.timeout!
       else
-        client.set_timeout(@first_data_timeout)
+        client.set_timeout(@first_data_timeout) if client.bytes_read > read
         false
       end
-    rescue StandardError => e
-      client_error(e, client)
+    rescue ConnectionError, EOFError
       close_client_safely(client)
+      true
+    rescue StandardError => e
+      # Writing the error response may block on a client that is not reading,
+      # so leave it to a thread pool thread.
+      client.reactor_error = e
+      hand_to_thread_pool client
+    end
+
+    def hand_to_thread_pool(client)
+      @thread_pool << client
+      true
+    rescue ThreadError
+      true
+    rescue StandardError
+      close_client_safely client
       true
     end
 
@@ -372,6 +393,7 @@ module Puma
                 else
                   @idle_timeout_reached = true
                   @log_writer.log "- Idle timeout reached"
+                  shutdown_body_deadline
                   @status = :stop
                 end
               end
@@ -413,6 +435,9 @@ module Puma
                   sock.accept_nonblock
                 rescue IO::WaitReadable
                   next
+                rescue Errno::EMFILE, Errno::ENFILE, Errno::ENOBUFS, Errno::ENOMEM => e
+                  accept_resource_error e
+                  next
                 end
                 drain += 1 if shutting_down?
 
@@ -425,11 +450,17 @@ module Puma
             # In the case that any of the sockets are unexpectedly close.
             raise
           rescue StandardError => e
-            @log_writer.unknown_error e, nil, "Listen loop"
+            begin
+              @log_writer.unknown_error e, nil, "Listen loop"
+            rescue StandardError
+            end
           end
         end
 
-        @log_writer.debug { "Drained #{drain} additional connections." } if drain
+        begin
+          @log_writer.debug { "Drained #{drain} additional connections." } if drain
+        rescue StandardError
+        end
         @events.fire :state, @status
 
         if queue_requests
@@ -439,7 +470,10 @@ module Puma
 
         graceful_shutdown if @status == :stop || @status == :restart
       rescue Exception => e
-        @log_writer.unknown_error e, nil, "Exception handling servers"
+        begin
+          @log_writer.unknown_error e, nil, "Exception handling servers"
+        rescue StandardError
+        end
       ensure
         # Errno::EBADF is infrequently raised
         [@check, @notify].each do |io|
@@ -473,12 +507,14 @@ module Puma
 
       case cmd
       when STOP_COMMAND
+        shutdown_body_deadline
         @status = :stop
         return true
       when HALT_COMMAND
         @status = :halt
         return true
       when RESTART_COMMAND
+        shutdown_body_deadline
         @status = :restart
         return true
       end
@@ -502,7 +538,9 @@ module Puma
       requests = 0
 
       begin
-        if @queue_requests && !client.eagerly_finish
+        raise client.reactor_error if client.reactor_error
+
+        if @queue_requests && !client.eagerly_finish { shutdown_body_limit }
 
           client.set_timeout(@first_data_timeout)
           if @reactor.add client
@@ -512,7 +550,7 @@ module Puma
         end
 
         with_force_shutdown(client) do
-          client.finish(@first_data_timeout)
+          client.finish(@first_data_timeout) { shutdown_body_limit }
         end
 
         can_loop = true
@@ -533,7 +571,7 @@ module Puma
             next_request_ready = if client.has_back_to_back_requests?
               with_force_shutdown(client) { client.process_back_to_back_requests }
             else
-              with_force_shutdown(client) { client.eagerly_finish }
+              with_force_shutdown(client) { client.eagerly_finish { shutdown_body_limit } }
             end
 
             if next_request_ready
@@ -567,6 +605,25 @@ module Puma
 
         close_client_safely(client) if close_socket
       end
+    end
+
+    # Accepting fails while the process is out of file descriptors or memory.
+    # The connection stays in the backlog, so retrying at once would spin and
+    # log at full speed. Wait briefly and log at most once per second.
+    def accept_resource_error(error)
+      now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      if @accept_error_logged_at.nil? || now - @accept_error_logged_at >= 1
+        suffix = @accept_errors_suppressed.to_i > 0 ? " (#{@accept_errors_suppressed} more suppressed)" : ""
+        @accept_error_logged_at = now
+        @accept_errors_suppressed = 0
+        begin
+          @log_writer.unknown_error error, nil, "Listen loop#{suffix}"
+        rescue StandardError
+        end
+      else
+        @accept_errors_suppressed += 1
+      end
+      sleep ACCEPT_ERROR_DELAY
     end
 
     # :nodoc:
@@ -653,9 +710,19 @@ module Puma
     end
     private :response_to_error
 
+    def shutdown_body_deadline
+      @shutdown_body_deadline ||= Process.clock_gettime(Process::CLOCK_MONOTONIC) + @shutdown_body_timeout
+    end
+
+    def shutdown_body_limit
+      @shutdown_body_deadline
+    end
+
     # Wait for all outstanding requests to finish.
     #
     def graceful_shutdown
+      shutdown_body_deadline
+
       if @status != :restart
         @binder.close
       end
@@ -683,6 +750,7 @@ module Puma
     # off the request queue before finally exiting.
 
     def stop(sync=false)
+      shutdown_body_deadline
       notify_safely(STOP_COMMAND)
       @thread.join if @thread && sync
     end
@@ -693,6 +761,7 @@ module Puma
     end
 
     def begin_restart(sync=false)
+      shutdown_body_deadline
       notify_safely(RESTART_COMMAND)
       @thread.join if @thread && sync
     end

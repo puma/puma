@@ -402,6 +402,19 @@ module Puma
       @options[:drain_on_shutdown] = which
     end
 
+    # Define how long an incomplete request may continue to be read during shutdown.
+    #
+    # The default is 25 seconds.
+    #
+    # @example
+    #   shutdown_body_timeout 10
+    #
+    # @see Puma::Server#graceful_shutdown
+    #
+    def shutdown_body_timeout(seconds)
+      @options[:shutdown_body_timeout] = Float(seconds)
+    end
+
     # Set the environment in which the Rack app will run. The value must be
     # a string.
     #

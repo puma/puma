@@ -846,6 +846,112 @@ class TestRequestPeerip < TestRequestBase
   end
 end
 
+# Tests that the interim and error responses written while a request is being
+# read never block. When a request arrives in more than one read, it is parsed
+# by the reactor, which serves many connections with one thread, so a client
+# that is not reading its socket must never stop that thread.
+class TestRequestWriting < PumaTest
+
+  PEER_ADDR = -> () { ["AF_INET", 80, "127.0.0.1", "127.0.0.1"] }
+
+  def setup
+    @ios = []
+  end
+
+  def teardown
+    @ios.each do |io|
+      io.close unless io.closed?
+    rescue IOError
+    end
+    super
+  end
+
+  def create_socket_pair
+    pair =
+      if Puma::IS_WINDOWS
+        Socket.pair Socket::AF_INET, Socket::SOCK_STREAM, 0
+      else
+        UNIXSocket.pair
+      end
+    @ios.concat pair
+    pair
+  end
+
+  def create_client(io)
+    io.define_singleton_method :peeraddr, PEER_ADDR
+    client = Puma::Client.new io, {}
+    client.supported_http_methods = :any
+    client
+  end
+
+  # Writes to +io+ until not even one more byte fits, so that any later write
+  # on it can only complete once the peer reads something.
+  def fill_send_buffer(io)
+    chunk = "x" * 65_536
+    loop do
+      break if io.write_nonblock(chunk, exception: false) == :wait_writable
+    end
+    loop do
+      break if io.write_nonblock("x", exception: false) == :wait_writable
+    end
+  end
+
+  def drain(io)
+    loop do
+      break if io.read_nonblock(65_536, exception: false) == :wait_readable
+    end
+  rescue EOFError, IOError
+  end
+
+  # Runs the block in a thread and returns true if it finished within +seconds+.
+  # If it did not, the peer is drained so the writer can no longer be blocked.
+  def finished_within(seconds, peer)
+    thread = Thread.new do
+      begin
+        yield
+      rescue StandardError
+      end
+      :finished
+    end
+
+    finished = thread.join(seconds)
+    unless finished
+      drain peer
+      thread.join(1)
+    end
+    !finished.nil?
+  end
+
+  def test_100_continue_write_does_not_wait_for_a_client_that_is_not_reading
+    io, peer = create_socket_pair
+    client = create_client io
+
+    fill_send_buffer io
+    peer.syswrite "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: 10\r\nExpect: 100-continue\r\n\r\n"
+
+    finished = finished_within(2, peer) { client.try_to_finish }
+
+    assert finished, "writing the 100 Continue response blocked for more than 2 s " \
+      "while the client was not reading, so nothing else on that thread could run"
+  end
+
+  def test_408_write_does_not_wait_for_a_client_that_is_not_reading
+    io, peer = create_socket_pair
+    client = create_client io
+
+    peer.syswrite "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: 10\r\n\r\nabc"
+    refute client.try_to_finish, "expected the request body to be incomplete"
+    assert client.in_data_phase
+
+    fill_send_buffer io
+
+    finished = finished_within(2, peer) { client.timeout! }
+
+    assert finished, "writing the 408 response blocked for more than 2 s " \
+      "while the client was not reading, so nothing else on that thread could run"
+  end
+end
+
 class TestRequestClientRequire < PumaTest
   def test_require_puma_client_after_puma
     lib = File.expand_path "../lib", __dir__
