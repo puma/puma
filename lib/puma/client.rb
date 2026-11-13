@@ -112,6 +112,7 @@ module Puma
       @tempfile = nil
 
       @timeout_at = nil
+      @header_deadline = nil
 
       @requests_served = 0
       @hijacked = false
@@ -168,6 +169,14 @@ module Puma
       @timeout_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + val
     end
 
+    def set_read_timeout(val)
+      set_timeout(val)
+      return if in_data_phase
+
+      @header_deadline ||= @timeout_at
+      @timeout_at = @header_deadline
+    end
+
     # Number of seconds until the timeout elapses.
     # @!attribute [r] timeout
     def timeout
@@ -187,6 +196,7 @@ module Puma
       @in_last_chunk = false
       @http_content_length_limit_exceeded = nil
       @error_status_code = nil
+      @header_deadline = nil
     end
 
     # only used with back-to-back requests contained in the buffer
@@ -307,7 +317,10 @@ module Puma
 
     def finish(timeout)
       return if @ready
-      @to_io.wait_readable(timeout) || timeout! until try_to_finish
+      until try_to_finish
+        set_read_timeout(timeout)
+        @to_io.wait_readable(self.timeout) || timeout!
+      end
     end
 
     # Wraps `@parser.execute` and adds meaningful error messages

@@ -691,6 +691,62 @@ class TestPumaServer < PumaTest
     assert_equal "HTTP/1.1 200 OK", response.status
   end
 
+  def test_timeout_when_headers_dripped_past_first_data_timeout(**options)
+    server_run(first_data_timeout: 1, **options)
+
+    socket = send_http "GET / HTTP/1.1\r\nHost: test.com\r\nX-Drip: "
+    start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+    closed = false
+    8.times do
+      sleep 0.4
+      begin
+        socket << "a"
+      rescue SystemCallError, IOError
+        closed = true
+        break
+      end
+      if socket.wait_readable(0)
+        closed = true
+        break
+      end
+    end
+
+    assert closed, "connection still open after dripping headers for 3.2 s with first_data_timeout 1"
+    assert_operator Process.clock_gettime(Process::CLOCK_MONOTONIC) - start, :<, 2.5
+  end
+
+  def test_timeout_when_headers_dripped_no_queue
+    test_timeout_when_headers_dripped_past_first_data_timeout(queue_requests: false)
+  end
+
+  def test_header_deadline_resets_for_keep_alive_request
+    server_run(first_data_timeout: 1, persistent_timeout: 5)
+
+    socket = send_http "GET / HTTP/1.1\r\n"
+    sleep 0.5
+    socket << "Host: test.com\r\n\r\n"
+    assert_equal "HTTP/1.1 200 OK", socket.read_response.status
+
+    sleep 1.5
+
+    socket << "GET / HTTP/1.1\r\n"
+    sleep 0.5
+    socket << "Host: test.com\r\n\r\n"
+
+    assert_equal "HTTP/1.1 200 OK", socket.read_response.status
+  end
+
+  def test_header_deadline_applies_to_partial_pipelined_request
+    server_run(first_data_timeout: 1, persistent_timeout: 10)
+
+    socket = send_http "GET / HTTP/1.1\r\nHost: test.com\r\n\r\nGET / HTTP/1.1\r\n"
+    assert_equal "HTTP/1.1 200 OK", socket.read_response.status
+
+    assert socket.wait_readable(2.5), "partial pipelined request outlived first_data_timeout"
+    assert_empty socket.read_nonblock(1024, exception: false).to_s
+  end
+
   def test_no_timeout_after_data_received_no_queue
     @server = Puma::Server.new @app, @events, {log_writer: @log_writer, queue_requests: false}
     test_no_timeout_after_data_received
