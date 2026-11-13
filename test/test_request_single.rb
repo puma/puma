@@ -736,6 +736,17 @@ class TestRequestChunkedInvalid < TestRequestBase
     assert_invalid "#{GET_PREFIX}#{te}\r\n\r\n#{chunked}",
       "Chunk size cannot be empty or nil"
   end
+
+  # a size that doesn't fit in a C long raised RangeError, which was answered with 500
+  def test_chunked_size_larger_than_long
+    te = 'Transfer-Encoding: chunked'
+    chunked = "10000000000000000\r\nHello"
+
+    create_client "#{GET_PREFIX}#{te}\r\n\r\n#{chunked}"
+
+    refute @client.ready
+    assert @client.in_data_phase
+  end
 end
 
 # Tests invalid Transfer-Ecoding headers

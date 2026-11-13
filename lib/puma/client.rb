@@ -712,7 +712,8 @@ module Puma
 
           len += 2
 
-          part = io.read(len)
+          # StringIO#read takes a C long, so don't ask for more than is buffered
+          part = io.read([len, io.size].min)
 
           unless part
             @partial_part_left = len
