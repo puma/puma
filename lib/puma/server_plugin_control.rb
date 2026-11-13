@@ -22,10 +22,11 @@ module Puma
     end
 
     # Updates the minimum and maximum number of threads in the thread pool.
+    # Omitted arguments default to the corresponding current thread limits.
     #
     # @see Puma::Server#update_thread_pool_min_max
     #
-    def update_thread_pool_min_max(min: max_threads, max: min_threads)
+    def update_thread_pool_min_max(min: min_threads, max: max_threads)
       @server.update_thread_pool_min_max(min: min, max: max)
     end
   end
