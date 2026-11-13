@@ -538,6 +538,7 @@ module Puma
 
       te = @env[TRANSFER_ENCODING2]
       if te
+        @env[HTTP_CONNECTION] = CLOSE if @env.key?(CONTENT_LENGTH)
         te_lwr = te.downcase
         if te.include? ','
           te_ary = te_lwr.split(',').each { |te| te.gsub!(STRIP_OWS, "") }

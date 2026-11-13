@@ -3045,6 +3045,22 @@ class TestPumaServer < PumaTest
     assert_equal 1, response.scan("HTTP/1.1 200 OK").size
   end
 
+  def test_cl_and_te_closes_connection
+    requests = Queue.new
+    server_run do |env|
+      requests << [env['PATH_INFO'], env['rack.input'].read]
+      [200, {}, ['OK']]
+    end
+
+    socket = send_http "POST /first HTTP/1.1\r\nHost: test.com\r\nContent-Length: 5\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n0\r\n\r\n#{GET_11}"
+    response = socket.read_all
+
+    assert_equal ['200'], response.scan(/HTTP\/1\.1 (\d{3})/).flatten
+    assert_includes response.downcase, "connection: close\r\n"
+    assert_equal ['/first', 'hello'], requests.pop(true)
+    assert_predicate requests, :empty?
+  end
+
   queue_request_options = [true, false]
   {'content_length' => 'Content_Length: 0', 'transfer_encoding' => 'Transfer_Encoding: chunked'}.each do |name, header|
     queue_request_options.each do |queue_requests|
