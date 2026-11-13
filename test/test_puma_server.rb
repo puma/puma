@@ -1081,6 +1081,44 @@ class TestPumaServer < PumaTest
     assert_nil transfer_encoding
   end
 
+  def test_chunked_body_uses_stringio_for_small_bodies
+    body_class = nil
+    server_run { |env|
+      input = env['rack.input']
+      body_class = input.class
+      [200, {}, [""]]
+    }
+
+    response = send_http_read_response "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\nTransfer-Encoding: gzip,chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+
+    assert_equal "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
+    assert_equal StringIO, body_class
+  end
+
+  def test_chunked_body_moves_to_tempfile_past_max_body
+    body_class = nil
+    body = nil
+    content_length = nil
+    server_run { |env|
+      input = env['rack.input']
+      body_class = input.class
+      body = input.read
+      content_length = env['CONTENT_LENGTH']
+      [200, {}, [""]]
+    }
+
+    request_body = "a" * (Puma::Const::MAX_BODY + 1)
+    chunks = request_body.scan(/.{1,#{Puma::Const::MAX_BODY / 2 + 1}}/m)
+    encoded = chunks.map { |c| "#{c.bytesize.to_s(16)}\r\n#{c}\r\n" }.join
+    response = send_http_read_response "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\n" \
+      "Transfer-Encoding: chunked\r\n\r\n#{encoded}0\r\n\r\n"
+
+    assert_equal "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
+    assert_equal File, body_class
+    assert_equal request_body, body
+    assert_equal request_body.bytesize.to_s, content_length
+  end
+
   # See also test_chunked_keep_alive_two_back_to_back
   def test_two_back_to_back_chunked_have_different_tempfile
     body = nil
@@ -1096,7 +1134,10 @@ class TestPumaServer < PumaTest
       [200, {}, [""]]
     }
 
-    chunked_req = "GET / HTTP/1.1\r\nHost: test.com\r\nTransfer-Encoding: gzip,chunked\r\n\r\n1\r\nh\r\n4\r\nello\r\n0\r\n\r\n"
+    request_body = "a" * (Puma::Const::MAX_BODY + 1)
+    chunks = request_body.scan(/.{1,#{Puma::Const::MAX_BODY / 2 + 1}}/m)
+    encoded = chunks.map { |c| "#{c.bytesize.to_s(16)}\r\n#{c}\r\n" }.join
+    chunked_req = "GET / HTTP/1.1\r\nHost: test.com\r\nTransfer-Encoding: gzip,chunked\r\n\r\n#{encoded}0\r\n\r\n"
 
     skt = send_http chunked_req
 
@@ -1104,8 +1145,8 @@ class TestPumaServer < PumaTest
     path1 = req_body_path
 
     assert_equal "HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n", response
-    assert_equal "hello", body
-    assert_equal "5", content_length
+    assert_equal request_body, body
+    assert_equal (Puma::Const::MAX_BODY + 1).to_s, content_length
     assert_nil transfer_encoding
 
     skt << chunked_req
@@ -1114,8 +1155,8 @@ class TestPumaServer < PumaTest
 
     # same as above
     assert_equal "HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n", response
-    assert_equal "hello", body
-    assert_equal "5", content_length
+    assert_equal request_body, body
+    assert_equal (Puma::Const::MAX_BODY + 1).to_s, content_length
     assert_nil transfer_encoding
 
     refute_equal path1, path2

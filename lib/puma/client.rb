@@ -622,12 +622,12 @@ module Puma
       @partial_part_left = 0
       @prev_chunk = ""
       @excess_cr = 0
-
-      @body = Tempfile.create(Const::PUMA_TMP_BASE)
-      File.unlink @body.path unless IS_WINDOWS
-      @body.binmode
-      @tempfile = @body
+      @tempfile = nil
       @chunked_content_length = 0
+
+      # The body[0,0] trick is to get an empty string in the same
+      # encoding as body.
+      @body = StringIO.new body[0,0]
 
       if decode_chunk(body)
         @env[CONTENT_LENGTH] = @chunked_content_length.to_s
@@ -637,8 +637,21 @@ module Puma
 
     # @version 5.0.0
     def write_chunk(str)
-      if @http_content_length_limit&.< @chunked_content_length + str.bytesize
+      remain = @chunked_content_length + str.bytesize
+
+      if @http_content_length_limit&.< remain
         raise_above_http_content_limit
+      end
+
+      # The length of a chunked body is unknown up front, so it starts in memory
+      # and moves to a Tempfile once it grows past MAX_BODY, similar to Content-Length.
+      if @tempfile.nil? && remain > MAX_BODY
+        @tempfile = Tempfile.create(Const::PUMA_TMP_BASE)
+        File.unlink @tempfile.path unless IS_WINDOWS
+        @tempfile.binmode
+        @tempfile.write @body.string
+        @body = @tempfile
+        @env[RACK_INPUT] = @body
       end
 
       @chunked_content_length += @body.write(str)
