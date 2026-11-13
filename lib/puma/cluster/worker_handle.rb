@@ -21,15 +21,18 @@ module Puma
         @signal = "TERM"
         @options = options
         @first_term_sent = nil
+        # Wall-clock times are only shown in stats; timeouts use the monotonic clock.
         @started_at = Time.now
         @last_checkin = Time.now
+        @started_at_mono = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        @last_checkin_mono = @started_at_mono
         @last_status = {}
         @term = false
         @mold = false
         @worker_max = Array.new WORKER_MAX_KEYS.length, 0
       end
 
-      attr_reader :index, :pid, :phase, :signal, :last_checkin, :last_status, :started_at, :process_status
+      attr_reader :index, :pid, :phase, :signal, :last_checkin, :last_status, :started_at, :process_status, :started_at_mono
 
       # @version 5.0.0
       attr_writer :pid, :phase, :process_status
@@ -39,11 +42,12 @@ module Puma
       end
 
       def uptime
-        Time.now - started_at
+        Process.clock_gettime(Process::CLOCK_MONOTONIC) - @started_at_mono
       end
 
       def boot!
         @last_checkin = Time.now
+        @last_checkin_mono = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         @stage = :booted
       end
 
@@ -98,6 +102,7 @@ module Puma
           end
         end
         @last_checkin = Time.now
+        @last_checkin_mono = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         @last_status = hsh
       end
 
@@ -106,10 +111,11 @@ module Puma
         WORKER_MAX_KEYS.length.times { |idx| @worker_max[idx] = 0 }
       end
 
+      # The CLOCK_MONOTONIC time by which the worker must check in.
       # @see Puma::Cluster#check_workers
       # @version 5.0.0
       def ping_timeout
-        @last_checkin +
+        @last_checkin_mono +
           (booted? ?
             @options[:worker_timeout] :
             @options[:worker_boot_timeout]
@@ -118,11 +124,12 @@ module Puma
 
       def term
         begin
-          if @first_term_sent && (Time.now - @first_term_sent) > @options[:worker_shutdown_timeout]
+          now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          if @first_term_sent && (now - @first_term_sent) > @options[:worker_shutdown_timeout]
             @signal = "KILL"
           else
             @term ||= true
-            @first_term_sent ||= Time.now
+            @first_term_sent ||= now
           end
           Process.kill @signal, @pid if @pid
         rescue Errno::ESRCH
