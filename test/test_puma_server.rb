@@ -1330,6 +1330,69 @@ class TestPumaServer < PumaTest
     assert_equal 4, completed_loops
   end
 
+  def test_chunked_request_rejects_invalid_chunk_data_terminator_when_split_across_reads
+    server_run { |env|
+      env['rack.input'].read
+      [200, {}, [""]]
+    }
+
+    header = "PUT /path HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n"
+
+    cases = [
+      ["delivered in one read", "5\r\nhelloXX0\r\n\r\n", nil],
+      ["split inside the chunk data", "5\r\nhel", "loXX0\r\n\r\n"],
+      ["split right after the chunk data", "5\r\nhello", "XX0\r\n\r\n"],
+      ["one-byte chunk split after its data", "1\r\na", "XX0\r\n\r\n"],
+    ]
+
+    cases.each do |label, part1, part2|
+      socket = send_http "#{header}#{part1}"
+      if part2
+        sleep 0.2
+        socket << part2
+      end
+      response = socket.read_response
+
+      assert_match %r{\AHTTP/1\.1 400 }, response,
+        "#{label}: chunk data must be followed by CRLF"
+    end
+
+    data = "A" * (Puma::Const::CHUNK_SIZE + 1)
+    socket = send_http "#{header}#{data.bytesize.to_s(16)}\r\n#{data}"
+    sleep 0.2
+    socket << "XX0\r\n\r\n"
+    response = socket.read_response
+
+    assert_match %r{\AHTTP/1\.1 400 }, response,
+      "large chunk split before its terminator: chunk data must be followed by CRLF"
+  end
+
+  def test_chunked_request_rejects_invalid_chunk_data_terminator_when_read_ends_inside_terminator
+    server_run { |env|
+      env['rack.input'].read
+      [200, {}, [""]]
+    }
+
+    header = "PUT /path HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n"
+
+    cases = [
+      ["5\r\nhelloX", nil],
+      ["5\r\nhello\r", "Y0\r\n\r\n"],
+    ]
+
+    cases.each do |part1, part2|
+      socket = send_http "#{header}#{part1}"
+      if part2
+        sleep 0.2
+        socket << part2
+      end
+      response = socket.read_response
+
+      assert_match %r{\AHTTP/1\.1 400 }, response,
+        "#{part1.inspect} + #{part2.inspect}: chunk data must be followed by CRLF"
+    end
+  end
+
   def test_chunked_request_pause_before_value
     body = nil
     content_length = nil
