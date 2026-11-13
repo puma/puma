@@ -166,6 +166,31 @@ class TestCLI < PumaTest
     end
   end
 
+  def test_control_for_unix_umask
+    skip_unless :unix
+
+    config_path = tmp_path('.rb')
+    File.write config_path, <<~RUBY
+      activate_control_app "unix://#{@tmp_path}", no_token: true, umask: 0o077
+    RUBY
+
+    cli = Puma::CLI.new ["-b", "unix://#{@tmp_path2}",
+                         "-C", config_path,
+                         "test/rackup/hello.ru"], @log_writer, @events
+
+    t = Thread.new { cli.run }
+
+    wait_booted
+
+    # umask 077 must clear all group/other permission bits on the control socket
+    assert_equal 0, File.stat(@tmp_path).mode & 0o077
+  ensure
+    if UNIX_SKT_EXIST
+      cli.launcher.stop
+      t.join
+    end
+  end
+
   def test_control_stop
     skip_unless :unix
 
