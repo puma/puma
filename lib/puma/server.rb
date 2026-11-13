@@ -51,7 +51,7 @@ module Puma
     # @todo the following may be deprecated in the future
     attr_reader :auto_trim_time, :early_hints, :first_data_timeout,
       :leak_stack_on_error,
-      :persistent_timeout, :reaping_time
+      :persistent_timeout, :reaping_time, :shutdown_body_timeout
 
     attr_accessor :app
     attr_accessor :binder
@@ -98,6 +98,8 @@ module Puma
       @early_hints               = @options[:early_hints]
       @first_data_timeout        = @options[:first_data_timeout]
       @persistent_timeout        = @options[:persistent_timeout]
+      @shutdown_body_timeout     = @options[:shutdown_body_timeout]
+      @shutdown_body_deadline    = nil
       @idle_timeout              = @options[:idle_timeout]
       @min_threads               = @options[:min_threads]
       @max_threads               = @options[:max_threads]
@@ -260,6 +262,7 @@ module Puma
       @events.fire :state, :booting
 
       @status = :run
+      @shutdown_body_deadline = nil
 
       @thread_pool = ThreadPool.new(thread_name, options, server: self) do |processor, client|
         process_client(processor, client)
@@ -326,7 +329,7 @@ module Puma
     def reactor_wakeup(client)
       shutdown = !@queue_requests
       read = client.bytes_read
-      if client.try_to_finish || (shutdown && !client.can_close?)
+      if client.try_to_finish { shutdown_body_limit } || (shutdown && !client.can_close?)
         hand_to_thread_pool client
       elsif shutdown || client.timeout == 0
         client.timeout!
@@ -390,6 +393,7 @@ module Puma
                 else
                   @idle_timeout_reached = true
                   @log_writer.log "- Idle timeout reached"
+                  shutdown_body_deadline
                   @status = :stop
                 end
               end
@@ -491,12 +495,14 @@ module Puma
 
       case cmd
       when STOP_COMMAND
+        shutdown_body_deadline
         @status = :stop
         return true
       when HALT_COMMAND
         @status = :halt
         return true
       when RESTART_COMMAND
+        shutdown_body_deadline
         @status = :restart
         return true
       end
@@ -522,7 +528,7 @@ module Puma
       begin
         raise client.reactor_error if client.reactor_error
 
-        if @queue_requests && !client.eagerly_finish
+        if @queue_requests && !client.eagerly_finish { shutdown_body_limit }
 
           client.set_timeout(@first_data_timeout)
           if @reactor.add client
@@ -532,7 +538,7 @@ module Puma
         end
 
         with_force_shutdown(client) do
-          client.finish(@first_data_timeout)
+          client.finish(@first_data_timeout) { shutdown_body_limit }
         end
 
         can_loop = true
@@ -553,7 +559,7 @@ module Puma
             next_request_ready = if client.has_back_to_back_requests?
               with_force_shutdown(client) { client.process_back_to_back_requests }
             else
-              with_force_shutdown(client) { client.eagerly_finish }
+              with_force_shutdown(client) { client.eagerly_finish { shutdown_body_limit } }
             end
 
             if next_request_ready
@@ -673,9 +679,19 @@ module Puma
     end
     private :response_to_error
 
+    def shutdown_body_deadline
+      @shutdown_body_deadline ||= Process.clock_gettime(Process::CLOCK_MONOTONIC) + @shutdown_body_timeout
+    end
+
+    def shutdown_body_limit
+      @shutdown_body_deadline
+    end
+
     # Wait for all outstanding requests to finish.
     #
     def graceful_shutdown
+      shutdown_body_deadline
+
       if @status != :restart
         @binder.close
       end
@@ -703,6 +719,7 @@ module Puma
     # off the request queue before finally exiting.
 
     def stop(sync=false)
+      shutdown_body_deadline
       notify_safely(STOP_COMMAND)
       @thread.join if @thread && sync
     end
@@ -713,6 +730,7 @@ module Puma
     end
 
     def begin_restart(sync=false)
+      shutdown_body_deadline
       notify_safely(RESTART_COMMAND)
       @thread.join if @thread && sync
     end

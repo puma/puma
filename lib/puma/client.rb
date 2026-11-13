@@ -66,6 +66,8 @@ module Puma
     # chunk header, and the maximum size of a trailer section.
     MAX_CHUNK_HEADER_SIZE = 4096
 
+    SHUTDOWN_READ_GRACE = 1
+
     # The maximum amount of excess data the client sends
     # using chunk size extensions before we abort the connection.
     MAX_CHUNK_EXCESS = 16 * 1024
@@ -267,9 +269,9 @@ module Puma
       true
     end
 
-    def try_to_finish
+    def try_to_finish(&deadline)
       return false unless flush_pending_write
-      return read_body if in_data_phase
+      return read_body(&deadline) if in_data_phase
 
       data = nil
       begin
@@ -303,28 +305,36 @@ module Puma
       @parser.finished? ? process_env_body : false
     end
 
-    def eagerly_finish
+    def eagerly_finish(&deadline)
       return true if @ready
       while !write_pending? && @to_io.wait_readable(0)
         read = @bytes_read
-        return true if try_to_finish
+        return true if try_to_finish(&deadline)
+        check_deadline(&deadline) if deadline
         return false if @bytes_read == read
       end
       false
     end
 
-    def finish(timeout)
+    def finish(timeout, &deadline)
       return if @ready
       set_timeout timeout
       read = @bytes_read
-      until try_to_finish
+      until try_to_finish(&deadline)
         if @bytes_read > read
           set_timeout timeout
           read = @bytes_read
         elsif self.timeout == 0
           timeout!
         end
-        wait_io(self.timeout) || timeout!
+        if deadline
+          check_deadline(&deadline)
+          limit = yield
+          wait = [self.timeout, limit ? limit - Process.clock_gettime(Process::CLOCK_MONOTONIC) : 0.1].min
+          wait_io(wait) if wait > 0
+        else
+          wait_io(self.timeout) || timeout!
+        end
       end
     end
 
@@ -614,9 +624,9 @@ module Puma
       false
     end
 
-    def read_body
+    def read_body(&deadline)
       if @chunked_body
-        return read_chunked_body
+        return read_chunked_body(&deadline)
       end
 
       # Read an odd sized chunk so we can read even sized ones
@@ -656,7 +666,7 @@ module Puma
       end
     end
 
-    def read_chunked_body
+    def read_chunked_body(&deadline)
       while true
         begin
           chunk = @io.read_nonblock(CHUNK_SIZE, @read_buffer)
@@ -679,7 +689,20 @@ module Puma
           @env[CONTENT_LENGTH] = @chunked_content_length.to_s
           return true
         end
+
+        check_deadline(&deadline) if deadline
       end
+    end
+
+    def check_deadline
+      limit = yield
+      return unless limit
+
+      now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      return if now < limit
+      return if now < limit + SHUTDOWN_READ_GRACE && @to_io.wait_readable(0)
+
+      timeout!
     end
 
     def setup_chunked_body(body)

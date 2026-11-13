@@ -1998,6 +1998,319 @@ class TestPumaServer < PumaTest
     shutdown_requests(**opts, queue_requests: false)
   end
 
+  def test_shutdown_body_timeout_allows_body_to_complete_during_shutdown
+    app_called = false
+    server_run(shutdown_body_timeout: 2) do
+      app_called = true
+      [204, {}, []]
+    end
+
+    socket = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 5\r\n\r\nh"
+    sleep 0.1
+
+    stop_thread = Thread.new { @server.stop(true) }
+    sleep 0.1
+    socket << "ello"
+
+    assert_equal "HTTP/1.1 204 No Content", socket.read_response(timeout: 2).status
+    assert stop_thread.join(2), "server did not stop after request body completed"
+    assert app_called
+  ensure
+    begin
+      socket&.close
+    rescue IOError, SystemCallError
+    end
+    stop_thread&.join(2) || stop_thread&.kill
+  end
+
+  def test_shutdown_body_timeout_limits_trickled_body
+    app_called = false
+    server_run(first_data_timeout: 10, shutdown_body_timeout: 0.25) do
+      app_called = true
+      [204, {}, []]
+    end
+
+    socket = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 100000\r\n\r\na"
+    chunked = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n"
+    trickler = Thread.new do
+      loop do
+        sleep 0.05
+        socket << "a"
+        chunked << "1\r\na\r\n"
+      end
+    rescue IOError, SystemCallError
+    end
+
+    sleep 0.1
+    stop_thread = Thread.new { @server.stop(true) }
+
+    assert stop_thread.join(2), "server did not stop after shutdown_body_timeout elapsed"
+    refute app_called
+
+    trickler.kill
+    socket.close
+    chunked.close
+    server_run(first_data_timeout: 10, shutdown_body_timeout: 0.25, queue_requests: false) do
+      app_called = true
+      [204, {}, []]
+    end
+
+    silent = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: 100000\r\n\r\na"
+    late = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: 5\r\n\r\nh"
+    late_writer = Thread.new do
+      sleep 0.5
+      late << "ello"
+    rescue IOError, SystemCallError
+    end
+
+    sleep 0.1
+    stop_thread = Thread.new { @server.stop(true) }
+
+    assert stop_thread.join(2), "server did not stop after shutdown_body_timeout elapsed"
+    assert_equal "HTTP/1.1 408 Request Timeout", silent.read_response(timeout: 2).status
+    assert_equal "HTTP/1.1 408 Request Timeout", late.read_response(timeout: 2).status
+    refute app_called
+  ensure
+    trickler&.kill
+    late_writer&.join(2) || late_writer&.kill
+    begin
+      socket&.close
+      chunked&.close
+      silent&.close
+      late&.close
+    rescue IOError, SystemCallError
+    end
+    stop_thread&.join(2) || stop_thread&.kill
+  end
+
+  def test_shutdown_body_timeout_limits_continuously_streamed_chunked_body
+    app_called = false
+    server_run(first_data_timeout: 10, shutdown_body_timeout: 0.25) do
+      app_called = true
+      [204, {}, []]
+    end
+
+    chunked = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nTransfer-Encoding: chunked\r\n\r\n"
+    chunk = "#{(64 * 1024).to_s(16)}\r\n#{'a' * 64 * 1024}\r\n"
+    streamer = Thread.new do
+      loop { chunked.write chunk }
+    rescue IOError, SystemCallError
+    end
+
+    sleep 0.2
+    stop_thread = Thread.new { @server.stop(true) }
+
+    assert stop_thread.join(3), "server did not stop while a chunked body was streamed continuously"
+    refute app_called
+  ensure
+    streamer&.kill
+    begin
+      chunked&.close
+    rescue IOError, SystemCallError
+    end
+    stop_thread&.join(2) || stop_thread&.kill
+  end
+
+  def test_shutdown_body_timeout_serves_complete_requests_queued_past_deadline
+    first_started = Queue.new
+    server_run(max_threads: 1, shutdown_body_timeout: 0.25) do |env|
+      if env["PATH_INFO"] == "/slow"
+        first_started << true
+        sleep 1
+      end
+      [204, {}, []]
+    end
+
+    slow = send_http "GET /slow HTTP/1.1\r\nHost: test.com\r\n\r\n"
+    first_started.pop
+    queued = send_http "GET /queued HTTP/1.1\r\nHost: test.com\r\n\r\n"
+    sleep 0.1
+
+    stop_thread = Thread.new { @server.stop(true) }
+
+    assert_equal "HTTP/1.1 204 No Content", slow.read_response(timeout: 3).status
+    assert_equal "HTTP/1.1 204 No Content", queued.read_response(timeout: 3).status
+    assert stop_thread.join(3), "server did not stop"
+  ensure
+    begin
+      slow&.close
+      queued&.close
+    rescue IOError, SystemCallError
+    end
+    stop_thread&.join(2) || stop_thread&.kill
+  end
+
+  def test_shutdown_body_timeout_applies_when_unbuffered_pool_is_full
+    server_run(queue_requests: false, max_threads: 1, first_data_timeout: 10, shutdown_body_timeout: 0.25) do
+      [204, {}, []]
+    end
+
+    slow = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: 100000\r\n\r\na"
+    trickler = Thread.new do
+      loop { sleep 0.05; slow << "a" }
+    rescue IOError, SystemCallError
+    end
+    sleep 0.1
+    waiting = send_http "GET / HTTP/1.1\r\nHost: test.com\r\n\r\n"
+    sleep 0.1
+
+    stop_thread = Thread.new { @server.stop(true) }
+
+    assert stop_thread.join(3), "server did not stop while its only thread read a trickled body"
+  ensure
+    trickler&.kill
+    begin
+      slow&.close
+      waiting&.close
+    rescue IOError, SystemCallError
+    end
+    stop_thread&.join(2) || stop_thread&.kill
+  end
+
+  def test_shutdown_body_timeout_rejects_upload_queued_past_grace
+    first_started = Queue.new
+    app_paths = []
+    server_run(max_threads: 1, shutdown_body_timeout: 0.25) do |env|
+      app_paths << env["PATH_INFO"]
+      if env["PATH_INFO"] == "/slow"
+        first_started << true
+        sleep 2
+      end
+      [204, {}, []]
+    end
+
+    slow = send_http "GET /slow HTTP/1.1\r\nHost: test.com\r\n\r\n"
+    first_started.pop
+    queued = send_http "POST /queued HTTP/1.1\r\nHost: test.com\r\nContent-Length: 100000\r\n\r\na"
+    sleep 0.1
+
+    stop_thread = Thread.new { @server.stop(true) }
+
+    assert_equal "HTTP/1.1 204 No Content", slow.read_response(timeout: 4).status
+    assert_equal "HTTP/1.1 408 Request Timeout", queued.read_response(timeout: 4).status
+    assert_equal ["/slow"], app_paths
+    assert stop_thread.join(3), "server did not stop"
+  ensure
+    begin
+      slow&.close
+      queued&.close
+    rescue IOError, SystemCallError
+    end
+    stop_thread&.join(2) || stop_thread&.kill
+  end
+
+  def test_shutdown_body_timeout_restarts_with_server
+    server_run(shutdown_body_timeout: 0.5) { [204, {}, []] }
+    @server.begin_restart(true)
+    sleep 0.6
+    @server.run
+
+    socket = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: 5\r\n\r\nh"
+    sleep 0.1
+    stop_thread = Thread.new { @server.stop(true) }
+    sleep 0.1
+    socket << "ello"
+
+    assert_equal "HTTP/1.1 204 No Content", socket.read_response(timeout: 2).status
+    assert stop_thread.join(3), "server did not stop"
+  ensure
+    begin
+      socket&.close
+    rescue IOError, SystemCallError
+    end
+    stop_thread&.join(2) || stop_thread&.kill
+  end
+
+  def test_zero_first_data_timeout_reads_complete_body_without_queue
+    body_sizes = []
+    server_run(queue_requests: false, first_data_timeout: 0) do |env|
+      body_sizes << env["rack.input"].read.bytesize
+      [204, {}, []]
+    end
+
+    body = "a" * 256 * 1024
+    socket = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: #{body.bytesize}\r\n\r\n#{body}"
+
+    assert_equal "HTTP/1.1 204 No Content", socket.read_response(timeout: 3).status
+    assert_equal [body.bytesize], body_sizes
+  ensure
+    begin
+      socket&.close
+    rescue IOError, SystemCallError
+    end
+  end
+
+  def test_shutdown_body_timeout_bounds_many_streamed_chunked_bodies
+    server_run(first_data_timeout: 10, shutdown_body_timeout: 0.25) { [204, {}, []] }
+
+    chunk = "#{(64 * 1024).to_s(16)}\r\n#{'a' * 64 * 1024}\r\n"
+    sockets = Array.new(4) { send_http "POST / HTTP/1.1\r\nHost: test.com\r\nTransfer-Encoding: chunked\r\n\r\n" }
+    streamers = sockets.map do |socket|
+      Thread.new do
+        loop { socket.write chunk }
+      rescue IOError, SystemCallError
+      end
+    end
+
+    sleep 0.2
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    stop_thread = Thread.new { @server.stop(true) }
+
+    assert stop_thread.join(3), "server did not stop while chunked bodies were streamed"
+    assert_operator Process.clock_gettime(Process::CLOCK_MONOTONIC) - started, :<, 1.5
+  ensure
+    streamers&.each(&:kill)
+    sockets&.each do |socket|
+      socket.close
+    rescue IOError, SystemCallError
+    end
+    stop_thread&.join(2) || stop_thread&.kill
+  end
+
+  def test_zero_first_data_timeout_still_applies_shutdown_body_timeout
+    server_run(queue_requests: false, first_data_timeout: 0, shutdown_body_timeout: 0.25) { [204, {}, []] }
+
+    socket = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: #{1024 * 1024 * 1024}\r\n\r\n"
+    streamer = Thread.new do
+      loop { socket.write "a" * 64 * 1024 }
+    rescue IOError, SystemCallError
+    end
+    sleep 0.2
+    stop_thread = Thread.new { @server.stop(true) }
+
+    assert stop_thread.join(3), "server did not stop while a body was streamed with first_data_timeout 0"
+  ensure
+    streamer&.kill
+    begin
+      socket&.close
+    rescue IOError, SystemCallError
+    end
+    stop_thread&.join(2) || stop_thread&.kill
+  end
+
+  def test_shutdown_body_timeout_counts_chunk_framing
+    server_run(queue_requests: false, first_data_timeout: 10, shutdown_body_timeout: 0.25) { [204, {}, []] }
+
+    chunked = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nTransfer-Encoding: chunked\r\n\r\n"
+    chunk = "#{'0' * 4060}1\r\na\r\n" * 16
+    streamer = Thread.new do
+      loop { chunked.write chunk }
+    rescue IOError, SystemCallError
+    end
+
+    sleep 0.2
+    stop_thread = Thread.new { @server.stop(true) }
+
+    assert stop_thread.join(3), "server did not stop while padded chunks were streamed"
+  ensure
+    streamer&.kill
+    begin
+      chunked&.close
+    rescue IOError, SystemCallError
+    end
+    stop_thread&.join(2) || stop_thread&.kill
+  end
+
   # Requests still pending after `force_shutdown_after` should have connection closed (408 w/pending POST body).
   # App-responses still pending should return 503 (uncaught Puma::ThreadPool::ForceShutdown exception).
   def test_force_shutdown
