@@ -205,10 +205,7 @@ module Puma
       private :queue_ciphertext
 
       def flush_write_buffer
-        return if @write_buffer.empty?
-
-        @socket.write @write_buffer
-        @write_buffer = +''
+        @socket.wait_writable until flush_write_buffer_nonblock
       end
       private :flush_write_buffer
 
