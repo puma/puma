@@ -90,7 +90,7 @@ Done when step 7 passes for every series.
 
 ## 8. Sync main (patch releases)
 
-**go**: a PR to `main` that adds each new History section in version order (8.x sections above 7.x) along with its link definitions. Done when it is merged.
+**go**: a PR to `main` that adds each new History section in version order (8.x sections above 7.x) along with its link definitions. If `VERSION` in `lib/puma/const.rb` on `main` is in the released series, the PR also sets it to the new version. Done when it is merged.
 
 ## Gotchas
 
