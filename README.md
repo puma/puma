@@ -495,3 +495,5 @@ Find details for contributing in the [contribution guide](CONTRIBUTING.md).
 ## License
 
 Puma is copyright Evan Phoenix and contributors, licensed under the BSD 3-Clause license. See the included LICENSE file for details.
+
+Puma includes a copy of [`sd_notify`](https://github.com/agis/ruby-sdnotify) (commit `cca575c`), licensed under the MIT license. See [`lib/puma/sd_notify.rb`](lib/puma/sd_notify.rb) for the license text.
