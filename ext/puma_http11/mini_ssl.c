@@ -440,7 +440,14 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
 
   if (!NIL_P(ssl_cipher_filter)) {
     StringValue(ssl_cipher_filter);
-    SSL_CTX_set_cipher_list(ctx, RSTRING_PTR(ssl_cipher_filter));
+    ERR_clear_error();
+    if (SSL_CTX_set_cipher_list(ctx, RSTRING_PTR(ssl_cipher_filter)) != 1) {
+      if (ERR_GET_REASON(ERR_peek_last_error()) == SSL_R_NO_CIPHER_MATCH) {
+        ERR_clear_error();
+      } else {
+        raise_param_error("SSL_CTX_set_cipher_list", "ssl_cipher_filter");
+      }
+    }
   }
   else {
     SSL_CTX_set_cipher_list(ctx, "HIGH:!aNULL@STRENGTH");

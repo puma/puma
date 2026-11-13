@@ -109,6 +109,9 @@ module Puma
     # sending data back
     WRITE_TIMEOUT = 10
 
+    # How long the accept loop waits after running out of file descriptors
+    ACCEPT_ERROR_DELAY = 0.1
+
     # The original URI requested by the client.
     REQUEST_URI= "REQUEST_URI"
     REQUEST_PATH = "REQUEST_PATH"

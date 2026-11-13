@@ -25,6 +25,9 @@ module Puma
         @engine = engine
         @peercert = nil
         @reuse = nil
+        @write_buffer = +''
+        @write_owed = 0
+        @write_owed_data = nil
       end
 
       # @!attribute [r] to_io
@@ -68,9 +71,8 @@ module Puma
 
           return output if output
 
-          while neg_data = @engine.extract
-            @socket.write neg_data
-          end
+          queue_ciphertext
+          flush_write_buffer
         end
       end
 
@@ -85,52 +87,60 @@ module Puma
       def read_nonblock(size, *_)
         # *_ is to deal with keyword args that were added
         # at some point (and being used in the wild)
-        while true
-          output = engine_read_all
-          return output if output
+        output = engine_read_all
+        return output if output
 
-          data = @socket.read_nonblock(size, exception: false)
-          if data == :wait_readable || data == :wait_writable
-            # It would make more sense to let @socket.read_nonblock raise
-            # EAGAIN if necessary but it seems like it'll misbehave on Windows.
-            # I don't have a Windows machine to debug this so I can't explain
-            # exactly whats happening in that OS. Please let me know if you
-            # find out!
-            #
-            # In the meantime, we can emulate the correct behavior by
-            # capturing :wait_readable & :wait_writable and raising EAGAIN
-            # ourselves.
-            raise IO::EAGAINWaitReadable
-          elsif data.nil?
-            raise SSLError.exception "HTTP connection?" if bad_tlsv1_3?
-            return nil
-          end
+        raise IO::EAGAINWaitReadable unless flush_write_buffer_nonblock
 
-          @engine.inject(data)
-          output = engine_read_all
-
-          return output if output
-
-          while neg_data = @engine.extract
-            @socket.write neg_data
-          end
+        data = @socket.read_nonblock(size, exception: false)
+        if data == :wait_readable || data == :wait_writable
+          # It would make more sense to let @socket.read_nonblock raise
+          # EAGAIN if necessary but it seems like it'll misbehave on Windows.
+          # I don't have a Windows machine to debug this so I can't explain
+          # exactly whats happening in that OS. Please let me know if you
+          # find out!
+          #
+          # In the meantime, we can emulate the correct behavior by
+          # capturing :wait_readable & :wait_writable and raising EAGAIN
+          # ourselves.
+          raise IO::EAGAINWaitReadable
+        elsif data.nil?
+          raise SSLError.exception "HTTP connection?" if bad_tlsv1_3?
+          return nil
         end
+
+        @engine.inject(data)
+        output = engine_read_all
+        return output if output
+
+        queue_ciphertext
+        flush_write_buffer_nonblock
+        raise IO::EAGAINWaitReadable
+      end
+
+      def write_pending?
+        !@write_buffer.empty?
       end
 
       def write(data)
         return 0 if data.empty?
 
         data_size = data.bytesize
-        need = data_size
+
+        flush_write_buffer
+        if @write_owed_data && data.byteslice(0, @write_owed_data.bytesize).b == @write_owed_data
+          data = data.byteslice(@write_owed..-1)
+          @write_owed = 0
+          @write_owed_data = nil
+          return data_size if data.empty?
+        end
+
+        need = data.bytesize
 
         while true
           wrote = @engine.write data
-
-          enc_wr = +''
-          while (enc = @engine.extract)
-            enc_wr << enc
-          end
-          @socket.write enc_wr unless enc_wr.empty?
+          queue_ciphertext
+          flush_write_buffer
 
           need -= wrote
 
@@ -143,40 +153,75 @@ module Puma
       alias_method :syswrite, :write
       alias_method :<<, :write
 
-      # This is a temporary fix to deal with websockets code using
-      # write_nonblock.
+      # As with SSL_write, retry with the same data after IO::EAGAINWaitWritable
+      def write_nonblock(data, exception: true)
+        return 0 if data.empty?
 
-      # The problem with implementing it properly
-      # is that it means we'd have to have the ability to rewind
-      # an engine because after we write+extract, the socket
-      # write_nonblock call might raise an exception and later
-      # code would pass the same data in, but the engine would think
-      # it had already written the data in.
-      #
-      # So for the time being (and since write blocking is quite rare),
-      # go ahead and actually block in write_nonblock.
-      #
-      def write_nonblock(data, *_)
-        write data
+        @write_owed = 0 if @write_owed_data && data.byteslice(0, @write_owed_data.bytesize).b != @write_owed_data
+
+        if @write_owed == 0
+          @write_owed = @engine.write data
+          @write_owed_data = nil
+          queue_ciphertext
+        end
+
+        unless flush_write_buffer_nonblock
+          @write_owed_data ||= data.byteslice(0, @write_owed).b
+          raise IO::EAGAINWaitWritable if exception
+          return :wait_writable
+        end
+
+        wrote = @write_owed
+        @write_owed = 0
+        @write_owed_data = nil
+        wrote
+      end
+
+      def wait_writable(timeout = nil)
+        @socket.wait_writable timeout
       end
 
       def flush
+        flush_write_buffer
         @socket.flush
       end
 
       def close
         begin
-          unless @engine.shutdown
-            while alert_data = @engine.extract
-              @socket.write alert_data
-            end
-          end
+          queue_ciphertext unless @engine.shutdown
+          flush_write_buffer_nonblock
         rescue IOError, SystemCallError
           # nothing
         ensure
           @socket.close
         end
       end
+
+      def queue_ciphertext
+        while (enc = @engine.extract)
+          @write_buffer << enc
+        end
+      end
+      private :queue_ciphertext
+
+      def flush_write_buffer
+        return if @write_buffer.empty?
+
+        @socket.write @write_buffer
+        @write_buffer = +''
+      end
+      private :flush_write_buffer
+
+      def flush_write_buffer_nonblock
+        until @write_buffer.empty?
+          n = @socket.write_nonblock @write_buffer, exception: false
+          return false if n == :wait_writable
+
+          @write_buffer = @write_buffer.byteslice(n..-1)
+        end
+        true
+      end
+      private :flush_write_buffer_nonblock
 
       # @!attribute [r] peeraddr
       def peeraddr
