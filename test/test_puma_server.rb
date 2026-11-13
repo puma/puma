@@ -58,6 +58,39 @@ class TestPumaServer < PumaTest
     server&.stop(true)
   end
 
+  def test_empty_body_rack_input_is_deprecated
+    skip "Rack 3.1 or later" if defined?(::Rack) && Gem::Version.new(::Rack.release) < Gem::Version.new("3.1.0")
+    input = nil
+    server_run do |env|
+      input = env["rack.input"]
+      [200, {}, ["ok"]]
+    end
+    send_http_read_response GET_11
+    assert_same Puma::Client::DeprecatedEmptyBody, input
+  end
+
+  def test_nil_rack_input_on_empty_body
+    skip "Rack 3.1 or later" if defined?(::Rack) && Gem::Version.new(::Rack.release) < Gem::Version.new("3.1.0")
+    inputs = []
+    server_run(nil_rack_input_on_empty_body: true) do |env|
+      inputs << env.key?("rack.input")
+      [200, {}, [env["rack.input"]&.read.to_s]]
+    end
+    assert_equal "", send_http_read_response(GET_11).body
+    assert_equal "hello", send_http_read_response("POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: 5\r\n\r\nhello").body
+    assert_equal [false, true], inputs
+  end
+
+  def test_empty_rack_input_by_rack_version
+    server = Puma::Server.new @app, @events, {log_writer: @log_writer}
+    assert_same Puma::Client::EmptyBody, server.send(:empty_rack_input, true)
+    assert_same Puma::Client::DeprecatedEmptyBody, server.send(:empty_rack_input, false)
+
+    server = Puma::Server.new @app, @events, {log_writer: @log_writer, nil_rack_input_on_empty_body: true}
+    assert_same Puma::Client::EmptyBody, server.send(:empty_rack_input, true)
+    assert_nil server.send(:empty_rack_input, false)
+  end
+
   def test_http10_req_to_http10_resp
     server_run do |env|
       [200, {}, [env["SERVER_PROTOCOL"]]]

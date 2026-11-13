@@ -92,6 +92,24 @@ class TestRackServer < PumaTest
     refute @checker.exception, "Checker raised exception"
   end
 
+  def test_lint_without_rack_input
+    skip "Rack 3.1 or later" if Gem::Version.new(::Rack.release) < Gem::Version.new("3.1.0")
+    @server.stop(true)
+    @server = Puma::Server.new @simple, nil, log_writer: Puma::LogWriter.null, nil_rack_input_on_empty_body: true
+    @port = (@server.add_tcp_listener HOST, 0).addr[1]
+    @tcp = "http://#{HOST}:#{@port}"
+    @checker = ErrorChecker.new ServerLint.new(@simple)
+    @server.app = @checker
+
+    @server.run
+
+    hit(["#{@tcp}/test"])
+
+    stop
+
+    refute @checker.exception, "Checker raised exception"
+  end
+
   def test_large_post_body
     @checker = ErrorChecker.new ServerLint.new(@simple)
     @server.app = @checker

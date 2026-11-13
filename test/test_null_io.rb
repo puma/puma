@@ -187,3 +187,19 @@ class TestNullIOConformance < TestNullIO
     super
   end
 end
+
+class TestDeprecatedNullIO < PumaTest
+  def setup
+    Puma::DeprecatedNullIO.instance_variable_set :@warned, false
+  end
+
+  def test_warns_once_and_reads_as_empty
+    nio = Puma::DeprecatedNullIO.new
+    _, err = capture_io do
+      assert_nil nio.gets
+      assert_equal "", nio.read
+      assert nio.eof?
+    end
+    assert_equal 1, err.scan(Puma::DeprecatedNullIO::WARNING).size
+  end
+end

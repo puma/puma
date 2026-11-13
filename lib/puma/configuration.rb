@@ -159,6 +159,7 @@ module Puma
       min_threads: 0,
       mode: :http,
       mutate_stdout_and_stderr_to_sync_on_write: true,
+      nil_rack_input_on_empty_body: false,
       out_of_band: [],
       # Number of seconds for another request within a persistent session.
       persistent_timeout: 65, # PUMA_PERSISTENT_TIMEOUT

@@ -98,4 +98,33 @@ module Puma
       true
     end
   end
+
+  # The +rack.input+ of a request with no body under Rack 3.1 and later,
+  # until leaving it unset becomes the default. Rack 3.1 allows +rack.input+
+  # to be absent, so apps should check for that instead of reading an empty
+  # stream. Warns once per process, the first time an app uses it.
+  #
+  class DeprecatedNullIO < NullIO
+    WARNING = "Puma: `rack.input` came from an empty body. A temporary null object " \
+      "has been placed there instead. In a future major version `rack.input` will " \
+      "be left unset, so check for nil before using it. If you already do, set " \
+      "`nil_rack_input_on_empty_body` in your Puma config."
+
+    @warned = false
+
+    class << self
+      def warn_once
+        return if @warned
+        @warned = true
+        warn WARNING
+      end
+    end
+
+    NullIO.public_instance_methods(false).each do |name|
+      define_method(name) do |*args, &block|
+        DeprecatedNullIO.warn_once
+        super(*args, &block)
+      end
+    end
+  end
 end

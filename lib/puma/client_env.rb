@@ -110,7 +110,15 @@ module Puma
       @env[HIJACK_P] = true
       @env[HIJACK] = method(:full_hijack).to_proc
 
-      @env[RACK_INPUT] = @body || EmptyBody
+      if @body.nil? || @body.equal?(Client::EmptyBody)
+        if @empty_rack_input
+          @env[RACK_INPUT] = @empty_rack_input
+        else
+          @env.delete RACK_INPUT
+        end
+      else
+        @env[RACK_INPUT] = @body
+      end
       @env[RACK_URL_SCHEME] ||= default_server_port == PORT_443 ? HTTPS : HTTP
     end
 
