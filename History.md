@@ -1,3 +1,21 @@
+## 7.2.2 / 2026-11-13
+
+* Security
+  * Close connections whose reactor timeout passed even when another client keeps sending data. ([GHSA-m5xw-3hrw-qcmf](https://github.com/puma/puma/security/advisories/GHSA-m5xw-3hrw-qcmf))
+  * Don't block the reactor writing a `100 Continue` or `408` to a client that stops reading. ([GHSA-xw3h-pgr9-3vg7](https://github.com/puma/puma/security/advisories/GHSA-xw3h-pgr9-3vg7))
+  * Apply the write timeout to TLS responses and to file responses larger than 64 KB, and don't let a TLS client that stops reading keep its connection alive by sending TLS records with no request data. ([GHSA-x646-wp7c-h9mg](https://github.com/puma/puma/security/advisories/GHSA-x646-wp7c-h9mg))
+  * Bound how long a graceful shutdown or restart keeps reading an incomplete request, with the new `shutdown_body_timeout` option (default 25 seconds). ([GHSA-jm4r-w4xx-qxw7](https://github.com/puma/puma/security/advisories/GHSA-jm4r-w4xx-qxw7))
+  * Keep `+` literal in bind URL query values, and raise on an invalid `ssl_cipher_filter`. ([GHSA-r885-m39c-939g](https://github.com/puma/puma/security/advisories/GHSA-r885-m39c-939g))
+  * Verify the TLS certificate and hostname of `ssl://` control servers in `pumactl`, with the new `--control-ca-file` option for private CAs. ([GHSA-86xc-wrr9-xmmq](https://github.com/puma/puma/security/advisories/GHSA-86xc-wrr9-xmmq))
+  * Back off and rate-limit logging when `accept` runs out of file descriptors. ([GHSA-rf6g-xhmp-gm7v](https://github.com/puma/puma/security/advisories/GHSA-rf6g-xhmp-gm7v))
+
+  CVE IDs have been requested for these advisories and will be added here once assigned.
+
+* Bugfixes
+  * Send the idle notification from a clustered worker only once per idle period, so the master no longer stops an active cluster or delays an idle shutdown ([#4101])
+  * Fix build errors on Windows arm64 with Ruby head ([#4071])
+  * Send TLS `close_notify` when closing an SSL connection on JRuby ([#4029])
+
 ## 7.2.1 / 2026-05-27
 
 * Bugfixes
@@ -2300,6 +2318,9 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#4101]:https://github.com/puma/puma/pull/4101     "PR by Nate Berkopec, merged 2026-11-13"
+[#4071]:https://github.com/puma/puma/pull/4071     "PR by Nate Berkopec, merged 2026-11-09"
+[#4029]:https://github.com/puma/puma/pull/4029     "PR by Islam Elsayed, merged 2026-09-28"
 [#3947]:https://github.com/puma/puma/pull/3947     "PR by Nate Berkopec, merged 2026-05-26"
 [#3863]:https://github.com/puma/puma/pull/3863     "PR by Nate Berkopec, merged 2026-01-20"
 [#3861]:https://github.com/puma/puma/pull/3861     "PR by MSP-Greg, merged 2026-01-20"
