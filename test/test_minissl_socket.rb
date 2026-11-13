@@ -67,16 +67,27 @@ class TestMiniSSLSocket < PumaTest
     flunk "write_nonblock blocked on a peer that isn't reading"
   end
 
+  # The kernel can still move queued bytes to the peer after the first EAGAIN,
+  # so a single write after filling may succeed. Keep writing until the socket
+  # is full again; write_nonblock must report that instead of blocking.
   def test_write_nonblock_raises_eagain_when_peer_does_not_read
     fill_until_eagain "x" * 64 * 1024
 
-    assert_raises(IO::EAGAINWaitWritable) { @server.write_nonblock "y" }
+    assert_raises(IO::EAGAINWaitWritable) do
+      Timeout.timeout(5) { loop { @server.write_nonblock "y" } }
+    end
   end
 
   def test_write_nonblock_exception_false_returns_wait_writable
     fill_until_eagain "x" * 64 * 1024
 
-    assert_equal :wait_writable, @server.write_nonblock("y" * 64 * 1024, exception: false)
+    result = Timeout.timeout(5) do
+      loop do
+        r = @server.write_nonblock("y" * 64 * 1024, exception: false)
+        break r unless r.is_a?(Integer)
+      end
+    end
+    assert_equal :wait_writable, result
   end
 
   def test_write_nonblock_retry_delivers_data_once
