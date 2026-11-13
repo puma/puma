@@ -1,0 +1,32 @@
+#!/usr/bin/env ruby
+require "yaml"
+require "open3"
+require "tmpdir"
+require "digest"
+require "rubygems/package"
+
+ref, *gems = ARGV
+abort "usage: check-gems REF GEM..." if ref.nil? || gems.empty?
+version = `git show #{ref}:lib/puma/const.rb`[/PUMA_VERSION = VERSION = "([^"]+)"/, 1] or abort "no version at #{ref}"
+problems = []
+
+gems.each do |path|
+  spec = Gem::Package.new(path).spec
+  platform = path.end_with?("-java.gem") ? "java" : "ruby"
+  unless [spec.name, spec.version.to_s, spec.platform.to_s] == ["puma", version, platform]
+    problems << "#{path}: is #{spec.name} #{spec.version} #{spec.platform}, expected puma #{version} #{platform}"
+  end
+  Dir.mktmpdir do |tmp|
+    Gem::DefaultUserInteraction.use_ui(Gem::SilentUI.new) { Gem::Package.new(path).extract_files(tmp) }
+    spec.files.each do |f|
+      next if f == "lib/puma/puma_http11.jar"
+      blob, = Open3.capture2("git", "rev-parse", "#{ref}:#{f}")
+      file, = Open3.capture2("git", "hash-object", File.join(tmp, f))
+      problems << "#{path}: #{f} differs from #{ref}" unless blob.strip == file.strip
+    end
+  end
+  puts "#{Digest::SHA256.file(path).hexdigest}  #{File.basename(path)}"
+end
+
+abort problems.join("\n") unless problems.empty?
+puts "all gems match #{ref}"
