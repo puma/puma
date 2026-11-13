@@ -20,8 +20,6 @@ module Puma
          (OPENSSL_LIBRARY_VERSION[/ \d+\.\d+\.\d+/].split('.').map(&:to_i) <=> [1,1,1]) !=-1)
 
     class Socket
-      TLS_RECORD_HEADER_SIZE = 5
-
       def initialize(socket, engine)
         @socket = socket
         @engine = engine
@@ -112,10 +110,8 @@ module Puma
         end
 
         @engine.inject(data)
-        (data.bytesize / TLS_RECORD_HEADER_SIZE + 1).times do
-          output = engine_read_all
-          return output if output
-        end
+        output = engine_read_all
+        return output if output
 
         queue_ciphertext
         flush_write_buffer_nonblock
