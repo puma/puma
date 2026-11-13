@@ -27,17 +27,17 @@ class TestPumaServerSSLKeyUpdate < PumaTest
     int main(int argc, char **argv) {
       signal(SIGPIPE, SIG_IGN);
       int fd = socket(AF_INET, SOCK_STREAM, 0);
-      struct sockaddr_in addr = { .sin_family = AF_INET, .sin_port = htons(atoi(argv[1])) };
-      inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
+      struct sockaddr_in addr = { .sin_family = AF_INET, .sin_port = htons(atoi(argv[2])) };
+      if (inet_pton(AF_INET, argv[1], &addr.sin_addr) != 1) return 2;
       if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) return 3;
       SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
       SSL_CTX_set_min_proto_version(ctx, TLS1_3_VERSION);
       SSL *ssl = SSL_new(ctx);
       SSL_set_fd(ssl, fd);
       if (SSL_connect(ssl) != 1) return 4;
-      int len = strlen(argv[2]);
-      if (SSL_write(ssl, argv[2], len) != len) return 5;
-      int type = atoi(argv[3]) ? SSL_KEY_UPDATE_REQUESTED : SSL_KEY_UPDATE_NOT_REQUESTED;
+      int len = strlen(argv[3]);
+      if (SSL_write(ssl, argv[3], len) != len) return 5;
+      int type = atoi(argv[4]) ? SSL_KEY_UPDATE_REQUESTED : SSL_KEY_UPDATE_NOT_REQUESTED;
       while (SSL_key_update(ssl, type) == 1 && SSL_do_handshake(ssl) == 1);
       return 0;
     }
@@ -77,7 +77,6 @@ class TestPumaServerSSLKeyUpdate < PumaTest
 
   def setup
     skip_if :jruby, :windows
-    skip_unless :ssl
     skip "can't build a C OpenSSL client" unless self.class.peer
     @server = nil
     @pid = nil
@@ -100,24 +99,24 @@ class TestPumaServerSSLKeyUpdate < PumaTest
     @server = Puma::Server.new ->(_) { [200, {}, ["ok"]] }, nil,
       min_threads: 1, max_threads: 1, queue_requests: queue_requests,
       first_data_timeout: FIRST_DATA_TIMEOUT, log_writer: Puma::LogWriter.strings
-    @bind_port = @server.add_ssl_listener(HOST, 0, ctx).addr[1]
+    @bind_port = @server.add_ssl_listener(HOST4, 0, ctx).addr[1]
     @server.run
   end
 
   def assert_peer_closed_and_server_responsive(queue_requests, request, key_update_requested)
     start_server queue_requests
-    @pid = Process.spawn self.class.peer, @bind_port.to_s, REQUESTS.fetch(request),
+    @pid = Process.spawn self.class.peer, HOST4, @bind_port.to_s, REQUESTS.fetch(request),
       key_update_requested ? "1" : "0", err: File::NULL
     sleep 0.3
 
-    assert_equal "ok", send_http_read_resp_body(ctx: new_ctx, timeout: 10)
+    assert_equal "ok", send_http_read_resp_body(host: HOST4, ctx: new_ctx, timeout: 10)
 
     deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + FIRST_DATA_TIMEOUT + 10
     sleep 0.1 until Process.wait(@pid, Process::WNOHANG) || Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
     assert_equal 0, $?&.exitstatus, "connection was not closed"
     @pid = nil
 
-    assert_equal "ok", send_http_read_resp_body(ctx: new_ctx, timeout: 10)
+    assert_equal "ok", send_http_read_resp_body(host: HOST4, ctx: new_ctx, timeout: 10)
   end
 
   [true, false].each do |queue_requests|
@@ -130,4 +129,4 @@ class TestPumaServerSSLKeyUpdate < PumaTest
       end
     end
   end
-end
+end if ::Puma::HAS_SSL

@@ -317,9 +317,10 @@ module Puma
         if @bytes_read > read
           set_timeout timeout
           read = @bytes_read
+        elsif self.timeout == 0
+          timeout!
         end
-        remaining = self.timeout
-        timeout! if remaining == 0 || !wait_io(remaining)
+        wait_io(self.timeout) || timeout!
       end
     end
 
