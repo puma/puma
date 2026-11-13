@@ -84,7 +84,7 @@ module Puma
           # Block until the earliest timeout or Selector#wakeup is called.
           timeout = (earliest = @timeouts.first) && earliest.timeout
           @selector.select(timeout) do |monitor|
-            wakeup!(monitor.value)
+            monitor.interests = interests(monitor.value) unless wakeup!(monitor.value)
           end
 
           # Wakeup all objects that timed out.
@@ -113,13 +113,17 @@ module Puma
 
     # Start monitoring the object.
     def register(client)
-      @selector.register(client.to_io, :r).value = client
+      @selector.register(client.to_io, interests(client)).value = client
       @reactor_size += 1
       @reactor_max = @reactor_size if @reactor_max < @reactor_size
       @timeouts << client
       @timeout_keys[client] = client.timeout_at
     rescue ArgumentError
       # unreadable clients raise error when processed by NIO
+    end
+
+    def interests(client)
+      client.write_pending? ? :w : :r
     end
 
     # 'Wake up' a monitored object by calling the provided block.
@@ -130,9 +134,13 @@ module Puma
         @reactor_size -= 1
         @timeouts.delete client
         @timeout_keys.delete client
-      elsif client.timeout_at < @timeout_keys[client]
-        @timeouts.delete client
-        requeue client
+        true
+      else
+        if client.timeout_at < @timeout_keys[client]
+          @timeouts.delete client
+          requeue client
+        end
+        false
       end
     end
 

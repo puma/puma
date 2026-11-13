@@ -383,36 +383,41 @@ public class MiniSSL extends RubyObject { // MiniSSL::Engine
       }
 
       MiniSSLBuffer inboundAppData = new MiniSSLBuffer(engine.getSession().getApplicationBufferSize());
-      doOp(SSLOperation.UNWRAP, inboundNetData, inboundAppData);
+      int consumedTo;
+      do {
+        consumedTo = inboundNetData.position();
+        doOp(SSLOperation.UNWRAP, inboundNetData, inboundAppData);
 
-      HandshakeStatus handshakeStatus = engine.getHandshakeStatus();
-      boolean done = false;
-      while (!done) {
-        SSLEngineResult res;
-        switch (handshakeStatus) {
-          case NEED_WRAP:
-            res = doOp(SSLOperation.WRAP, inboundAppData, outboundNetData);
-            handshakeStatus = res.getHandshakeStatus();
-            break;
-          case NEED_UNWRAP:
-            res = doOp(SSLOperation.UNWRAP, inboundNetData, inboundAppData);
-            if (res.getStatus() == Status.BUFFER_UNDERFLOW) {
-              // need more data before we can shake more hands
+        HandshakeStatus handshakeStatus = engine.getHandshakeStatus();
+        boolean done = false;
+        while (!done) {
+          SSLEngineResult res;
+          switch (handshakeStatus) {
+            case NEED_WRAP:
+              res = doOp(SSLOperation.WRAP, inboundAppData, outboundNetData);
+              handshakeStatus = res.getHandshakeStatus();
+              break;
+            case NEED_UNWRAP:
+              res = doOp(SSLOperation.UNWRAP, inboundNetData, inboundAppData);
+              if (res.getStatus() == Status.BUFFER_UNDERFLOW) {
+                // need more data before we can shake more hands
+                done = true;
+              }
+              handshakeStatus = res.getHandshakeStatus();
+              break;
+            case NEED_TASK:
+              Runnable runnable;
+              while ((runnable = engine.getDelegatedTask()) != null) {
+                runnable.run();
+              }
+              handshakeStatus = engine.getHandshakeStatus();
+              break;
+            default:
               done = true;
-            }
-            handshakeStatus = res.getHandshakeStatus();
-            break;
-          case NEED_TASK:
-            Runnable runnable;
-            while ((runnable = engine.getDelegatedTask()) != null) {
-              runnable.run();
-            }
-            handshakeStatus = engine.getHandshakeStatus();
-            break;
-          default:
-            done = true;
+          }
         }
-      }
+      } while (inboundAppData.position() == 0 && !closed &&
+               inboundNetData.hasRemaining() && inboundNetData.position() > consumedTo);
 
       if (inboundNetData.hasRemaining()) {
         inboundNetData.compact();

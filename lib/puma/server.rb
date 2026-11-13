@@ -325,12 +325,13 @@ module Puma
     # will wake up and again be checked to see if it's ready to be passed to the thread pool.
     def reactor_wakeup(client)
       shutdown = !@queue_requests
+      read = client.bytes_read
       if client.try_to_finish || (shutdown && !client.can_close?)
         hand_to_thread_pool client
       elsif shutdown || client.timeout == 0
         client.timeout!
       else
-        client.set_timeout(@first_data_timeout)
+        client.set_timeout(@first_data_timeout) if client.bytes_read > read
         false
       end
     rescue ConnectionError, EOFError
