@@ -240,4 +240,15 @@ class TestPersistent < PumaTest
     assert_equal "HTTP/1.1 200 OK\r\nx-header: Works\r\ncontent-length: 5\r\n\r\n" \
       "Hello", response
   end
+
+  def test_keepalive_eagerly_finish_when_threads_waiting
+    @server.stop(true)
+    @server = Puma::Server.new @simple, nil, { min_threads: 2, max_threads: 2 }
+    @bind_port = (@server.add_tcp_listener HOST, 0).addr[1]
+    @server.run
+
+    socket = send_http @valid_request
+    assert_equal @valid_response, socket.read_response
+    assert_equal @valid_response, socket.req_write(@valid_request).read_response
+  end
 end
