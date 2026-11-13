@@ -2397,6 +2397,71 @@ class TestPumaServer < PumaTest
     refute_empty @log_writer.stderr.string, "Expected EMFILE error not logged"
   end
 
+  def test_accept_emfile_is_not_retried_in_a_tight_loop
+    @bind_port = (@server.add_tcp_listener HOST, 0).addr[1]
+    io = @server.binder.ios.last
+    attempts = 0
+    io.singleton_class.send(:define_method, :accept_nonblock) { |*| attempts += 1; raise Errno::EMFILE, 'accept(2)' }
+    @server.run
+    new_socket
+    sleep 0.5
+
+    assert_operator attempts, :<=, 10
+    assert_operator @log_writer.stderr.string.scan("EMFILE").size, :<=, 2
+  end
+
+  def test_accept_loop_survives_a_failing_log_write
+    @log_writer.define_singleton_method(:unknown_error) { |*| raise Errno::ENOSPC }
+    @log_writer.define_singleton_method(:log) { |*| raise Errno::ENOSPC }
+    @server = Puma::Server.new @app, @events, log_writer: @log_writer, min_threads: 1
+    @bind_port = (@server.add_tcp_listener HOST, 0).addr[1]
+    io = @server.binder.ios.last
+    accept_old = io.method(:accept_nonblock)
+    errors = [Errno::EMFILE.new('accept(2)'), StandardError.new('accept(2)')]
+    io.singleton_class.send :define_method, :accept_nonblock do
+      if (error = errors.shift)
+        accept_old.call.close
+        raise error
+      end
+      accept_old.call
+    end
+    thread = @server.run
+
+    new_socket
+    new_socket
+    sleep 0.3
+
+    assert thread.alive?, "accept loop died after a log write failed"
+    assert_equal "HTTP/1.1 200 OK", send_http_read_response(GET_11, timeout: 5).status
+  end
+
+  def test_shutdown_survives_a_failing_log_write
+    @log_writer.define_singleton_method(:debug) { |*| raise Errno::ENOSPC }
+    @log_writer.define_singleton_method(:unknown_error) { |*| raise Errno::ENOSPC }
+    server_run drain_on_shutdown: true
+
+    assert_equal "HTTP/1.1 200 OK", send_http_read_response(GET_11).status
+
+    @server.stop
+    assert @server.thread.join(5), "server thread did not stop"
+    assert @server.instance_variable_get(:@thread_pool).instance_variable_get(:@shutdown),
+      "graceful shutdown did not run"
+  end
+
+  def test_server_thread_survives_a_failing_log_write_after_a_shutdown_error
+    @log_writer.define_singleton_method(:unknown_error) { |*| raise Errno::ENOSPC }
+    @events.define_singleton_method(:fire) { |_, state = nil| raise "state hook failed" if state == :stop }
+    server_run
+
+    @server.stop
+    thread = @server.thread
+    assert thread.join(5), "server thread did not stop"
+    thread.value
+  ensure
+    @server.instance_variable_get(:@reactor)&.shutdown
+    @pool&.shutdown 1
+  end
+
   # Retryable errors such as ECONNABORTED should be silently swallowed by accept loop.
   def test_accept_econnaborted
     # Match Ruby #accept_nonblock implementation, ECONNABORTED error is extended by IO::WaitReadable.

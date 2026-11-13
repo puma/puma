@@ -435,6 +435,9 @@ module Puma
                   sock.accept_nonblock
                 rescue IO::WaitReadable
                   next
+                rescue Errno::EMFILE, Errno::ENFILE, Errno::ENOBUFS, Errno::ENOMEM => e
+                  accept_resource_error e
+                  next
                 end
                 drain += 1 if shutting_down?
 
@@ -447,11 +450,17 @@ module Puma
             # In the case that any of the sockets are unexpectedly close.
             raise
           rescue StandardError => e
-            @log_writer.unknown_error e, nil, "Listen loop"
+            begin
+              @log_writer.unknown_error e, nil, "Listen loop"
+            rescue StandardError
+            end
           end
         end
 
-        @log_writer.debug { "Drained #{drain} additional connections." } if drain
+        begin
+          @log_writer.debug { "Drained #{drain} additional connections." } if drain
+        rescue StandardError
+        end
         @events.fire :state, @status
 
         if queue_requests
@@ -461,7 +470,10 @@ module Puma
 
         graceful_shutdown if @status == :stop || @status == :restart
       rescue Exception => e
-        @log_writer.unknown_error e, nil, "Exception handling servers"
+        begin
+          @log_writer.unknown_error e, nil, "Exception handling servers"
+        rescue StandardError
+        end
       ensure
         # Errno::EBADF is infrequently raised
         [@check, @notify].each do |io|
@@ -593,6 +605,25 @@ module Puma
 
         close_client_safely(client) if close_socket
       end
+    end
+
+    # Accepting fails while the process is out of file descriptors or memory.
+    # The connection stays in the backlog, so retrying at once would spin and
+    # log at full speed. Wait briefly and log at most once per second.
+    def accept_resource_error(error)
+      now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      if @accept_error_logged_at.nil? || now - @accept_error_logged_at >= 1
+        suffix = @accept_errors_suppressed.to_i > 0 ? " (#{@accept_errors_suppressed} more suppressed)" : ""
+        @accept_error_logged_at = now
+        @accept_errors_suppressed = 0
+        begin
+          @log_writer.unknown_error error, nil, "Listen loop#{suffix}"
+        rescue StandardError
+        end
+      else
+        @accept_errors_suppressed += 1
+      end
+      sleep ACCEPT_ERROR_DELAY
     end
 
     # :nodoc:
