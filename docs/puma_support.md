@@ -4,9 +4,15 @@
 
 This document's purpose is to help users and contributors of this library make future plans based on the trajectory of this project. It is loosely worded and should be expected to change over time. Maintainers and contributors are encouraged to follow the guidance here but are not strictly bound by it.
 
-## What does "not supported" mean?
+## What does "supported" mean?
 
-Puma is a community-supported and run project. Support entitles the community to open issues and file PRs. It does not guarantee or warranty any action regarding those issues and PRs. All issues and PRs can be closed at a maintainer's discretion, regardless of whether they qualify under "support." If an issue falls outside of Puma support, maintainers are not obliged to keep it open, and if a PR falls outside of Puma support, maintainers are not obliged to review it.
+Puma is a community-run project. "Support" means "what do the maintainers pay attention to and what are they likely to merge", and doesn't mean that we do anything by any particular date, or even at all. We may all jet off to a private island tomorrow and never speak again.
+
+But, if we do decide to keep devoting our free time to open source software, we will **support the environments (combinations of Ruby version, Ruby implementation, Rack version, and operating system) which run on our CI.**
+
+If you open a PR or bug report for a combination of those factors outside of our CI matrix, we may still accept it if it's a small and low-risk fix.
+
+We may add environments to CI at any time, but we only drop a supported environment in a minor or major release.
 
 ## Puma release support policy
 
@@ -18,17 +24,19 @@ If a bug report cannot be reproduced with the latest Puma version, it may be clo
 
 ## Ruby version support policy
 
- "Ruby version" refers to the https://github.com/ruby/ruby implementation. Puma also supports other Ruby implementations (the origin of Puma involves an alternate Ruby implementation, rubinius) see below.
+"Ruby version" refers to the https://github.com/ruby/ruby implementation. Puma also supports other Ruby implementations (the origin of Puma involves an alternate Ruby implementation, Rubinius); see below.
 
-Puma supports "Ruby upstream + 2 versions". Ruby upstream support is documented at this page https://www.ruby-lang.org/en/downloads/branches/. At this time of writing, it is 3 "minor" versions, where a minor version is X.Y with X.Y.Z being a patch release. If a Ruby version is not EOL, it is supported. Because we support "+ 2 versions", if 3.2 is the last non-EOL version, Puma will support 3.1 and 3.0 as well. The Puma team recommends you always use the latest Ruby release.
+Ruby upstream support is documented at https://www.ruby-lang.org/en/downloads/branches/. A "minor" version is X.Y, with X.Y.Z being a patch release. Puma supports every Ruby minor version that is not EOL upstream. Puma may also continue to support older, EOL Ruby versions; the gemspec's `required_ruby_version` declares the oldest supported version. Maintainers decide when to raise that minimum. The Puma team recommends you always use the latest Ruby release.
 
-When Puma supports a Ruby version, it will include that version in the CI matrix. The gemspec specifies the minimum supported Ruby versions. If a bug is reported, the report must be reproducible on a currently supported Ruby version.
+When Puma supports a Ruby version, it will include that version in the CI matrix. CI runs only the most recent patch version of each supported Ruby minor version. If a bug is reported, the report must be reproducible using the most recent patch version of a currently supported Ruby minor version.
 
-Puma may rely on upstream support to fix bugs in Ruby rather than working around them. That means, if a bug exists only in a "+2 version" that is no longer supported upstream, it may be closed (it's not guaranteed that we will workaround legacy Ruby issues).
+Puma may rely on upstream support to fix bugs in Ruby rather than working around them. That means, if a bug exists only in a Ruby version that is EOL upstream, it may be closed (it's not guaranteed that we will work around legacy Ruby issues).
+
+When Puma does work around a bug in a specific Ruby patch version, the workaround stays until Puma drops support for that Ruby minor version.
 
 ## Alternate implementations of Ruby (version support policy)
 
-An example of an "alternate" implementation of Ruby is JRuby. Ruby implementations typically target a specific "spec" of ruby/ruby, for example, JRuby 10.0.2.0 targets ruby/ruby version 3.4.2. The target version of a supported implementation must be within the above "Ruby version support policy." Additionally, the implementation release must be supported upstream.
+An example of an "alternate" implementation of Ruby is JRuby. Ruby implementations typically target a specific "spec" of ruby/ruby, for example, JRuby 10.0 targets ruby/ruby version 3.4. The target version of a supported implementation must be within the above "Ruby version support policy." Additionally, the implementation release must be supported upstream.
 
 Puma supports the JRuby implementation. Puma supports the TruffleRuby implementation.
 
@@ -40,9 +48,13 @@ From the current Rack documentation https://github.com/rack/rack?tab=readme-ov-f
 - Security patches only
 - End of support
 
-Puma will support any Rack version that still accepts "bug fixes" in addition to security patches.
+Puma will support any Rack version that still accepts "bug fixes" in addition to security patches. Rack versions that receive only security patches, or are at end of support, are not supported.
 
 Due to the need to support "hot" reloading applications (via phased restart) which might have different Rack versions, [Puma cannot directly declare the minimum Rack version](https://github.com/puma/puma/commit/537bc21593182cd9c4c0079a3936d05b1f91fe14). Puma may use runtime or boot time checks to warn or error about Rack version support.
+
+## Bundler version support
+
+Puma supports the Bundler version that ships with each supported Ruby version.
 
 ## How to use this document
 
