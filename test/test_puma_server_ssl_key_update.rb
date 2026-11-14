@@ -8,6 +8,7 @@ if ::Puma::HAS_SSL
   require "rbconfig"
   require "shellwords"
   require "tmpdir"
+  require "tempfile"
   require_relative "helpers/test_puma/puma_socket"
 end
 
@@ -69,7 +70,7 @@ class TestPumaServerSSLKeyUpdate < PumaTest
 
   def self.openssl_flags
     dir = RbConfig::CONFIG["configure_args"].to_s[/--with-openssl-dir=(\S+)/, 1]&.delete("'")
-    return "-I#{dir}/include -L#{dir}/lib" if dir
+    return "-I#{dir}/include -L#{dir}/lib -Wl,-rpath,#{dir}/lib" if dir
     `pkg-config --cflags --libs openssl 2>/dev/null`.strip
   rescue SystemCallError
     ""
@@ -105,18 +106,24 @@ class TestPumaServerSSLKeyUpdate < PumaTest
 
   def assert_peer_closed_and_server_responsive(queue_requests, request, key_update_requested)
     start_server queue_requests
+    err = Tempfile.create "peer_err"
     @pid = Process.spawn self.class.peer, HOST4, @bind_port.to_s, REQUESTS.fetch(request),
-      key_update_requested ? "1" : "0", err: File::NULL
+      key_update_requested ? "1" : "0", err: err.path
     sleep 0.3
 
     assert_equal "ok", send_http_read_resp_body(host: HOST4, ctx: new_ctx, timeout: 10)
 
     deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + FIRST_DATA_TIMEOUT + 10
     sleep 0.1 until Process.wait(@pid, Process::WNOHANG) || Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
-    assert_equal 0, $?&.exitstatus, "connection was not closed"
+    assert_equal 0, $?&.exitstatus, "connection was not closed\n#{File.read err.path}"
     @pid = nil
 
     assert_equal "ok", send_http_read_resp_body(host: HOST4, ctx: new_ctx, timeout: 10)
+  ensure
+    if err
+      err.close
+      File.unlink err.path
+    end
   end
 
   [true, false].each do |queue_requests|
