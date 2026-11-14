@@ -3,6 +3,7 @@
 require_relative "helper"
 
 require "puma/configuration"
+require "puma/plugin"
 require 'puma/log_writer'
 require 'rack'
 
@@ -1395,5 +1396,23 @@ class TestConfigFileWithFakeEnv < PumaTest
 
     assert_match(/Use 'after_stopped', 'on_stopped' is deprecated and will be removed in Puma v9/, err)
     assert ran, "on_stopped callback should have run"
+  end
+
+  def test_plugin_with_config_preserves_first_setting
+    plugin_class = Class.new(Puma::Plugin) do
+      def config(dsl)
+      end
+    end
+    Puma::Plugins.register("test_config_preserve", plugin_class)
+
+    conf = Puma::Configuration.new do |user|
+      user.threads 5, 5
+      user.port 9292
+      user.plugin "test_config_preserve"
+    end
+    conf.clamp
+
+    assert_equal 5, conf.options[:min_threads]
+    assert_equal 5, conf.options[:max_threads]
   end
 end
