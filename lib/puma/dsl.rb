@@ -144,7 +144,6 @@ module Puma
     def _offer_plugins
       @plugins.each do |o|
         if o.respond_to? :config
-          @options.shift
           o.config self
         end
       end
