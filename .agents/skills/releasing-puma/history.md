@@ -18,6 +18,7 @@ New section at the very top of the file:
   * One sentence describing the change ([#NNNN])
 ```
 
+- `* Security` is only for fixes to vulnerabilities with an advisory, and always goes first. Hardening without an advisory goes in `* Security (Hardening)`, after `* Features`.
 - Use only the groups the release needs, in the order above. Minor and major releases also use `* Breaking changes`, `* Refactor` and `* Docs`; copy the previous minor release's layout.
 - One line per change, newest first, written for users: what changed in behaviour, not how.
 - List every PR that changed app or library code (`lib/`, `ext/`, `bin/`). PRs that only touch tests or CI are left out.
