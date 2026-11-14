@@ -102,4 +102,4 @@ if show_warnings
 end
 exit 1 if no_tests
 
-STDOUT.write "Minitest version: #{Minitest::VERSION}\n\n"
+STDOUT.write "Minitest version: #{Minitest::VERSION}, parallel threads: #{Minitest.parallel_executor&.size || 1}\n\n"

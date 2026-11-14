@@ -135,8 +135,6 @@ jobs:
       - name: test
         timeout-minutes: 10
         run: test/runner --verbose
-        env:
-          MT_CPU: 2
 
   test_non_mri:
     name: >-
@@ -203,5 +201,3 @@ jobs:
       - name: test
         timeout-minutes: 8
         run: test/runner --verbose
-        env:
-          MT_CPU: 2
