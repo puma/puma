@@ -99,9 +99,11 @@ class TestMiniSSLSocket < PumaTest
   end
 
   def assert_retries_deliver_data_once(data)
+    @raw_server.setsockopt Socket::SOL_SOCKET, Socket::SO_SNDBUF, 16 * 1024
+    start_reading = Queue.new
     received = +""
     reader = Thread.new do
-      sleep 0.2 # let the writer hit EAGAIN first
+      start_reading.pop
       received << @client.readpartial(64 * 1024) while received.bytesize < data.bytesize
     end
 
@@ -113,16 +115,19 @@ class TestMiniSSLSocket < PumaTest
           n += @server.write_nonblock(data.byteslice(n..-1))
         rescue IO::EAGAINWaitWritable
           eagain += 1
+          start_reading << true if eagain == 1
           assert @server.wait_writable(5), "wait_writable timed out"
           retry
         end
       end
     end
-    reader.join 10
-
     assert_operator eagain, :>, 0
+    assert reader.join(10), "reader timed out"
     assert_equal data.bytesize, received.bytesize
     assert_equal data.b, received.b
+  ensure
+    reader&.kill
+    reader&.join
   end
 
   def test_write_after_eagain_sends_pending_ciphertext_first
