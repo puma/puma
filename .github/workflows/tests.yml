@@ -8,6 +8,7 @@ on:
     paths-ignore:
       - '**/*.md'
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths-ignore:
       - '**/*.md'
   workflow_dispatch:
@@ -43,8 +44,9 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     if: |
-      !(   contains(github.event.pull_request.title,  '[ci skip]')
-        || contains(github.event.pull_request.title,  '[skip ci]'))
+      github.event.pull_request.draft != true
+      && !(   contains(github.event.pull_request.title,  '[ci skip]')
+           || contains(github.event.pull_request.title,  '[skip ci]'))
     strategy:
       fail-fast: false
       matrix:
@@ -103,8 +105,6 @@ jobs:
         with:
           # see https://github.com/ruby/setup-ruby/blob/master/action.yml for info
           ruby-version: ${{ matrix.ruby }}
-          apt-get: ragel
-          brew: ragel
           rubygems: default
           bundler: default
           bundler-cache: true
@@ -119,6 +119,10 @@ jobs:
           !(contains(matrix.os, 'ubuntu') && contains(matrix.os, 'arm'))
         shell: bash
         run: echo 'PUMA_MAKE_WARNINGS_INTO_ERRORS=true' >> "$GITHUB_ENV"
+
+      - name: mark committed Ragel output as up to date
+        shell: bash
+        run: touch ext/puma_http11/http11_parser.c ext/puma_http11/org/jruby/puma/Http11Parser.java
 
       - name: compile
         run: bundle exec rake compile
@@ -145,8 +149,9 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     if: |
-      !(   contains(github.event.pull_request.title,  '[ci skip]')
-        || contains(github.event.pull_request.title,  '[skip ci]'))
+      github.event.pull_request.draft != true
+      && !(   contains(github.event.pull_request.title,  '[ci skip]')
+           || contains(github.event.pull_request.title,  '[skip ci]'))
     strategy:
       fail-fast: false
       matrix:
@@ -169,13 +174,11 @@ jobs:
       - name: repo checkout
         uses: actions/checkout@v7
 
-      - name: load ruby, ragel
+      - name: load ruby
         uses: ruby/setup-ruby-pkgs@v1
         with:
           # see https://github.com/ruby/setup-ruby/blob/master/action.yml for info
           ruby-version: ${{ matrix.ruby }}
-          apt-get: ragel
-          brew: ragel
           rubygems: default
           bundler: default
           bundler-cache: true
@@ -189,6 +192,10 @@ jobs:
       - name: set WERRORFLAG
         shell: bash
         run: echo 'PUMA_MAKE_WARNINGS_INTO_ERRORS=true' >> "$GITHUB_ENV"
+
+      - name: mark committed Ragel output as up to date
+        shell: bash
+        run: touch ext/puma_http11/http11_parser.c ext/puma_http11/org/jruby/puma/Http11Parser.java
 
       - name: compile
         run: bundle exec rake compile

@@ -21,15 +21,9 @@ permissions:
   contents: read # to fetch code (actions/checkout)
 
 jobs:
-  skip_duplicate_runs:
-    uses: ./.github/workflows/skip_duplicate_workflow_runs.yml
-    with:
-      paths: '["ext/**", ".github/workflows/ragel.yml"]'
-
   ragel:
     name: >-
       ragel ${{ matrix.os }} ${{ matrix.ruby }}
-    needs: skip_duplicate_runs
     env:
       PUMA_NO_RUBOCOP: true
       PUMA_TEST_DEBUG: true
@@ -37,8 +31,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     if: |
       !(   contains(github.event.pull_request.title,  '[ci skip]')
-        || contains(github.event.pull_request.title,  '[skip ci]')
-        || (needs.skip_duplicate_runs.outputs.should_skip == 'true'))
+        || contains(github.event.pull_request.title,  '[skip ci]'))
     strategy:
       fail-fast: false
       matrix:
@@ -46,10 +39,21 @@ jobs:
           - { os: ubuntu-22.04 , ruby: head }
 
     steps:
+      - name: skip duplicate runs
+        id: skip
+        uses: fkirc/skip-duplicate-actions@v5.3.2
+        with:
+          paths_ignore: '["**.md"]'
+          paths: '["ext/**", ".github/workflows/ragel.yml"]'
+          concurrent_skipping: 'never'
+          skip_after_successful_duplicate: 'true'
+
       - name: repo checkout
+        if: steps.skip.outputs.should_skip != 'true'
         uses: actions/checkout@v7
 
       - name: load ruby
+        if: steps.skip.outputs.should_skip != 'true'
         uses: ruby/setup-ruby-pkgs@v1
         with:
           ruby-version: ${{ matrix.ruby }}
@@ -59,6 +63,7 @@ jobs:
         timeout-minutes: 10
 
       - name: check ragel generation
+        if: steps.skip.outputs.should_skip != 'true'
         run: |
           ragel --version
           rm ext/puma_http11/http11_parser.c ext/puma_http11/org/jruby/puma/Http11Parser.java
