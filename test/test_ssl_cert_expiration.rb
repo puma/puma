@@ -4,13 +4,13 @@ require_relative 'helper'
 require 'openssl'
 
 #
-# These are tests to ensure that the checked in certs in the ./examples/
+# These are tests to ensure that the checked in certs in the test/ssl
 # directory are valid and work as expected.
 #
 # These tests will start to fail 1 month before the certs expire
 #
-class TestExampleCertExpiration < PumaTest
-  EXAMPLES_DIR = File.expand_path '../examples/puma', __dir__
+class TestSslCertExpiration < PumaTest
+  CERTS_DIR = File.expand_path 'ssl', __dir__
   EXPIRE_THRESHOLD = Time.now.utc + (60 * 60 * 24 * 30) # 30 days
 
   # Explicitly list the files to test
@@ -28,7 +28,7 @@ class TestExampleCertExpiration < PumaTest
 
   def test_certs_not_expired
     expiration_data = TEST_FILES.map do |path|
-      full_path  = File.join(EXAMPLES_DIR, path)
+      full_path  = File.join(CERTS_DIR, path)
       not_after  = OpenSSL::X509::Certificate.new(File.read(full_path)).not_after
       [not_after, path]
     end
@@ -38,8 +38,8 @@ class TestExampleCertExpiration < PumaTest
     if failed.empty?
       assert true
     else
-      msg = +"\n** The below certs in the 'examples/puma' folder are expiring soon.\n" \
-        "   See 'examples/generate_all_certs.md' for instructions on how to regenerate.\n\n"
+      msg = +"\n** The below certs in the 'test/ssl' folder are expiring soon.\n" \
+        "   See 'test/ssl/README.md' for instructions on how to regenerate.\n\n"
       failed.each do |ary|
         msg << "     #{ary[1]}\n"
       end

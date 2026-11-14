@@ -128,17 +128,17 @@ ip6=[$PUMA_TEST_HOST6]:$PUMA_TEST_PORT
 
 case $skt_type in
   ssl4)
-  bind="ssl://$PUMA_TEST_HOST4:$PUMA_TEST_PORT?cert=examples/puma/cert_puma.pem&key=examples/puma/puma_keypair.pem&verify_mode=none"
+  bind="ssl://$PUMA_TEST_HOST4:$PUMA_TEST_PORT?cert=test/ssl/cert_puma.pem&key=test/ssl/puma_keypair.pem&verify_mode=none"
   curl_str=https://$ip4
   wrk_str=https://$ip4
   ;;
   ssl)
-  bind="ssl://$ip4?cert=examples/puma/cert_puma.pem&key=examples/puma/puma_keypair.pem&verify_mode=none"
+  bind="ssl://$ip4?cert=test/ssl/cert_puma.pem&key=test/ssl/puma_keypair.pem&verify_mode=none"
   curl_str=https://$ip4
   wrk_str=https://$ip4
   ;;
   ssl6)
-  bind="ssl://$ip6?cert=examples/puma/cert_puma.pem&key=examples/puma/puma_keypair.pem&verify_mode=none"
+  bind="ssl://$ip6?cert=test/ssl/cert_puma.pem&key=test/ssl/puma_keypair.pem&verify_mode=none"
   curl_str=https://$ip6
   wrk_str=https://$ip6
   ;;

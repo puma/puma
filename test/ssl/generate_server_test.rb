@@ -18,7 +18,7 @@ module GenerateServerCerts
   class << self
 
     def run
-      path = "#{__dir__}/puma"
+      path = __dir__
       ca_key = OpenSSL::PKey::RSA.new KEY_LEN
       key    = OpenSSL::PKey::RSA.new KEY_LEN
 

@@ -555,7 +555,7 @@ class TestBinderJRuby < TestBinderBase
   def test_binder_parses_jruby_ssl_protocols_and_cipher_suites_options
     skip_unless :ssl
 
-    keystore = File.expand_path "../../examples/puma/keystore.jks", __FILE__
+    keystore = File.expand_path "../ssl/keystore.jks", __FILE__
     cipher = "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
     ssl_query = "keystore=#{keystore}&keystore-pass=jruby_puma&cipher_suites=#{cipher}&protocols=TLSv1.3,TLSv1.2"
 
@@ -596,8 +596,8 @@ class TestBinderMRI < TestBinderBase
     skip_unless :ssl
 
     ssl_cipher_filter = "!aNULL:AES+SHA"
-    cert = File.expand_path "../../examples/puma/cert_puma.pem", __FILE__
-    key  = File.expand_path "../../examples/puma/puma_keypair.pem", __FILE__
+    cert = File.expand_path "../ssl/cert_puma.pem", __FILE__
+    key  = File.expand_path "../ssl/puma_keypair.pem", __FILE__
 
     config = Puma::Configuration.new do |c|
       c.ssl_bind "0.0.0.0", "0", {

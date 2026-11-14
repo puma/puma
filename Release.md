@@ -9,7 +9,7 @@ Releasing Puma requires the following steps:
 1. Check the CI status for the current `HEAD`. Stop unless everything is passing.
 1. Decide on the next version number based on [SemVer 2.0](https://semver.org/). Treat `breaking change` PR labels as strong evidence that a `major` bump is needed. Puma's public API is its HTTP serving behavior over the socket and its configuration; all of Puma's other Ruby APIs are private and may change at any time. Puma is an HTTP/1.1 server, so any deviation from the relevant RFCs is a bug, which we may fix in a patch release.
 1. For minor and major releases, determine who "earned" the codename via `git shortlog`. This person will be the "Namer."
-1. For major releases, update `SECURITY.md` and write a `docs/X.X-Upgrade.md` upgrade guide.
+1. For major releases, update `SECURITY.md` and write a `docs/upgrading/X.X-Upgrade.md` upgrade guide.
 1. Update `History.md` in the existing format and update `lib/puma/const.rb`. If a codename change is required for a minor or major release, change the codename constant to "INSERT CODENAME HERE."
 1. Create a release branch named `release-vX.Y.Z` from your target base branch, commit the release changes, and open a PR.
 1. Create or update a draft GitHub release for the upcoming tag using the new `History.md` section as the release notes.

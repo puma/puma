@@ -95,7 +95,7 @@ module GenerateChainCerts
     def run
       cert = generate_cert
 
-      path = "#{__dir__}/puma/chain_cert"
+      path = "#{__dir__}/chain_cert"
 
       Dir.chdir path do
         File.write CA, root_ca.to_pem, mode: 'wb'

@@ -79,7 +79,7 @@ module GenerateClientCerts
     end
 
     def write_files
-      path = "#{__dir__}/puma/client_certs"
+      path = "#{__dir__}/client_certs"
 
       Dir.chdir path do
         File.write "ca.crt"    , @ca_cert.to_pem , mode: 'wb'

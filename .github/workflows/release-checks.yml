@@ -110,7 +110,7 @@ jobs:
           minor="${{ steps.rel.outputs.minor }}"
           patch="${{ steps.rel.outputs.patch }}"
           if [ "$minor" = "0" ] && [ "$patch" = "0" ]; then
-            guide="docs/${major}.0-Upgrade.md"
+            guide="docs/upgrading/${major}.0-Upgrade.md"
             if [ ! -f "$guide" ]; then
               echo "::error::Major release but $guide does not exist — create an upgrade guide before merging"
               exit 1

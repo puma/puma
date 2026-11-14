@@ -1,4 +1,8 @@
-Puma provides three distinct kinds of restart operations, each for different use cases. This document describes "hot restarts" and "phased restarts." The third kind of restart operation is called "refork" and is described in the documentation for [`fork_worker` and `mold_worker`](fork_worker.md).
+# Restart
+
+Puma includes the ability to restart itself. When available (MRI, Rubinius, JRuby), Puma performs a "hot restart". This is the same functionality available in *Unicorn* and *NGINX* which keep the server sockets open between restarts. This makes sure that no pending requests are dropped while the restart is taking place.
+
+Puma provides three distinct kinds of restart operations, each for different use cases. This document describes "hot restarts" and "phased restarts." The third kind of restart operation is called "refork" and is described in the documentation for [`fork_worker` and `mold_worker`](cluster_mode.md#fork-worker-cluster-mode-experimental).
 
 ## Hot restart
 

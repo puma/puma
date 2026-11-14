@@ -41,7 +41,7 @@ Set your config with the following process:
 
 For most deployments, adding `concurrent-ruby` and using `workers :auto` is the right starting point.
 
-See [`workers :auto` gotchas](../lib/puma/dsl.rb).
+See [`workers :auto` gotchas](../../lib/puma/dsl.rb).
 
 ## Worker utilization
 
@@ -117,11 +117,13 @@ and to get paged at 3 AM. Do yourself a favor, at least use the process monitori
 your OS comes with, be it `sysvinit` or `systemd`. Or branch out and use `runit`
 or hell, even `monit`.
 
+Additionally, Puma has support for built-in daemonization via the [puma-daemon](https://github.com/kigster/puma-daemon) ruby gem. The gem restores the `daemonize` option that was removed from Puma starting version 5, but only for MRI Ruby.
+
 ## Restarting
 
 You probably will want to deploy some new code at some point, and you'd like
 Puma to start running that new code. There are a few options for restarting
-Puma, described separately in our [restart documentation](restart.md).
+Puma, described separately in our [restart documentation](../restart.md).
 
 ## Migrating from Unicorn
 
@@ -132,6 +134,20 @@ Puma, described separately in our [restart documentation](restart.md).
 * As you grow more confident in the thread-safety of your app, you can tune the
   workers down and the threads up.
 
-## Ubuntu / Systemd (Systemctl) Installation
+## Process monitors and guides
 
-See [systemd.md](systemd.md)
+It is common to use process monitors with Puma. Modern process monitors like systemd or rc.d
+provide continuous monitoring and restarts for increased reliability in production environments:
+
+* [rc.d](rc.d/README.md)
+* [systemd](systemd.md)
+* [Kubernetes](kubernetes.md)
+* [nginx](nginx.md)
+
+Community guides:
+
+* [Deploying Puma on OpenBSD using relayd and httpd](https://gist.github.com/anon987654321/4532cf8d6c59c1f43ec8973faa031103)
+
+## Capistrano
+
+Puma has support for Capistrano with an [external gem](https://github.com/seuros/capistrano-puma).

@@ -15,11 +15,11 @@ Reset="\e[0m\n"
 SCRIPT=$(realpath "$0")
 CERT_HOME=$(dirname "$SCRIPT")
 
-#——————————————————————————————— process ssl files in examples/puma
-printf "$Dash process ssl files in examples/puma$Reset"
-cd $CERT_HOME/puma
-ruby ../generate_server_test.rb
-printf "Done with ../generate_server_test.rb\n\n"
+#——————————————————————————————— process ssl files in test/ssl
+printf "$Dash process ssl files in test/ssl$Reset"
+cd $CERT_HOME
+ruby generate_server_test.rb
+printf "Done with generate_server_test.rb\n\n"
 
 rm -f server.p12
 openssl pkcs12 -export -password pass:jruby_puma -inkey puma_keypair.pem -in cert_puma.pem -name puma -out server.p12
@@ -33,17 +33,17 @@ rm -f encrypted_puma_keypair.pem
 openssl rsa -aes256 -in puma_keypair.pem -out encrypted_puma_keypair.pem --passout pass:'hello world'
 printf "Done with encrypted_puma_keypair.pem\n\n"
 
-#——————————————————————————————— process ssl files in examples/puma/chain_cert
-printf "$Dash process ssl files in examples/puma/chain_cert$Reset"
-cd $CERT_HOME/puma/chain_cert
-ruby ../../generate_chain_test.rb
-printf "Done with ../../generate_chain_test.rb\n\n"
+#——————————————————————————————— process ssl files in test/ssl/chain_cert
+printf "$Dash process ssl files in test/ssl/chain_cert$Reset"
+cd $CERT_HOME/chain_cert
+ruby ../generate_chain_test.rb
+printf "Done with ../generate_chain_test.rb\n\n"
 
-#——————————————————————————————— process ssl files in examples/puma/client_certs
-printf "$Dash process ssl files in examples/puma/client_certs$Reset"
-cd $CERT_HOME/puma/client_certs
-ruby ../../generate_client_test.rb
-printf "Done with ../../generate_client_test.rb\n\n"
+#——————————————————————————————— process ssl files in test/ssl/client_certs
+printf "$Dash process ssl files in test/ssl/client_certs$Reset"
+cd $CERT_HOME/client_certs
+ruby ../generate_client_test.rb
+printf "Done with ../generate_client_test.rb\n\n"
 
 rm -f server.p12
 openssl pkcs12 -chain -CAfile ./ca.crt -export -password pass:jruby_puma -inkey server.key -in server.crt -name server -out server.p12
