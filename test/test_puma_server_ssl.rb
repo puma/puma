@@ -49,11 +49,11 @@ class TestPumaServerSSL < PumaTest
     ctx = Puma::MiniSSL::Context.new
 
     if Puma.jruby?
-      ctx.keystore =  File.expand_path "../examples/puma/keystore.jks", __dir__
+      ctx.keystore =  File.expand_path "ssl/keystore.jks", __dir__
       ctx.keystore_pass = 'jruby_puma'
     else
-      ctx.key  =  File.expand_path "../examples/puma/puma_keypair.pem", __dir__
-      ctx.cert = File.expand_path "../examples/puma/cert_puma.pem", __dir__
+      ctx.key  =  File.expand_path "ssl/puma_keypair.pem", __dir__
+      ctx.cert = File.expand_path "ssl/cert_puma.pem", __dir__
     end
 
     ctx.verify_mode = Puma::MiniSSL::VERIFY_NONE
@@ -288,7 +288,7 @@ class TestPumaServerSSLClient < PumaTest
   include TestPuma
   include TestPuma::PumaSocket
 
-  CERT_PATH = File.expand_path "../examples/puma/client_certs", __dir__
+  CERT_PATH = File.expand_path "ssl/client_certs", __dir__
 
   # Context can be shared, may help with JRuby
   CTX = Puma::MiniSSL::Context.new.tap { |ctx|
@@ -510,7 +510,7 @@ class TestPumaServerSSLClientCloseError < PumaTest
   include TestPuma
   include TestPuma::PumaSocket
 
-  CERT_PATH = File.expand_path "../examples/puma/client_certs", __dir__
+  CERT_PATH = File.expand_path "ssl/client_certs", __dir__
 
   # Context can be shared, may help with JRuby
   CTX = Puma::MiniSSL::Context.new.tap { |ctx|
@@ -583,7 +583,7 @@ class TestPumaServerSSLWithCertPemAndKeyPem < PumaTest
   include TestPuma
   include TestPuma::PumaSocket
 
-  CERT_PATH = File.expand_path "../examples/puma/client_certs", __dir__
+  CERT_PATH = File.expand_path "ssl/client_certs", __dir__
 
   def test_server_ssl_with_cert_pem_and_key_pem
     ctx = Puma::MiniSSL::Context.new
@@ -616,16 +616,16 @@ end if ::Puma::HAS_SSL && !Puma::IS_JRUBY
 
 #
 # Test certificate chain support, The certs and the whole certificate chain for
-# this tests are located in ../examples/puma/chain_cert and were generated with
+# this tests are located in test/ssl/chain_cert and were generated with
 # the following commands:
 #
-#   bundle exec ruby ../examples/puma/chain_cert/generate_chain_test.rb
+#   bundle exec ruby test/ssl/generate_chain_test.rb
 #
 class TestPumaSSLCertChain < PumaTest
   include TestPuma
   include TestPuma::PumaSocket
 
-  CHAIN_DIR = File.expand_path '../examples/puma/chain_cert', __dir__
+  CHAIN_DIR = File.expand_path 'ssl/chain_cert', __dir__
 
   # OpenSSL::X509::Name#to_utf8 only available in Ruby 2.5 and later
   USE_TO_UTFT8 = OpenSSL::X509::Name.instance_methods(false).include? :to_utf8

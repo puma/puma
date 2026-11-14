@@ -10,7 +10,7 @@ AllCops:
   Exclude:
     - 'tmp/**/*'
     - '**/vendor/bundle/**/*'
-    - 'examples/**/*'
+    - 'test/ssl/**/*'
     - 'pkg/**/*'
     - 'Rakefile'
   SuggestExtensions: false

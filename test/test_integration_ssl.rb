@@ -35,7 +35,7 @@ class TestIntegrationSSL < TestIntegration
   end
 
   def test_ssl_run
-    cert_path = File.expand_path '../examples/puma', __dir__
+    cert_path = File.expand_path 'ssl', __dir__
 
     config = <<~CONFIG
       if ::Puma.jruby?
@@ -77,7 +77,7 @@ class TestIntegrationSSL < TestIntegration
 
   # should use TLSv1.3 with OpenSSL 1.1 or later
   def test_verify_client_cert_roundtrip(tls1_2 = nil)
-    cert_path = File.expand_path '../examples/puma/client_certs', __dir__
+    cert_path = File.expand_path 'ssl/client_certs', __dir__
     bind_port
 
     cli_server "-t1:5 #{set_pumactl_args}", no_bind: true, config: <<~CONFIG
@@ -126,7 +126,7 @@ class TestIntegrationSSL < TestIntegration
 
     require 'stringio'
 
-    cert_path = File.expand_path '../examples/puma/client_certs', __dir__
+    cert_path = File.expand_path 'ssl/client_certs', __dir__
     bind_port
 
     cli_server "-t1:1", no_bind: true, config: <<~CONFIG
@@ -165,8 +165,8 @@ class TestIntegrationSSL < TestIntegration
     skip_if :jruby
 
     config = <<~CONFIG
-      key_path  = '#{File.expand_path '../examples/puma/puma_keypair.pem', __dir__}'
-      cert_path = '#{File.expand_path '../examples/puma/cert_puma.pem', __dir__}'
+      key_path  = '#{File.expand_path 'ssl/puma_keypair.pem', __dir__}'
+      cert_path = '#{File.expand_path 'ssl/cert_puma.pem', __dir__}'
 
       ssl_bind '#{HOST}', '#{bind_port}', {
         cert_pem: File.read(cert_path),
@@ -218,7 +218,7 @@ class TestIntegrationSSL < TestIntegration
   def test_ssl_run_with_encrypted_key
     skip_if :jruby
 
-    cert_path = File.expand_path '../examples/puma', __dir__
+    cert_path = File.expand_path 'ssl', __dir__
 
     config = <<~CONFIG
       key_path  = '#{cert_path}/encrypted_puma_keypair.pem'
@@ -253,7 +253,7 @@ class TestIntegrationSSL < TestIntegration
   def test_ssl_run_with_encrypted_pem
     skip_if :jruby
 
-    cert_path = File.expand_path '../examples/puma', __dir__
+    cert_path = File.expand_path 'ssl', __dir__
 
     config = <<~CONFIG
       key_path  = '#{cert_path}/encrypted_puma_keypair.pem'

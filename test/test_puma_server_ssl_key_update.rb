@@ -92,8 +92,8 @@ class TestPumaServerSSLKeyUpdate < PumaTest
 
   def start_server(queue_requests)
     ctx = Puma::MiniSSL::Context.new
-    ctx.key  = File.expand_path "../examples/puma/puma_keypair.pem", __dir__
-    ctx.cert = File.expand_path "../examples/puma/cert_puma.pem", __dir__
+    ctx.key  = File.expand_path "ssl/puma_keypair.pem", __dir__
+    ctx.cert = File.expand_path "ssl/cert_puma.pem", __dir__
     ctx.verify_mode = Puma::MiniSSL::VERIFY_NONE
 
     @server = Puma::Server.new ->(_) { [200, {}, ["ok"]] }, nil,

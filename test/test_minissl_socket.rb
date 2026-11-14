@@ -12,7 +12,7 @@ end
 class TestMiniSSLSocket < PumaTest
   parallelize_me!
 
-  EXAMPLES = File.expand_path "../examples/puma", __dir__
+  EXAMPLES = File.expand_path "ssl", __dir__
 
   def setup
     ctx = Puma::MiniSSL::Context.new
