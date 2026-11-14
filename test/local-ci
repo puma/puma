@@ -11,7 +11,7 @@ require "shellwords"
 require "yaml"
 
 module LocalCI
-  ROOT = File.expand_path("..", __dir__)
+  ROOT = IO.popen(%w[git rev-parse --show-toplevel], &:read).strip.then { |d| d.empty? ? abort("local-ci: run from inside a Puma checkout") : d }
   WORK = File.join(ROOT, "tmp", "local-ci")
   WORKFLOW = File.join(ROOT, ".github", "workflows", "tests.yml")
   VERSIONS_URL = "https://raw.githubusercontent.com/ruby/setup-ruby/v1/ruby-builder-versions.json"
@@ -63,16 +63,16 @@ module LocalCI
 
     def expand(matrix)
       axes = matrix.reject { |k, _| k == "include" || k == "exclude" }.transform_values { |v| values(v) }
-      combos = axes.values.first.product(*axes.values.drop(1)).map { |vals| axes.keys.zip(vals).to_h }
+      combos = axes.empty? ? [] : axes.values.first.product(*axes.values.drop(1)).map { |vals| axes.keys.zip(vals).to_h }
       combos.reject! { |c| (matrix["exclude"] || []).any? { |ex| stringify(ex).all? { |k, v| c[k] == v } } }
-      (matrix["include"] || []).each do |inc|
+      added = (matrix["include"] || []).filter_map do |inc|
         inc = stringify(inc)
         base = inc.select { |k, _| axes.key?(k) }
-        extra = inc.reject { |k, _| axes.key?(k) }
         hits = combos.select { |c| base.all? { |k, v| c[k] == v } }
-        hits.empty? ? combos << axes.keys.to_h { |k| [k, ""] }.merge(inc) : hits.each { |c| c.merge!(extra) }
+        hits.each { |c| c.merge!(inc.reject { |k, _| axes.key?(k) }) }
+        axes.keys.to_h { |k| [k, ""] }.merge(inc) if hits.empty?
       end
-      combos
+      combos + added
     end
 
     def values(v)
@@ -336,7 +336,7 @@ end
 
 opts = { repeat: 1, reruns: 3, args: [] }
 OptionParser.new do |o|
-  o.banner = "Usage: test/local-ci [options] [-- test/runner args]"
+  o.banner = "Usage: test/local-ci [options] [-- test/runner args]\nTests the git checkout you run it from, so another branch can use main's copy."
   o.on("--all", "Run every Linux CI job") { opts[:all] = true }
   o.on("--only LIST", Array, "Rubies or job names, e.g. 3.0,jruby or 'ubuntu-22.04 3.2 no SSL'") { |v| opts[:only] = v }
   o.on("--base REF", "Also run on REF and report only new failures") { |v| opts[:base] = v }
