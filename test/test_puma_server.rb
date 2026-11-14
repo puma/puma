@@ -2163,6 +2163,11 @@ class TestPumaServer < PumaTest
       [204, {}, []]
     end
 
+    @server.define_singleton_method(:process_client) do |client|
+      client.to_io.wait_readable(3) || raise("request did not become readable")
+      super(client)
+    end
+
     body = "a" * 256 * 1024
     socket = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: #{body.bytesize}\r\n\r\n#{body}"
 
