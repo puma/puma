@@ -68,9 +68,18 @@ class TestPumaServerSSLKeyUpdate < PumaTest
     @peer = nil
   end
 
+  def self.openssl_dir
+    RbConfig::CONFIG["configure_args"].to_s[/--with-openssl-dir=(\S+)/, 1]&.delete("'")
+  end
+
+  def self.peer_env
+    dir = openssl_dir
+    dir ? { "LD_LIBRARY_PATH" => "#{dir}/lib" } : {}
+  end
+
   def self.openssl_flags
-    dir = RbConfig::CONFIG["configure_args"].to_s[/--with-openssl-dir=(\S+)/, 1]&.delete("'")
-    return "-I#{dir}/include -L#{dir}/lib -Wl,-rpath,#{dir}/lib" if dir
+    dir = openssl_dir
+    return "-I#{dir}/include -L#{dir}/lib" if dir
     `pkg-config --cflags --libs openssl 2>/dev/null`.strip
   rescue SystemCallError
     ""
@@ -107,7 +116,7 @@ class TestPumaServerSSLKeyUpdate < PumaTest
   def assert_peer_closed_and_server_responsive(queue_requests, request, key_update_requested)
     start_server queue_requests
     err = Tempfile.create "peer_err"
-    @pid = Process.spawn self.class.peer, HOST4, @bind_port.to_s, REQUESTS.fetch(request),
+    @pid = Process.spawn self.class.peer_env, self.class.peer, HOST4, @bind_port.to_s, REQUESTS.fetch(request),
       key_update_requested ? "1" : "0", err: err.path
     sleep 0.3
 
