@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '**/*.md'
   workflow_dispatch:
 
 concurrency:
@@ -14,15 +16,10 @@ permissions:
   contents: read # to fetch code (actions/checkout)
 
 jobs:
-  skip_duplicate_runs:
-    uses: ./.github/workflows/skip_duplicate_workflow_runs.yml
-
   rack-conform:
     name: >-
       ${{ matrix.os }} Ruby ${{ matrix.ruby }} rack-conform
-    needs: skip_duplicate_runs
     runs-on: ${{ matrix.os }}
-    if: needs.skip_duplicate_runs.outputs.should_skip != 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -38,12 +35,23 @@ jobs:
       RACK_CONFORM_ENDPOINT: http://localhost:9292
 
     steps:
+      - name: skip duplicate runs
+        id: skip
+        uses: fkirc/skip-duplicate-actions@v5.3.2
+        with:
+          paths_ignore: '["**.md"]'
+          concurrent_skipping: 'never'
+          skip_after_successful_duplicate: 'true'
+
       - name: checkout rack-conform
+        if: steps.skip.outputs.should_skip != 'true'
         uses: actions/checkout@v7
         with:
           repository: socketry/rack-conform
+          ref: f7b96a7d7fa40566775dd530a19b7b49bcdef1ac
 
       - name: Update gems/puma-head-rack-v3.rb
+        if: steps.skip.outputs.should_skip != 'true'
         run: |
           # use Puma from current repo (may be a fork) & sha
           SRC="gem ['\"]puma['\"].*"
@@ -51,6 +59,7 @@ jobs:
           sed -i "s#$SRC#$DST#" gems/puma-head-rack-v3.rb
 
       - name: load ruby
+        if: steps.skip.outputs.should_skip != 'true'
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
@@ -60,14 +69,15 @@ jobs:
         timeout-minutes: 10
 
       - name: cat gems/puma-head-rack-v3.rb.lock
+        if: steps.skip.outputs.should_skip != 'true'
         run: cat gems/puma-head-rack-v3.rb.lock
 
       - name: rack-conform test
+        if: steps.skip.outputs.should_skip != 'true'
         id: test
         timeout-minutes: 10
         run: bundle exec bake test
-        continue-on-error: true
 
-      - name: >-
-          Test outcome: ${{ steps.test.outcome }}
+      - name: server log
+        if: always() && steps.skip.outputs.should_skip != 'true'
         run: cat server.log

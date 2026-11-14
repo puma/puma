@@ -11,6 +11,7 @@ on:
     paths-ignore:
       - '**/*.md'
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths-ignore:
       - '**/*.md'
   workflow_dispatch:
@@ -28,8 +29,9 @@ jobs:
       ${{ matrix.os }} Ruby ${{ matrix.ruby }} Rails ${{ matrix.rails }}
     runs-on: ${{ matrix.os }}
     if: |
-      !(   contains(github.event.pull_request.title,  '[ci skip]')
-        || contains(github.event.pull_request.title,  '[skip ci]'))
+      github.event.pull_request.draft != true
+      && !(   contains(github.event.pull_request.title,  '[ci skip]')
+           || contains(github.event.pull_request.title,  '[skip ci]'))
     strategy:
       fail-fast: false
       matrix:
@@ -47,7 +49,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: hotwired/turbo-rails
-          ref: main
+          ref: 37530c08780fa6f6dbb56a633de4b81169bdd174
 
       - name: turbo-rails updates
         run: |
