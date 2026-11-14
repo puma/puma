@@ -9,6 +9,8 @@ The **maintainer** is the human releasing. They hold the GPG key, the RubyGems M
 
 Do scratch work (worktrees, gem builds, notes) under `tmp/release/` in the repo root. Cleanup removes only that directory.
 
+**Local CI** is `test/local-ci` from a `main` checkout: it runs the Linux jobs from the current checkout's `tests.yml` in Docker. Stable branches don't carry it, so run main's copy from inside the release worktree, e.g. `$MAIN/test/local-ci`. `--help` lists its options.
+
 Fixes for unpublished security advisories come from the `security-triage` skill. Their disclosure order (private forks, advisories, CVEs) is not covered here; stop and ask the maintainer before pushing anything that contains them.
 
 ## 1. Plan
@@ -27,7 +29,7 @@ Per series, in a worktree on `release-vX.Y.Z` from `origin/X-Y-stable`:
 
 - `git cherry-pick -x` each commit. Resolve conflicts so behaviour on this branch matches main, and port the commit's tests. Adapt to the branch's APIs; pull in no unrelated main-only code.
 - A commit is **not applicable** only when the code it fixes doesn't exist on this branch. Prove it with `git grep` or `git log`.
-- Run each commit's own test file after picking it.
+- After picking each commit, run its own test file under local CI: `$MAIN/test/local-ci -- <test_file>`.
 
 Done when every commit is clean, resolved, or proven not applicable, and you have written down each resolution and its reasoning for the maintainer.
 
@@ -68,11 +70,13 @@ Done when both gems verify against the release commit. Build again if the commit
 
 ## 6. CI
 
-**go**: push `release-vX.Y.Z` and open the PR into its base, per Release.md. GitHub CI is the test matrix.
+First, from the release worktree, run `$MAIN/test/local-ci --all --base origin/X-Y-stable` (the base from step 1). It reruns each new failure on both commits and labels it. Each `REGRESSION` or job error is a **possible blocker**; bring it to the maintainer before pushing. For a release that carries unpublished advisory fixes, this is the only test matrix until disclosure.
+
+**go**: push `release-vX.Y.Z` and open the PR into its base, per Release.md. GitHub CI is the full test matrix, including macOS and Windows.
 
 Triage every failed job:
 
-- Compare it with recent runs on the base branch. Failures that also happen on the base, or that pass on rerun, are flakes. **Flakes don't gate the release.**
+- Compare it with recent runs on the base branch. Failures that also happen on the base, or that pass on rerun, are flakes. **Flakes don't gate the release.** For a Linux job, `$MAIN/test/local-ci --only '<job name>' --base origin/X-Y-stable --repeat 10 -- <test_file>` settles it without a CI round trip.
 - A failure in a test the release added or changed, or one that only happens on the release, is a **possible blocker**. Bring it to the maintainer with the job link and the failing test.
 
 Done when every job has finished (the maintainer may waive slow ones) and every failure is classified.

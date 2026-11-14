@@ -161,6 +161,21 @@ Puma also has a helper file for running tests, see the comments at the top of th
 test/runner -v test_puma_server.rb
 ```
 
+#### Local CI
+
+`test/local-ci` runs the Linux jobs from `.github/workflows/tests.yml` in Docker, on the same Ruby builds that CI uses. It needs Ruby, git, and Docker. Uncommitted changes are included.
+
+```sh
+test/local-ci                       # quick set: 3.0, newest, head, jruby, truffleruby
+test/local-ci --all                 # every Linux CI job
+test/local-ci --base main           # report only failures that are new compared to main
+test/local-ci --only 3.0,jruby -- test_puma_server
+test/local-ci --only jruby --repeat 20 -- test_integration_cluster
+test/local-ci --list                # show Linux CI jobs; * marks the selected ones
+```
+
+With `--base`, each new failure is rerun on both commits and labeled `REGRESSION`, `flaky`, `also fails on base`, or `passes on rerun`. macOS and Windows jobs are not run.
+
 #### File limits
 
 Puma's test suite opens up a lot of sockets. This may exceed the default limit of your operating system. If your file limits are low, you may experience "too many open files" errors when running the Puma test suite.

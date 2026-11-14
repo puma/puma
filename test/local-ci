@@ -1,0 +1,352 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "fileutils"
+require "json"
+require "net/http"
+require "optparse"
+require "open3"
+require "set"
+require "shellwords"
+require "yaml"
+
+module LocalCI
+  ROOT = IO.popen(%w[git rev-parse --show-toplevel], &:read).strip.then { |d| d.empty? ? abort("local-ci: run from inside a Puma checkout") : d }
+  WORK = File.join(ROOT, "tmp", "local-ci")
+  WORKFLOW = File.join(ROOT, ".github", "workflows", "tests.yml")
+  VERSIONS_URL = "https://raw.githubusercontent.com/ruby/setup-ruby/v1/ruby-builder-versions.json"
+  JDK = "21"
+  CODENAMES = { "22.04" => "jammy", "24.04" => "noble", "26.04" => "resolute" }.freeze
+  QUICK = ["3.0", :newest, "head", "jruby", "truffleruby"].freeze
+  CPUS_PER_JOB = 2
+  PASS = %w[. S].freeze
+
+  DOCKERFILE = <<~DOCKERFILE
+    ARG BASE
+    FROM ${BASE}
+    ENV DEBIAN_FRONTEND=noninteractive LANG=C.UTF-8
+    RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends build-essential ca-certificates curl git ragel procps libssl-dev libyaml-dev zlib1g-dev libffi-dev libgmp-dev libreadline-dev >/dev/null && rm -rf /var/lib/apt/lists/* && git config --system safe.directory '*'
+    ARG RUBY_URL
+    ARG RUBY_PREFIX
+    RUN mkdir -p "$(dirname "$RUBY_PREFIX")" && curl -fsSL "$RUBY_URL" | tar -xz -C "$(dirname "$RUBY_PREFIX")"
+    ENV PATH=${RUBY_PREFIX}/bin:$PATH BUNDLE_PATH=/bundle
+  DOCKERFILE
+
+  Job = Struct.new(:os, :ruby, :no_ssl, :rack, :yjit, :non_mri, keyword_init: true) do
+    def ubuntu = os[/ubuntu-(\d+\.\d+)/, 1]
+    def variants = "#{no_ssl}#{yjit}#{rack}"
+    def name = "#{os} #{ruby}#{variants}"
+    def slug = name.gsub(/[^\w.]+/, "-")
+
+    def env
+      e = { "CI" => "true", "PUMA_TEST_DEBUG" => "true", "TESTOPTS" => "-v", "PUMA_NO_RUBOCOP" => "true", "MT_CPU" => "2" }
+      e["PUMA_DISABLE_SSL"] = "true" if no_ssl == " no SSL"
+      e["PUMA_CI_RACK"] = rack.to_s
+      e["PUMA_MAKE_WARNINGS_INTO_ERRORS"] = "true" if non_mri || !os.include?("arm")
+      e["RUBYOPT"] = ["-I/local-ci", ("--yjit" if yjit == " yjit")].compact.join(" ")
+      e
+    end
+  end
+
+  module Matrix
+    module_function
+
+    def jobs(path = WORKFLOW)
+      wf = YAML.safe_load_file(path, aliases: true)
+      %w[test_mri test_non_mri].flat_map do |id|
+        expand(wf.dig("jobs", id, "strategy", "matrix")).map do |row|
+          Job.new(os: row["os"], ruby: row["ruby"].to_s, no_ssl: row["no-ssl"].to_s, rack: row["rack-v"].to_s,
+                  yjit: row["yjit"].to_s, non_mri: id == "test_non_mri")
+        end
+      end
+    end
+
+    def expand(matrix)
+      axes = matrix.reject { |k, _| k == "include" || k == "exclude" }.transform_values { |v| values(v) }
+      combos = axes.empty? ? [] : axes.values.first.product(*axes.values.drop(1)).map { |vals| axes.keys.zip(vals).to_h }
+      combos.reject! { |c| (matrix["exclude"] || []).any? { |ex| stringify(ex).all? { |k, v| c[k] == v } } }
+      added = (matrix["include"] || []).filter_map do |inc|
+        inc = stringify(inc)
+        base = inc.select { |k, _| axes.key?(k) }
+        hits = combos.select { |c| base.all? { |k, v| c[k] == v } }
+        hits.each { |c| c.merge!(inc.reject { |k, _| axes.key?(k) }) }
+        axes.keys.to_h { |k| [k, ""] }.merge(inc) if hits.empty?
+      end
+      combos + added
+    end
+
+    def values(v)
+      return v.map(&:to_s) if v.is_a?(Array)
+      JSON.parse(v.scan(/'(\[.*?\])'/).flatten.last)
+    end
+
+    def stringify(h) = h.to_h { |k, v| [k.to_s, v.to_s] }
+  end
+
+  class Ruby
+    attr_reader :engine, :version
+
+    def self.versions
+      @versions ||= begin
+        cache = File.join(WORK, "ruby-builder-versions.json")
+        if !File.exist?(cache) || File.mtime(cache) < Time.now - 86_400
+          FileUtils.mkdir_p(WORK)
+          File.write(cache, Net::HTTP.get(URI(VERSIONS_URL)))
+        end
+        JSON.parse(File.read(cache))
+      end
+    end
+
+    def initialize(spec)
+      spec = "ruby-#{spec}" if spec == "head" || spec.match?(/\A\d/)
+      @engine, req = spec.include?("-") ? spec.split("-", 2) : [spec, ""]
+      @version = req == "head" ? "head" : Ruby.versions.fetch(@engine).reverse.find { |v| v.match?(/\A[\d.]+\z/) && v.start_with?(req) }
+      raise "no #{spec} in ruby-builder" unless @version
+    end
+
+    def head? = version == "head"
+
+    def url(ubuntu, arch)
+      platform = "ubuntu-#{ubuntu}-#{arch}"
+      if head?
+        "https://github.com/ruby/#{engine}-dev-builder/releases/latest/download/#{engine}-head-#{platform}.tar.gz"
+      else
+        "https://github.com/ruby/ruby-builder/releases/download/#{engine}-#{version}/#{engine}-#{version}-#{platform}.tar.gz"
+      end
+    end
+
+    def prefix(arch)
+      if engine == "ruby" && !head?
+        "/opt/hostedtoolcache/Ruby/#{version}/#{arch}"
+      else
+        "/home/runner/.rubies/#{engine}-#{version}"
+      end
+    end
+
+    def base_image(ubuntu)
+      engine == "jruby" ? "eclipse-temurin:#{JDK}-jdk-#{CODENAMES.fetch(ubuntu)}" : "ubuntu:#{ubuntu}"
+    end
+
+    def to_s = "#{engine}-#{version}"
+  end
+
+  class Runner
+    def initialize(opts)
+      @opts = opts
+      @arch = opts[:arch] || docker_arch
+      @stamp = Time.now.strftime("%Y%m%d-%H%M%S")
+      @logs = File.join(WORK, "runs", @stamp)
+      @print = Mutex.new
+    end
+
+    def call
+      all = Matrix.jobs
+      linux = all.select { |j| j.os.start_with?("ubuntu-") }.uniq(&:name)
+      jobs = select(linux)
+      if @opts[:list]
+        linux.each { |j| puts "#{jobs.include?(j) ? "*" : " "} #{j.name}" }
+        return 0
+      end
+      abort "local-ci: no jobs match #{@opts[:only].join(",")}" if jobs.empty?
+
+      head = snapshot("HEAD")
+      base = @opts[:base] && rev(@opts[:base])
+      commits = { head: head, base: base }.compact
+      say "local-ci: #{jobs.size} of #{linux.size} Linux CI jobs on #{@arch}, " \
+          "head=#{head[0, 8]}#{base && " base=#{base[0, 8]}"}, #{parallel} at a time"
+      say "logs: #{@logs}"
+      FileUtils.mkdir_p(@logs)
+
+      images = jobs.to_h { |j| [j, image(j)] }
+      build(images.values.uniq)
+
+      tasks = jobs.flat_map { |j| commits.map { |role, sha| [j, role, sha] } }
+      results = run_pool(tasks) { |j, role, sha| [[j.name, role], run_job(j, images[j], sha, role, @opts[:args])] }.to_h
+
+      report(jobs, images, commits, results)
+    end
+
+    private
+
+    def select(linux)
+      newest = linux.map(&:ruby).grep(/\A\d/).max_by { |v| Gem::Version.new(v) }
+      wanted = if @opts[:all] then linux.map(&:ruby).uniq
+               elsif @opts[:only] then @opts[:only]
+               else QUICK.map { |q| q == :newest ? newest : q }
+               end
+      picked = linux.select { |j| wanted.include?(j.ruby) || wanted.include?(j.name) }
+      return picked if @opts[:all] || @opts[:only]&.any? { |w| w.start_with?("ubuntu-") }
+      picked.select { |j| j.variants.empty? }.group_by(&:ruby).map { |_, js| js.max_by(&:ubuntu) }
+    end
+
+    def image(job)
+      ruby = Ruby.new(job.ruby)
+      tag = "puma-local-ci:#{ruby}-ubuntu-#{job.ubuntu}-#{@arch}"
+      { tag: tag, ruby: ruby, ubuntu: job.ubuntu }
+    end
+
+    def build(images)
+      images.each do |img|
+        next if !@opts[:rebuild] && !img[:ruby].head? && system("docker", "image", "inspect", img[:tag], out: File::NULL, err: File::NULL)
+        say "building #{img[:tag]}"
+        args = ["docker", "build", "-q", "--platform", "linux/#{@arch}", "-t", img[:tag],
+                "--build-arg", "BASE=#{img[:ruby].base_image(img[:ubuntu])}",
+                "--build-arg", "RUBY_URL=#{img[:ruby].url(img[:ubuntu], @arch)}",
+                "--build-arg", "RUBY_PREFIX=#{img[:ruby].prefix(@arch)}", "-"]
+        out, status = Open3.capture2e(*args, stdin_data: DOCKERFILE)
+        abort "local-ci: building #{img[:tag]} failed:\n#{out}" unless status.success?
+      end
+    end
+
+    def run_job(job, img, sha, role, test_args, repeat: @opts[:repeat], label: nil, filter: nil) # rubocop:disable Metrics/ParameterLists
+      dir = File.join(WORK, "work", "#{sha[0, 12]}-#{job.slug}")
+      checkout(sha, dir)
+      results = "/puma/tmp/results.jsonl"
+      runner = Shellwords.join(["test/runner", "--verbose"] + test_args)
+      runner = "test/runner \"$FILTER_FLAG=$LOCAL_CI_FILTER\" #{runner.delete_prefix("test/runner ")}" if filter
+      flag = "FILTER_FLAG=$(bundle exec ruby -e 'require %(minitest); print Minitest::VERSION.to_i >= 6 ? %(--include) : %(--name)'); "
+      script = "set -e; bundle install --quiet; bundle exec rake compile > tmp/compile.log 2>&1 || { tail -40 tmp/compile.log; exit 99; }; #{flag if filter}" \
+               "fails=0; for i in $(seq #{repeat}); do timeout -k 10 20m #{runner} || fails=$((fails+1)); done; exit $fails"
+      env = job.env.merge("PUMA_TEST_RESULTS" => results, "LOCAL_CI_FILTER" => filter.to_s).flat_map { |k, v| ["-e", "#{k}=#{v}"] }
+      log = File.join(@logs, [role, job.slug, label].compact.join("-") + ".log")
+      t = Time.now
+      say "  start  #{role} #{job.name}#{label && " #{label}"}"
+      ok = system("docker", "run", "--rm", "--init", "--platform", "linux/#{@arch}", "--cpus", CPUS_PER_JOB.to_s,
+                  "-v", "#{dir}:/puma", "-v", "#{File.join(__dir__, "local_ci")}:/local-ci:ro", "-v", "puma-local-ci-bundle-#{@arch}-#{role}-#{job.slug}:/bundle", "-w", "/puma",
+                  *env, img[:tag], "bash", "-c", script, out: log, err: [:child, :out])
+      code = $?.exitstatus
+      tests = parse_results(File.join(dir, "tmp", "results.jsonl"))
+      res = { ok: ok, code: code, tests: tests, log: log, secs: (Time.now - t).round }
+      say "  #{ok ? "pass" : "FAIL"}   #{role} #{job.name}#{label && " #{label}"} (#{res[:secs]}s)"
+      res
+    end
+
+    def parse_results(path)
+      return [] unless File.exist?(path)
+      File.readlines(path).map { |l| JSON.parse(l) }
+    end
+
+    def failures(res) = res[:tests].reject { |t| PASS.include?(t["result"]) }.map { |t| t["test"] }.to_set
+
+    def report(jobs, images, commits, results)
+      say ""
+      regressions = 0
+      jobs.each do |job|
+        head = results[[job.name, :head]]
+        base = results[[job.name, :base]]
+        if crashed?(head)
+          regressions += 1 unless base && crashed?(base)
+          say "#{base && crashed?(base) ? "= also on base" : "✗ JOB ERROR   "} #{job.name}: exit #{head[:code]}, #{head[:tests].size} tests recorded. See #{head[:log]}"
+          next
+        end
+        new_fails = failures(head) - (base ? failures(base) : Set.new)
+        old_fails = base ? failures(head) & failures(base) : Set.new
+        if new_fails.empty?
+          say "✓ #{job.name}: #{head[:tests].size} tests#{old_fails.any? ? ", #{old_fails.size} failure(s) also on base" : ""}"
+          next
+        end
+        new_fails.each do |test|
+          verdict = base ? classify(job, images[job], commits, test, head) : nil
+          regressions += 1 unless verdict && !verdict.start_with?("REGRESSION")
+          msg = head[:tests].find { |t| t["test"] == test }&.dig("message").to_s.lines.first.to_s.strip
+          say "✗ #{job.name}: #{test} #{verdict}"
+          say "    #{msg}" unless msg.empty?
+        end
+      end
+      skipped = Matrix.jobs.count { |j| !j.os.start_with?("ubuntu-") }
+      say "\n#{skipped} macOS/Windows CI jobs were not run."
+      regressions.zero? ? 0 : 1
+    end
+
+    def crashed?(res) = !res[:ok] && failures(res).empty?
+
+    def classify(job, img, commits, test, head)
+      file = head[:tests].find { |t| t["test"] == test }&.dig("file").to_s.delete_suffix(".rb")
+      n = @opts[:reruns]
+      counts = commits.to_h do |role, sha|
+        res = run_job(job, img, sha, role, [file], repeat: n, label: "rerun-#{test.tr("#", "-")}", filter: test)
+        [role, res[:tests].count { |t| t["test"] == test && PASS.include?(t["result"]) }]
+      end
+      h, b = counts[:head], counts[:base]
+      kind = if h == n then "passes on rerun"
+             elsif h.zero? && b == n then "REGRESSION"
+             elsif h.zero? && b.zero? then "also fails on base"
+             else "flaky"
+             end
+      "#{kind}: head #{h}/#{n} pass, base #{b}/#{n} pass"
+    end
+
+    def run_pool(tasks)
+      queue = Queue.new
+      tasks.each { |t| queue << t }
+      out = []
+      lock = Mutex.new
+      Array.new(parallel) do
+        Thread.new do
+          while (t = (queue.pop(true) rescue nil))
+            r = yield(*t)
+            lock.synchronize { out << r }
+          end
+        end
+      end.each(&:join)
+      out
+    end
+
+    def parallel = @opts[:jobs] || [docker_cpus / CPUS_PER_JOB, 1].max
+
+    def snapshot(ref)
+      index = File.join(WORK, "snapshot-index")
+      FileUtils.mkdir_p(WORK)
+      FileUtils.cp(File.join(git("rev-parse", "--git-dir").strip.then { |d| File.expand_path(d, ROOT) }, "index"), index)
+      env = { "GIT_INDEX_FILE" => index }
+      git("add", "--all", env: env)
+      tree = git("write-tree", env: env).strip
+      parent = rev(ref)
+      tree == git("rev-parse", "#{parent}^{tree}").strip ? parent : git("commit-tree", tree, "-p", parent, "-m", "local-ci snapshot").strip
+    end
+
+    def rev(ref) = git("rev-parse", "--verify", "#{ref}^{commit}").strip
+
+    def checkout(sha, dir)
+      FileUtils.rm_rf(dir)
+      git("clone", "--quiet", "--shared", "--no-checkout", ROOT, dir)
+      git("-C", dir, "checkout", "--quiet", "--detach", sha)
+      FileUtils.mkdir_p(File.join(dir, "tmp"))
+    end
+
+    def git(*args, env: {})
+      out, status = Open3.capture2e(env, "git", "-C", ROOT, *args)
+      abort "local-ci: git #{args.join(" ")} failed:\n#{out}" unless status.success?
+      out
+    end
+
+    def docker_info(fmt)
+      out, status = Open3.capture2("docker", "info", "--format", fmt)
+      abort "local-ci: docker is not running" unless status.success?
+      out.strip
+    end
+
+    def docker_arch = docker_info("{{.Architecture}}").then { |a| a.match?(/aarch64|arm64/) ? "arm64" : "x64" }
+
+    def docker_cpus = @docker_cpus ||= docker_info("{{.NCPU}}").to_i
+
+    def say(msg) = @print.synchronize { puts msg }
+  end
+end
+
+opts = { repeat: 1, reruns: 3, args: [] }
+OptionParser.new do |o|
+  o.banner = "Usage: test/local-ci [options] [-- test/runner args]\nTests the git checkout you run it from, so another branch can use main's copy."
+  o.on("--all", "Run every Linux CI job") { opts[:all] = true }
+  o.on("--only LIST", Array, "Rubies or job names, e.g. 3.0,jruby or 'ubuntu-22.04 3.2 no SSL'") { |v| opts[:only] = v }
+  o.on("--base REF", "Also run on REF and report only new failures") { |v| opts[:base] = v }
+  o.on("--repeat N", Integer, "Run the tests N times in each job") { |v| opts[:repeat] = v }
+  o.on("--reruns N", Integer, "Reruns per new failure with --base (default 3)") { |v| opts[:reruns] = v }
+  o.on("--jobs N", Integer, "Jobs to run at a time") { |v| opts[:jobs] = v }
+  o.on("--arch ARCH", %w[arm64 x64], "Container arch (default: Docker's native arch)") { |v| opts[:arch] = v }
+  o.on("--rebuild", "Rebuild images") { opts[:rebuild] = true }
+  o.on("--list", "List Linux CI jobs; * marks the selected ones") { opts[:list] = true }
+end.parse!(into: nil)
+opts[:args] = ARGV
+
+exit LocalCI::Runner.new(opts).call
