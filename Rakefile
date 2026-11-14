@@ -80,6 +80,9 @@ else
   Rake::JavaExtensionTask.new("puma_http11", gemspec) do |ext|
     ext.lib_dir = "lib/puma"
     ext.release = '8'
+    ext.java_compiling do |spec|
+      spec.files = spec.files.reject { |f| f.start_with?("ext/") }
+    end
   end
 end
 
