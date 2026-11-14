@@ -69,5 +69,5 @@ More discussions and links to relevant articles can be found in https://github.c
 
 ## Workers Per Pod, and Other Config Issues
 
-See our [deployment docs](./deployment.md) for more information about how to correctly size your pods and choose the right number of workers and threads.
+See our [deployment docs](README.md) for more information about how to correctly size your pods and choose the right number of workers and threads.
 

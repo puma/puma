@@ -1,3 +1,5 @@
+# Signals
+
 The [unix signal](https://en.wikipedia.org/wiki/Unix_signal) is a method of sending messages between [processes](https://en.wikipedia.org/wiki/Process_(computing)). When a signal is sent, the operating system interrupts the target process's normal flow of execution. There are standard signals that are used to stop a process, but there are also custom signals that can be used for other purposes. This document is an attempt to list all supported signals that Puma will respond to. In general, signals need only be sent to the master process of a cluster.
 
 ## Sending Signals

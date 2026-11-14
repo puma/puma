@@ -1,3 +1,21 @@
+# Control/Status Server
+
+Puma has a built-in status and control app that can be used to query and control Puma.
+
+```
+$ puma --control-url tcp://127.0.0.1:9293 --control-token foo
+```
+
+Puma will start the control server on localhost port 9293. All requests to the control server will need to include a control token (in this case, `token=foo`) as a query parameter. This allows for simple authentication. Check out `Puma::App::Status` or [status.rb](https://github.com/puma/puma/blob/main/lib/puma/app/status.rb) to see what the status app has available.
+
+You can also interact with the control server via `pumactl`. This command will restart Puma:
+
+```
+$ pumactl --control-url 'tcp://127.0.0.1:9293' --control-token foo restart
+```
+
+To see a list of `pumactl` options, use `pumactl --help`.
+
 ## Accessing stats
 
 Stats can be accessed in two ways:
@@ -5,8 +23,6 @@ Stats can be accessed in two ways:
 ### control server
 
 `$ pumactl stats` or `GET /stats`
-
-[Read more about `pumactl` and the control server in the README.](https://github.com/puma/puma#controlstatus-server).
 
 ### Puma.stats
 
@@ -70,7 +86,7 @@ When Puma runs in single mode, these stats are available at the top level. When 
 
 ### cluster mode
 
-* phase: which phase of restart the process is in, during [phased restart](https://github.com/puma/puma/blob/main/docs/restart.md)
+* phase: which phase of restart the process is in, during [phased restart](restart.md)
 * workers: ??
 * booted_workers: how many workers are currently running?
 * old_workers: ??
@@ -146,3 +162,7 @@ Here are two example stats hashes produced by `Puma.stats`:
   ]
 }
 ```
+
+## Monitoring
+
+* [puma-status](https://github.com/ylecuyer/puma-status) — Monitor CPU/Mem/Load of running puma instances from the CLI
