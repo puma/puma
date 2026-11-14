@@ -32,7 +32,6 @@ module PumaGemManifest
     SECURITY.md
     benchmarks/**/*
     cops/**/*
-    examples/**/*
     ext/puma_http11/*.rl
     ext/puma_http11/**/*.java
     puma.gemspec
