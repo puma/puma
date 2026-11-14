@@ -55,11 +55,14 @@ From a clean worktree at the release commit:
 
 ```sh
 bundle exec rake build
-mise exec jruby@latest -- bundle exec rake java gem
+touch ext/puma_http11/http11_parser.c ext/puma_http11/org/jruby/puma/Http11Parser.java
+mise exec ruby@jruby -- bundle exec rake java gem
 .agents/skills/releasing-puma/scripts/check-gems release-vX.Y.Z pkg/puma-X.Y.Z.gem pkg/puma-X.Y.Z-java.gem
 ```
 
-`check-gems` checks each gem's name, version and platform, compares every packaged file byte-for-byte against the git ref, and prints SHA256s. The compiled JRuby jar is the only file it skips.
+The `touch` keeps rake from regenerating the committed Ragel output, which a fresh checkout's timestamps would otherwise trigger.
+
+`check-gems` checks each gem's name, version and platform, checks its file list against `test/gem_manifest.rb` at the ref, compares every packaged file byte-for-byte against the git ref, and prints SHA256s. The compiled JRuby jar is the only file it doesn't compare.
 
 Done when both gems verify against the release commit. Build again if the commit changes.
 

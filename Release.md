@@ -19,7 +19,8 @@ Once the PR is merged:
 
 1. Ensure the release tag points at `HEAD`, then push that tag to GitHub.
 1. Build the CRuby gem with `bundle exec rake build`.
-1. If `mise` is installed, look up the latest JRuby version, run `mise exec jruby@<latest> -- rake java gem`, and build the JRuby gem. Otherwise, manage your environment yourself.
+1. Build the JRuby gem with `touch ext/puma_http11/http11_parser.c ext/puma_http11/org/jruby/puma/Http11Parser.java && bundle exec rake java gem` under JRuby (with mise: `mise exec ruby@jruby -- ...`). The `touch` keeps rake from regenerating the committed Ragel output.
+1. Verify both gems with `.agents/skills/releasing-puma/scripts/check-gems vX.Y.Z pkg/puma-<version>.gem pkg/puma-<version>-java.gem`.
 1. `gem push` both artifacts to rubygems.org. This requires manual 2FA.
 
 Once both gems have been pushed to rubygems.org:
