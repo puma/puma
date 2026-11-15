@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+[ $# -gt 0 ] || { echo "usage: GEM_HOST_API_KEY=... push-gems GEM..." >&2; exit 1; }
+[ -n "${GEM_HOST_API_KEY:-}" ] || { echo "GEM_HOST_API_KEY is not set" >&2; exit 1; }
+for gem in "$@"; do
+  [ -f "$gem" ] || { echo "no such gem: $gem" >&2; exit 1; }
+done
+
+status=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: $GEM_HOST_API_KEY" https://rubygems.org/api/v1/gems.json)
+[ "$status" = 200 ] || { echo "RubyGems rejected GEM_HOST_API_KEY (HTTP $status)" >&2; exit 1; }
+
+read -rp "RubyGems OTP: " GEM_HOST_OTP_CODE
+export GEM_HOST_OTP_CODE
+
+for gem in "$@"; do
+  gem push "$gem"
+done
