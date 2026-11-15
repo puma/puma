@@ -106,6 +106,7 @@ jobs:
 
       # ── Check 5: every [#NNNN] in the entry has a link definition ──────────
       - name: History.md links resolve
+        shell: bash
         run: git show origin/main:.agents/skills/releasing-puma/scripts/release-notes | ruby - "${{ steps.rel.outputs.version }}" History.md > /dev/null
 
       # ── Check 6: Upgrade guide exists for major releases ────────────────────
