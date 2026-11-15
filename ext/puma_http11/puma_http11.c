@@ -115,11 +115,16 @@ static struct common_field common_http_fields[] = {
   f("UPGRADE"),
   f("USER_AGENT"),
   f("VIA"),
+  f("WARNING"),
   f("X_FORWARDED_FOR"), /* common for proxies */
-  f("X_REAL_IP"), /* common for proxies */
-  f("WARNING")
+  f("X_REAL_IP") /* common for proxies */
 # undef f
 };
+
+static struct {
+  unsigned char offset;
+  unsigned char count;
+} common_field_index[26];
 
 static void init_common_fields(void)
 {
@@ -129,6 +134,12 @@ static void init_common_fields(void)
   memcpy(tmp, HTTP_PREFIX, HTTP_PREFIX_LEN);
 
   for(i = 0; i < ARRAY_SIZE(common_http_fields); cf++, i++) {
+    unsigned int idx = (unsigned int)(cf->name[0] - 'A');
+    if (common_field_index[idx].count == 0) {
+      common_field_index[idx].offset = (unsigned char)i;
+    }
+    common_field_index[idx].count++;
+
     rb_global_variable(&cf->value);
     if(cf->raw) {
       cf->value = rb_enc_interned_str(cf->name, cf->len, rb_utf8_encoding());
@@ -141,9 +152,13 @@ static void init_common_fields(void)
 
 static VALUE find_common_field_value(const char *field, size_t flen)
 {
-  unsigned i;
-  struct common_field *cf = common_http_fields;
-  for(i = 0; i < ARRAY_SIZE(common_http_fields); i++, cf++) {
+  if (flen == 0) return Qnil;
+  unsigned int idx = (unsigned int)((unsigned char)field[0] - 'A');
+  if (idx >= 26) return Qnil;
+
+  unsigned char count = common_field_index[idx].count;
+  struct common_field *cf = &common_http_fields[common_field_index[idx].offset];
+  for (; count > 0; count--, cf++) {
     if (cf->len == flen && !memcmp(cf->name, field, flen))
       return cf->value;
   }
