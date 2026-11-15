@@ -6,6 +6,9 @@ on:
       - main
     paths-ignore:
       - '**/*.md'
+      - 'docs/**'
+      - '.agents/**'
+      - 'benchmarks/**'
   workflow_dispatch:
 
 concurrency:
@@ -38,7 +41,7 @@ jobs:
         id: skip
         uses: fkirc/skip-duplicate-actions@b974a9395958c231af965b70070979a577efa578 # v5.3.2
         with:
-          paths_ignore: '["**.md"]'
+          paths_ignore: '["**.md", "docs/**", ".agents/**", "benchmarks/**"]'
           concurrent_skipping: 'never'
           skip_after_successful_duplicate: 'true'
 

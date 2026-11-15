@@ -10,10 +10,16 @@ on:
       - '*-stable'
     paths-ignore:
       - '**/*.md'
+      - 'docs/**'
+      - '.agents/**'
+      - 'benchmarks/**'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths-ignore:
       - '**/*.md'
+      - 'docs/**'
+      - '.agents/**'
+      - 'benchmarks/**'
   workflow_dispatch:
 
 concurrency:
