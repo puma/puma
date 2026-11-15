@@ -75,7 +75,7 @@ jobs:
           - { os: macos-15        , ruby: '3.0' }
           - { os: macos-26        , ruby: '4.0' }
           - { os: macos-15-intel  , ruby: '3.0' }
-          - { os: macos-15-intel  , ruby: '4.0' }
+          - { os: macos-26-intel  , ruby: '4.0' }
           - { os: windows-2022    , ruby: '3.0' }
           - { os: windows-2022    , ruby: '3.0' , no-ssl: ' no SSL' }
           - { os: windows-2025    , ruby: '4.0' }
