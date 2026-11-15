@@ -50,42 +50,31 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-22.04"]' || '["ubuntu-22.04","ubuntu-24.04","ubuntu-24.04-arm","macos-15","macos-15-intel","macos-26","windows-2022"]') }}
-        ruby: [ '3.0', 3.1, 3.2, 3.3, 3.4, '4.0', head ]
-        no-ssl: ['']
-        rack-v: ['']
-        yjit: ['']
         include:
+          - { os: ubuntu-22.04    , ruby: '3.0' }
+          - { os: ubuntu-22.04    , ruby: '3.0' , no-ssl: ' no SSL' }
+          - { os: ubuntu-22.04    , ruby: '3.0' , rack-v: ' rack2'  }
+          - { os: ubuntu-24.04    , ruby: '3.0' }
+          - { os: ubuntu-24.04    , ruby:  3.1  }
+          - { os: ubuntu-24.04    , ruby:  3.2  }
+          - { os: ubuntu-24.04    , ruby:  3.3  }
+          - { os: ubuntu-24.04    , ruby:  3.4  }
+          - { os: ubuntu-24.04    , ruby: '4.0' }
+          - { os: ubuntu-26.04    , ruby: '4.0' }
+          - { os: ubuntu-26.04    , ruby:  head , yjit: ' yjit'     }
+          - { os: ubuntu-22.04-arm, ruby: '3.0' }
+          - { os: ubuntu-26.04-arm, ruby: '4.0' }
+          - { os: macos-15        , ruby: '3.0' }
+          - { os: macos-26        , ruby: '4.0' }
+          - { os: macos-15-intel  , ruby: '3.0' }
+          - { os: macos-15-intel  , ruby: '4.0' }
+          - { os: windows-2022    , ruby: '3.0' }
+          - { os: windows-2022    , ruby: '3.0' , no-ssl: ' no SSL' }
+          - { os: windows-2025    , ruby: '4.0' }
           - { os: windows-2025    , ruby:  ucrt }
           - { os: windows-2025    , ruby:  mswin }
-          - { os: windows-2025    , ruby: '3.0' , no-ssl: ' no SSL' }
-          - { os: windows-11-arm  , ruby:  3.4 }
-          - { os: windows-11-arm  , ruby:  head }
-          - { os: ubuntu-26.04-arm, ruby:  head , yjit: ' yjit'     }
-          - { os: ubuntu-26.04    , ruby:  head , yjit: ' yjit'     }
-          - { os: ubuntu-22.04    , ruby:  head , yjit: ' yjit'     }
-          - { os: ubuntu-22.04    , ruby:  3.2  , no-ssl: ' no SSL' }
-          - { os: ubuntu-22.04    , ruby: '3.0' , rack-v: ' rack2'  }
-          - { os: ubuntu-24.04-arm, ruby:  head }
-          - { os: macos-15-intel  , ruby: '3.0' }
-          - { os: macos-26        , ruby: '4.0' }
-
-        exclude:
-          - { os: ubuntu-24.04    , ruby: '3.0' }
-          - { os: ubuntu-24.04-arm, ruby:  3.1  }
-          - { os: ubuntu-24.04-arm, ruby:  3.3  }
-          - { os: macos-15        , ruby:  3.2  }
-          - { os: macos-15        , ruby:  3.4  }
-          - { os: macos-15        , ruby:  head }
-          - { os: macos-15-intel  , ruby:  3.1  }
-          - { os: macos-15-intel  , ruby:  3.3  }
-          - { os: macos-15-intel  , ruby:  3.4  }
-          - { os: macos-15-intel  , ruby: '4.0' }
-          - { os: macos-15-intel  , ruby:  head }
-          - { os: macos-26        , ruby: '3.0' }
-          - { os: macos-26        , ruby:  3.2  }
-          - { os: macos-26        , ruby:  3.3  }
-          - { os: windows-2025    , ruby:  head }
+          - { os: windows-11-arm  , ruby:  3.4  }
+          - { os: windows-11-arm  , ruby: '4.0' }
 
     steps:
       - name: repo checkout
@@ -153,20 +142,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-22.04"]' || '["ubuntu-22.04","ubuntu-24.04","macos-15","macos-26"]') }}
-        ruby: ${{ fromJSON(github.event_name == 'pull_request' && '["jruby","truffleruby"]' || '["jruby","jruby-head","truffleruby","truffleruby-head"]') }}
-        no-ssl: ['']
         include:
-          - { os: ubuntu-22.04 , ruby: jruby, no-ssl: ' no SSL' }
-        exclude:
-          - { os: ubuntu-22.04 , ruby: jruby-head }
-          - { os: ubuntu-24.04 , ruby: jruby }
-          - { os: macos-15     , ruby: jruby }
-          - { os: macos-15     , ruby: jruby-head }
-          - { os: macos-15     , ruby: truffleruby-head }
-          - { os: macos-26     , ruby: jruby-head }
-          - { os: macos-26     , ruby: truffleruby }
-          - { os: macos-26     , ruby: truffleruby-head }
+          - { os: ubuntu-26.04 , ruby: jruby }
+          - { os: ubuntu-26.04 , ruby: jruby-head }
+          - { os: ubuntu-26.04 , ruby: truffleruby }
+          - { os: ubuntu-26.04 , ruby: truffleruby-head }
 
     steps:
       - name: repo checkout

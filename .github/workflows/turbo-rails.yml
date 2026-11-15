@@ -37,7 +37,7 @@ jobs:
       matrix:
         include:
           # Run only the latest stable Ruby/Rails pairing.
-          - { os: ubuntu-24.04 , ruby: '4.0', rails: '8.1' }
+          - { os: ubuntu-26.04 , ruby: '4.0', rails: '8.1' }
     env:
       CI: true
       FERRUM_PROCESS_TIMEOUT: 60
