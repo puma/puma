@@ -6,6 +6,16 @@ require_relative 'lib/puma/detect'
 require 'rubygems/package_task'
 require 'bundler/gem_tasks'
 
+%w[release release:rubygem_push release:source_control_push].each do |name|
+  Rake::Task[name].clear.enhance do
+    abort "Release through .github/workflows/release.yml; see Release.md"
+  end
+end
+
+Rake::Task[:release].clear_comments
+desc "Use the reviewed GitHub Actions release workflow (local publication is disabled)"
+task :release
+
 begin
   # Add rubocop task
   require "rubocop/rake_task"
@@ -136,3 +146,8 @@ task "test:integration" => test_prereq
 task :test => test_prereq
 
 task :default => [:rubocop, :test]
+
+if Gem.loaded_specs.key?("ruby-gem-release")
+  require_relative "tools/release"
+  PumaRelease.install_tasks
+end

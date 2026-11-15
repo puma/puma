@@ -101,6 +101,8 @@ See the [Bundler docs](https://bundler.io/man/gemfile.5.html#PATH) for more deta
 
 ## Running tests
 
+Release tooling/tests load on Ruby 3.3+; Puma's Ruby 3.0 minimum is unchanged. Tests isolate directory/environment changes in a subprocess; notes/publication use Commonmarker on Linux/macOS CRuby. Other hosts still exercise packaging and audits without building Commonmarker. See [Release.md](Release.md#local-validation). Keep `test/gem_manifest.rb` current so every tracked file is explicitly shipped or excluded.
+
 To run rubocop + tests:
 
 ```sh

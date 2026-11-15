@@ -4,6 +4,14 @@ gemspec
 
 gem "rake-compiler"
 
+# Release tooling requires Ruby 3.3+; Puma itself still supports Ruby 3.0.
+if Gem::Version.new(RUBY_VERSION) >= Gem::Version.new("3.3")
+  # Pin the unreleased 0.7.0 APIs until publication.
+  gem "ruby-gem-release", "0.7.0", git: "https://github.com/dblock/ruby-gem-release.git",
+    ref: "593b161261c504f2ec3dda97b6df4d816cad4ac5", require: false
+  gem "commonmarker", "~> 2.10", require: false if RUBY_ENGINE == "ruby" && RUBY_PLATFORM.match?(/linux|darwin/)
+end
+
 gem "json", "~> 2.18"
 gem "nio4r", "~> 2.7"
 gem "minitest", ">= 5.26"

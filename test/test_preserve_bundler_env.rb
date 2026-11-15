@@ -21,7 +21,9 @@ class TestPreserveBundlerEnv < TestIntegration
       # Intentionally set this to something we wish to keep intact on restarts
       "BUNDLE_GEMFILE" => "Gemfile.bundle_env_preservation_test",
       # Don't allow our (rake test's) original env to interfere with the child process
-      "BUNDLER_ORIG_BUNDLE_GEMFILE" => nil
+      "BUNDLER_ORIG_BUNDLE_GEMFILE" => nil,
+      "BUNDLE_LOCKFILE" => nil,
+      "BUNDLER_ORIG_BUNDLE_LOCKFILE" => nil
     }
     # Must use `bundle exec puma` here, because otherwise Bundler may not be defined, which is required to trigger the bug
     cmd = "-w 2 --prune-bundler"
@@ -37,12 +39,16 @@ class TestPreserveBundlerEnv < TestIntegration
   end
 
   def test_worker_forking_preserves_bundler_config_path
+    lockfile = Bundler.default_lockfile
+    lockfile_contents = File.binread(lockfile)
     env = {
       # Disable the .bundle/config file in the bundle_app_config_test directory
       "BUNDLE_APP_CONFIG" => "/dev/null",
       # Don't allow our (rake test's) original env to interfere with the child process
       "BUNDLE_GEMFILE" => nil,
-      "BUNDLER_ORIG_BUNDLE_GEMFILE" => nil
+      "BUNDLER_ORIG_BUNDLE_GEMFILE" => nil,
+      "BUNDLE_LOCKFILE" => nil,
+      "BUNDLER_ORIG_BUNDLE_LOCKFILE" => nil
     }
     cmd = "-q -w 1 --prune-bundler"
     Dir.chdir File.expand_path("bundle_app_config_test", __dir__) do
@@ -51,12 +57,15 @@ class TestPreserveBundlerEnv < TestIntegration
 
     reply = read_body(connect)
     assert_equal("Hello World", reply)
+    assert_equal lockfile_contents, File.binread(lockfile)
   end
 
   def test_phased_restart_preserves_unspecified_bundle_gemfile
     env = {
       "BUNDLE_GEMFILE" => nil,
-      "BUNDLER_ORIG_BUNDLE_GEMFILE" => nil
+      "BUNDLER_ORIG_BUNDLE_GEMFILE" => nil,
+      "BUNDLE_LOCKFILE" => nil,
+      "BUNDLER_ORIG_BUNDLE_LOCKFILE" => nil
     }
     set_release_symlink File.expand_path("bundle_preservation_test/version1", __dir__)
     cmd = "-q -w 1 --prune-bundler"

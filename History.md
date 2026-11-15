@@ -1,3 +1,8 @@
+## Unreleased
+
+* Docs
+  * Automate reviewed, signed CRuby/JRuby releases with ruby-gem-release and audited prebuilt archives; retain human preparation, backport guidance, and dry runs.
+
 ## 8.1.1 / 2026-11-15
 
 * Bugfixes

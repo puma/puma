@@ -1,51 +1,55 @@
 # How to Release Puma
 
-Releasing Puma requires the following steps:
+The [Release workflow](.github/workflows/release.yml) uses [ruby-gem-release](https://github.com/dblock/ruby-gem-release/tree/593b161261c504f2ec3dda97b6df4d816cad4ac5) to build, audit, and publish CRuby/Java gems without editing reviewed files, creating commits/tags, or bumping versions. Local publishing is disabled.
 
-1. Choose the target base branch:
-   - `main` for the next major or minor line.
-   - `<major>-<minor>-stable` for patch releases on an existing stable line (for example, release `7.2.3` from `7-2-stable`).
-1. Ensure your local target branch is checked out, clean, and matches `origin/<target-branch>`.
-1. Check the CI status for the current `HEAD`. Stop unless everything is passing.
-1. Decide on the next version number based on [SemVer 2.0](https://semver.org/). Treat `breaking change` PR labels as strong evidence that a `major` bump is needed. Puma's public API is its HTTP serving behavior over the socket and its configuration; all of Puma's other Ruby APIs are private and may change at any time. Puma is an HTTP/1.1 server, so any deviation from the relevant RFCs is a bug, which we may fix in a patch release.
-1. For minor and major releases, determine who "earned" the codename via `git shortlog`. This person will be the "Namer."
-1. For major releases, update `SECURITY.md` and write a `docs/upgrading/X.X-Upgrade.md` upgrade guide.
-1. Update `History.md` in the existing format and update `lib/puma/const.rb`. If a codename change is required for a minor or major release, change the codename constant to "INSERT CODENAME HERE."
-1. Create a release branch named `release-vX.Y.Z` from your target base branch, commit the release changes, and open a PR.
-1. Create or update a draft GitHub release for the upcoming tag using the new `History.md` section as the release notes.
-1. **STOP** for manual review. The PR must be reviewed and checked by at least one human.
+## One-time setup
 
-Once the PR is merged:
+Before publishing:
 
-1. Ensure the release tag points at `HEAD`, then push that tag to GitHub.
-1. Build the CRuby gem with `bundle exec rake build`.
-1. Build the JRuby gem with `touch ext/puma_http11/http11_parser.c ext/puma_http11/org/jruby/puma/Http11Parser.java && bundle exec rake java gem` under JRuby (with mise: `mise exec ruby@jruby -- ...`). The `touch` keeps rake from regenerating the committed Ragel output.
-1. Verify both gems with `.agents/skills/releasing-puma/scripts/check-gems vX.Y.Z pkg/puma-<version>.gem pkg/puma-<version>-java.gem`.
-1. `gem push` both artifacts to rubygems.org. This requires manual 2FA.
+1. Protect the `release` environment for `main` and maintained `*-stable` branches; require another human maintainer's approval and prevent self-review.
+2. Register a RubyGems Trusted Publisher for `puma`: repository `puma/puma`, workflow `release.yml`, environment `release`.
+3. Set Actions variable `RELEASE_SIGNING_KEYS` to allowed ASCII-armored **public** GPG keys. Never upload private keys.
+4. Allow the workflow's PR/check reads and GitHub Release writes; retain branch protections.
+5. Backport workflows, tooling, manifest, and tests to maintained branches with supported build runtimes.
 
-Once both gems have been pushed to rubygems.org:
+## Prepare a reviewed release
 
-1. Create or update the GitHub release based on the release tag.
-1. Publish the release if it is still a draft.
-1. Upload the built gem artifacts to the GitHub release:
-   - `pkg/puma-<version>.gem`
-   - `pkg/puma-<version>-java.gem`
-1. Verify post-publish state:
-   - RubyGems shows `puma` version `<version>`.
-   - The GitHub release is published and includes both gem artifacts.
+Follow the [release skill](.agents/skills/releasing-puma/SKILL.md) for planning, backports, review, CI triage, and disclosure approvals. Start clean at the target's remote tip with passing CI.
 
-## Branch Conventions
+1. Target `main` for major/minor releases or `<major>-<minor>-stable` for patches. Follow [SemVer 2.0](https://semver.org/); `breaking change` labels suggest a major bump. Only HTTP serving behavior and configuration are public APIs. HTTP/1.1 RFC deviations are patchable bugs.
+2. For minor/major releases, ask the leader of `git shortlog -s -n --no-merges <LAST_VERSION>..HEAD` (the "Namer") for a codename and tag them on the PR. For majors, update `SECURITY.md` and add `docs/upgrading/X.0-Upgrade.md`.
+3. On `release-vX.Y.Z`, prepare `lib/puma/const.rb`, a final codename, and a dated, nonempty [History.md section](.agents/skills/releasing-puma/history.md).
+4. Open a PR to the target branch. Require another human maintainer's approval **on the final head** and successful checks; flakes are not waived.
 
-- Name release PR branches as `release-vX.Y.Z`.
-- Target `main` for major/minor releases.
-- Target `<major>-<minor>-stable` for patch releases on maintained stable lines.
+## Dry run
 
-## The "Namer"
+Use the checked-in version. Dry runs default to true and need no publishing credentials, PR number, tag, or signing keys:
 
-We usually let the leader of `git shortlog -s -n --no-merges <LAST_VERSION>..HEAD` name the release.
+```sh
+gh workflow run release.yml --ref main -f version=X.Y.Z
+```
 
-Tag this person on the new version PR and ask them to propose a codename.
+The release-only [Package workflow](.github/workflows/package.yml) builds, audits, and installs both platforms, including Ruby 3.0/JRuby 9.4 consumers, without publishing. Archives/checksums are retained for 30 days. Audits check `test/gem_manifest.rb` and Git bytes; installed tests exercise parser, SSL, and CLI. The generated Java 8 JAR replaces C sources and is exempt only from Git-byte comparison.
 
-## The Changelog Format
+## Publish
 
-In the past, we've used [Greg's tool](https://github.com/MSP-Greg/issue-pr-link) to generate it, but anything that follows the existing format is fine.
+With explicit maintainer approval, merge the PR and sign its merge commit: `git tag -s vX.Y.Z -m "Release vX.Y.Z" <merge-commit>`. Verify with `git tag -v vX.Y.Z`, then push the tag. The merge commit must remain the branch tip. Dispatch from that branch:
+
+```sh
+gh workflow run release.yml --ref 8-1-stable \
+  -f version=8.1.2 -f release-pr=1234 -f dry-run=false
+```
+
+Approve the `release` environment after reviewing builds. Publication rechecks source, approval, CI, signed tag, and both archives before uploading the **same run's retained bytes** with original SHA256s. Exact registry matches are skipped; conflicts/errors stop publication. GitHub receives expanded notes and both assets; older series never become latest.
+
+## Verify and recover
+
+Check both platforms at `https://rubygems.org/api/v2/rubygems/puma/versions/X.Y.Z.json?platform=ruby` (also `platform=java`) against retained SHA256s; visibility may lag successful uploads. Verify the remote signed tag's commit, GitHub notes/latest setting, and downloaded assets' SHA256s. For patches, PR the dated History section and references back to `main`; update main's version only if still in that series.
+
+Before retrying, inspect registry state, refs, and assets; never overwrite tags/published versions or regenerate digests. Verify both original artifacts in `pkg/release/` from a clean signed-commit checkout with `bundle exec rake release:verify`. With unchanged tip/approval, rerun only the failed publishing job to reuse archives and complete missing publications. Whole-workflow reruns rebuild: compare checksums and preserve originals. If the branch advances, stop for authorized recovery; never reset shared branches.
+
+## Local validation
+
+Follow [standard setup](CONTRIBUTING.md#setup) on Ruby 3.3+; leave `PUMA_NO_RUBOCOP` unset. Run `bundle exec rake` and `actionlint .github/workflows/package.yml .github/workflows/release.yml`. Release tests use subprocesses, isolated Git remotes, and fake publication; signed-source tests need Unix GPG. CI does not validate live OIDC or environment protection.
+
+From a clean checkout, run `bundle exec rake release:build release:smoke`. For Java, use current JRuby with JDK 17+ (CI: JDK 25 LTS), compile first, and set `PUMA_RELEASE_PLATFORM=java`. Touch the committed Ragel outputs before compiling to avoid regeneration. The standalone consumer accepts an archive path; unset/empty selects the only matching archive.

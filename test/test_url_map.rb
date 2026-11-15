@@ -13,7 +13,13 @@ class TestURLMap < TestIntegration
   # make sure the mapping defined in url_map_test/config.ru works
   def test_basic_url_mapping
     skip_if :jruby
-    env = { "BUNDLE_GEMFILE" => "#{__dir__}/url_map_test/Gemfile" }
+    lockfile = Bundler.default_lockfile
+    lockfile_contents = File.binread(lockfile)
+    env = {
+      "BUNDLE_GEMFILE" => "#{__dir__}/url_map_test/Gemfile",
+      "BUNDLE_LOCKFILE" => nil,
+      "BUNDLER_ORIG_BUNDLE_LOCKFILE" => nil
+    }
     Dir.chdir("#{__dir__}/url_map_test") do
       cli_server set_pumactl_args, env: env
     end
@@ -22,5 +28,6 @@ class TestURLMap < TestIntegration
     # see https://github.com/puma/puma/pull/3165
     body = read_body(connection, 1)
     assert_equal("OK", body)
+    assert_equal lockfile_contents, File.binread(lockfile)
   end
 end

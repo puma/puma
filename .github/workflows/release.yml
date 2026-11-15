@@ -1,0 +1,106 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Reviewed release version (MAJOR.MINOR.PATCH).
+        type: string
+        required: true
+      release-pr:
+        description: Merged release PR number (required for publication).
+        type: string
+        required: false
+      dry-run:
+        description: Build, test, and retain gems without publishing.
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: puma-release-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    name: Build Release Gems
+    uses: ./.github/workflows/package.yml
+    with:
+      version: ${{ inputs.version }}
+
+  publish:
+    name: Publish
+    needs: package
+    if: ${{ !inputs.dry-run && github.repository == 'puma/puma' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
+      pull-requests: read
+      checks: read
+      statuses: read
+    env:
+      INPUT_VERSION: ${{ inputs.version }}
+      RELEASE_PR: ${{ inputs.release-pr }}
+      RELEASE_AUTH_MODE: rubygems
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check Out Reviewed Source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set Up Ruby
+        uses: ruby/setup-ruby@b3aaceaef7e0ee231b499e7b5f49c03fc1d32199 # v1.338.0
+        with:
+          ruby-version: '4.0.9'
+          bundler-cache: true
+      - name: Import Allowed Public Signing Keys
+        env:
+          SIGNING_KEYS: ${{ vars.RELEASE_SIGNING_KEYS }}
+        run: |
+          test -n "$SIGNING_KEYS"
+          export GNUPGHOME="$RUNNER_TEMP/puma-release-gnupg"
+          echo "GNUPGHOME=$GNUPGHOME" >> "$GITHUB_ENV"
+          mkdir -m 700 "$GNUPGHOME"
+          printf '%s\n' "$SIGNING_KEYS" | gpg --batch --import
+      - name: Download CRuby Archive
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: puma-release-ruby-${{ needs.package.outputs.artifact-attempt }}
+          path: pkg/release
+      - name: Download JRuby Archive
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: puma-release-java-${{ needs.package.outputs.artifact-attempt }}
+          path: pkg/release
+      - name: Verify Reviewed Source and Retained Archives
+        run: bundle exec rake release:preflight
+      - name: Publish Retained Archives
+        run: bundle exec rake release:publish release:bump release:success
+      - name: Preserve Verified Source Bundle
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: puma-release-source-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/release.bundle
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Record Publication Result
+        if: always()
+        env:
+          RESULT: ${{ job.status }}
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## Puma Release
+
+          Version: $INPUT_VERSION
+
+          Result: $RESULT
+
+          Both platform archives are retained in this run for 30 days. Inspect RubyGems and GitHub before retrying; never overwrite a release tag or blindly republish.
+          EOF

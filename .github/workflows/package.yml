@@ -1,0 +1,106 @@
+name: Package
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        default: ''
+    outputs:
+      artifact-attempt:
+        description: Build attempt owning the retained archives.
+        value: ${{ jobs.package.outputs.artifact-attempt }}
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Package (${{ matrix.entry.artifact }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      artifact-attempt: ${{ github.run_attempt }}
+    strategy:
+      fail-fast: false
+      matrix:
+        entry:
+          - { ruby: '3.3', artifact: ruby-floor, platform: ruby }
+          - { ruby: '4.0.9', artifact: ruby, platform: ruby }
+          - { ruby: jruby-10.1.3.0, artifact: java, platform: java }
+    env:
+      PUMA_RELEASE_PLATFORM: ${{ matrix.entry.platform }}
+      INPUT_VERSION: ${{ inputs.version }}
+      SOURCE_DATE_EPOCH: '315619200'
+    steps:
+      - name: Check Out Source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set Up Java
+        if: matrix.entry.artifact == 'java'
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Set Up Ruby
+        uses: ruby/setup-ruby@b3aaceaef7e0ee231b499e7b5f49c03fc1d32199 # v1.338.0
+        with:
+          ruby-version: ${{ matrix.entry.ruby }}
+          bundler-cache: true
+      - name: Use Committed Ragel Output
+        run: touch ext/puma_http11/http11_parser.c ext/puma_http11/org/jruby/puma/Http11Parser.java
+      - name: Compile Extension
+        run: bundle exec rake compile
+      - name: Test Java Extension
+        if: matrix.entry.platform == 'java'
+        run: bundle exec ruby -Ilib:test -e 'ARGV.each { |path| require File.expand_path(path) }' ./test/test_http11.rb ./test/test_puma_server_ssl.rb
+      - name: Test Release Configuration and Manifest
+        run: bundle exec ruby -Ilib:test -e 'ARGV.each { |path| require File.expand_path(path) }' ./test/release.rb ./test/test_gem_manifest.rb
+      - name: Build and Verify Archive
+        run: bundle exec rake release:build
+      - name: Exercise Installed Archive
+        run: |
+          bundle exec ruby tools/release_smoke.rb
+          bundle exec ruby tools/release_smoke.rb ''
+          bundle exec ruby -rrubygems -e 'paths = Dir["pkg/release/#{ENV.fetch("PUMA_RELEASE_PLATFORM")}/puma-*.gem"]; abort "Expected one archive" unless paths.one?; exec Gem.ruby, "tools/release_smoke.rb", paths.first'
+      - name: Preserve Exact Archives and Checksums
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: puma-release-${{ matrix.entry.artifact }}-${{ github.run_attempt }}
+          path: pkg/release/
+          if-no-files-found: error
+          retention-days: 30
+
+  consumer-floor:
+    name: Installed Consumer (${{ matrix.entry.ruby }})
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        entry:
+          - { ruby: '3.0', platform: ruby }
+          - { ruby: jruby-9.4.15.0, platform: java }
+    steps:
+      - name: Check Out Consumer Test
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set Up Compatible Java LTS
+        if: matrix.entry.platform == 'java'
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set Up Consumer Ruby
+        uses: ruby/setup-ruby@b3aaceaef7e0ee231b499e7b5f49c03fc1d32199 # v1.338.0
+        with:
+          ruby-version: ${{ matrix.entry.ruby }}
+          bundler-cache: true
+      - name: Download Exact Archive
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: puma-release-${{ matrix.entry.platform }}-${{ needs.package.outputs.artifact-attempt }}
+          path: pkg/release
+      - name: Exercise Installed Archive at Consumer Floor
+        run: bundle exec ruby tools/release_smoke.rb
