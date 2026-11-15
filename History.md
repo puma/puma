@@ -1,3 +1,10 @@
+## 8.1.1 / 2026-11-15
+
+* Bugfixes
+  * Fix `pumactl stop` and SIGINT hanging in cluster mode when an `after_stopped` hook owns child processes ([#4135])
+  * Fix TLS stream corruption on TruffleRuby when flushing to a full socket ([#4108])
+  * Stop shipping development-only files in the gem ([#4124])
+
 ## 8.1.0 / 2026-11-15
 
 * Features
@@ -2431,6 +2438,9 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#4135]:https://github.com/puma/puma/pull/4135     "PR by Nate Berkopec, merged 2026-11-15"
+[#4108]:https://github.com/puma/puma/pull/4108     "PR by Nate Berkopec, merged 2026-11-15"
+[#4124]:https://github.com/puma/puma/pull/4124     "PR by Nate Berkopec, merged 2026-11-15"
 [#4059]:https://github.com/puma/puma/pull/4059     "PR by William T. Nelson, merged 2026-11-09"
 [#3976]:https://github.com/puma/puma/pull/3976     "PR by Maksim Romanov, merged 2026-10-02"
 [#4021]:https://github.com/puma/puma/pull/4021     "PR by Ted Ford, merged 2026-09-27"
