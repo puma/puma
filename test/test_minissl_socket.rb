@@ -99,6 +99,7 @@ class TestMiniSSLSocket < PumaTest
   end
 
   def assert_retries_deliver_data_once(data)
+    send_buffer_size = @raw_server.getsockopt(Socket::SOL_SOCKET, Socket::SO_SNDBUF).int
     @raw_server.setsockopt Socket::SOL_SOCKET, Socket::SO_SNDBUF, 16 * 1024
     start_reading = Queue.new
     received = +""
@@ -115,7 +116,10 @@ class TestMiniSSLSocket < PumaTest
           n += @server.write_nonblock(data.byteslice(n..-1))
         rescue IO::EAGAINWaitWritable
           eagain += 1
-          start_reading << true if eagain == 1
+          if eagain == 1
+            @raw_server.setsockopt Socket::SOL_SOCKET, Socket::SO_SNDBUF, send_buffer_size
+            start_reading << true
+          end
           assert @server.wait_writable(5), "wait_writable timed out"
           retry
         end
