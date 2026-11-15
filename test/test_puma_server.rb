@@ -2678,6 +2678,16 @@ class TestPumaServer < PumaTest
     assert_equal @host, body
   end
 
+  def test_request_line_key_named_headers_do_not_change_request_line_env
+    server_run { |env| [200, {}, ["#{env['QUERY_STRING']}|#{env['PATH_INFO']}"]] }
+
+    body = send_http_read_resp_body "GET /public HTTP/1.1\r\nHost: test.com\r\nQuery-String: admin=1\r\n\r\n"
+    assert_equal '|/public', body
+
+    body = send_http_read_resp_body "GET http://test.com/public HTTP/1.1\r\nHost: test.com\r\nRequest-Path: /admin\r\n\r\n"
+    assert_equal '|/public', body
+  end
+
   # see https://github.com/sinatra/sinatra/blob/main/examples/stream.ru
   def test_streaming_enum_body_1
     str = "Hello Puma World"
