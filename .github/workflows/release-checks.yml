@@ -104,7 +104,12 @@ jobs:
           fi
           echo "History.md date: $line ✓"
 
-      # ── Check 5: Upgrade guide exists for major releases ────────────────────
+      # ── Check 5: every [#NNNN] in the entry has a link definition ──────────
+      - name: History.md links resolve
+        shell: bash
+        run: git show origin/main:.agents/skills/releasing-puma/scripts/release-notes | ruby - "${{ steps.rel.outputs.version }}" History.md > /dev/null
+
+      # ── Check 6: Upgrade guide exists for major releases ────────────────────
       - name: Upgrade guide exists (major releases only)
         run: |
           major="${{ steps.rel.outputs.major }}"
@@ -126,7 +131,7 @@ jobs:
             echo "Minor/patch release — no upgrade guide required"
           fi
 
-      # ── Check 6: SECURITY.md is updated for major releases ──────────────────
+      # ── Check 7: SECURITY.md is updated for major releases ──────────────────
       - name: SECURITY.md updated (major releases only)
         env:
           BASE_REF: ${{ github.base_ref }}

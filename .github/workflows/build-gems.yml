@@ -1,0 +1,44 @@
+name: build-gems
+
+on:
+  push:
+    tags:
+      - 'v*'
+  pull_request:
+    paths:
+      - '.agents/skills/releasing-puma/scripts/**'
+      - '.github/workflows/build-gems.yml'
+      - 'Rakefile'
+      - 'puma.gemspec'
+      - 'test/gem_manifest.rb'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Tag or commit to build
+        required: true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - run: .agents/skills/releasing-puma/scripts/build-gems "${REF:-HEAD}"
+        env:
+          REF: ${{ inputs.ref || (github.ref_type == 'tag' && github.ref_name) || '' }}
+      - run: cat tmp/release/build-*/pkg/SHA256SUMS | tee -a "$GITHUB_STEP_SUMMARY"
+        shell: bash
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: gems-${{ github.sha }}
+          path: tmp/release/build-*/pkg/
+          if-no-files-found: error

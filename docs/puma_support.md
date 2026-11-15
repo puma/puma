@@ -30,6 +30,14 @@ On x64, a few more jobs fill in the gaps:
 - The oldest Ubuntu and Windows images also run the oldest Ruby without SSL.
 - The oldest Ubuntu image also runs the oldest Ruby with the oldest supported Rack.
 
+## Versioning
+
+Puma follows [SemVer 2.0](https://semver.org/). Puma's public API is its HTTP serving behavior over the socket and its configuration. All of Puma's other Ruby APIs are private and may change in any release.
+
+Puma is an HTTP/1.1 server, so any deviation from the relevant RFCs is a bug, which we may fix in a patch release.
+
+PRs labeled `breaking change` are strong evidence that a major release is needed.
+
 ## Puma release support policy
 
 By default, Puma supports one release version, the latest release. That means if there is a bug in 3.2.1 (made-up numbers for example only), but the latest release is 4.3.2, the bug must be reproduced in 4.3.2 to qualify for support.
@@ -37,6 +45,8 @@ By default, Puma supports one release version, the latest release. That means if
 When a new major (and sometimes minor) version is released, Puma maintainers will try to preserve the status of the old version via branches and/or tags. Puma maintainers can choose to backport fixes to older versions and cut a release of older versions, but this behavior should not be assumed.
 
 If a bug report cannot be reproduced with the latest Puma version, it may be closed.
+
+Security fixes follow a separate policy; see [SECURITY.md](../SECURITY.md#supported-versions).
 
 ## Ruby version support policy
 

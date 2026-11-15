@@ -1,4 +1,5 @@
 require_relative "lib/puma/const"
+require_relative "test/gem_manifest"
 
 Gem::Specification.new do |s|
   s.name = "puma"
@@ -15,8 +16,7 @@ Gem::Specification.new do |s|
   s.executables = ["puma", "pumactl"]
   s.extensions = ["ext/puma_http11/extconf.rb"]
   s.add_runtime_dependency "nio4r", "~> 2.0"
-  s.files = `git ls-files -- bin docs lib ext/puma_http11/extconf.rb "ext/puma_http11/*.[ch]"`.split("\n") +
-            %w[History.md LICENSE README.md]
+  s.files = PumaGemManifest.shipped(`git ls-files -z`.split("\0"))
   s.homepage = "https://puma.io"
 
   s.metadata = {
