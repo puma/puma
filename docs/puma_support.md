@@ -8,11 +8,25 @@ This document's purpose is to help users and contributors of this library make f
 
 Puma is a community-run project. "Support" means "what do the maintainers pay attention to and what are they likely to merge", and doesn't mean that we do anything by any particular date, or even at all. We may all jet off to a private island tomorrow and never speak again.
 
-But, if we do decide to keep devoting our free time to open source software, we will **support the environments (combinations of Ruby version, Ruby implementation, Rack version, and operating system) which run on our CI.**
+But, if we do decide to keep devoting our free time to open source software, we will **support the Ruby versions, Ruby implementations, Rack versions, and operating systems which run on our CI**, in any combination, even combinations that CI doesn't run directly.
 
 If you open a PR or bug report for a combination of those factors outside of our CI matrix, we may still accept it if it's a small and low-risk fix.
 
 We may add environments to CI at any time, but we only drop a supported environment in a minor or major release.
+
+## CI matrix
+
+CI aims for the most coverage with the fewest jobs.
+
+Every OS and architecture runs the oldest supported Ruby on its oldest runner image, and the newest Ruby on its newest image.
+
+On x64, a few more jobs fill in the gaps:
+
+- The newest Ubuntu image that can build every supported Ruby runs all of them.
+- The newest Ubuntu image also runs Ruby head with YJIT, plus JRuby and TruffleRuby and their head versions.
+- The newest Windows image also runs the ucrt and mswin builds.
+- The oldest Ubuntu and Windows images also run the oldest Ruby without SSL.
+- The oldest Ubuntu image also runs the oldest Ruby with the oldest supported Rack.
 
 ## Puma release support policy
 
