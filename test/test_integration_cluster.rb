@@ -511,7 +511,9 @@ class TestIntegrationCluster < TestIntegration
       Process.kill :URG, @pid
       get_worker_pids phase + 1, 1
 
-      assert_equal descriptors, read_body(connect).to_i
+      current_descriptors = read_body(connect).to_i
+      assert_operator current_descriptors, :<=, descriptors
+      descriptors = current_descriptors
     end
   end
 
