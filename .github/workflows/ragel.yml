@@ -29,6 +29,7 @@ jobs:
       PUMA_TEST_DEBUG: true
 
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     if: |
       !(   contains(github.event.pull_request.title,  '[ci skip]')
         || contains(github.event.pull_request.title,  '[skip ci]'))
@@ -41,7 +42,7 @@ jobs:
     steps:
       - name: skip duplicate runs
         id: skip
-        uses: fkirc/skip-duplicate-actions@v5.3.2
+        uses: fkirc/skip-duplicate-actions@b974a9395958c231af965b70070979a577efa578 # v5.3.2
         with:
           paths_ignore: '["**.md"]'
           paths: '["ext/**", ".github/workflows/ragel.yml"]'
@@ -50,11 +51,11 @@ jobs:
 
       - name: repo checkout
         if: steps.skip.outputs.should_skip != 'true'
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: load ruby
         if: steps.skip.outputs.should_skip != 'true'
-        uses: ruby/setup-ruby-pkgs@v1
+        uses: ruby/setup-ruby-pkgs@2233d39c1315c667a2970436418b520a6300124e # v1.33.5
         with:
           ruby-version: ${{ matrix.ruby }}
           apt-get: ragel
@@ -75,7 +76,7 @@ jobs:
           fi
 
       - name: save ragel generated files on fail
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ failure() }}
         with:
           name: ${{ matrix.os }}-ragel-generated-files

@@ -18,10 +18,11 @@ jobs:
   release-checks:
     name: Pre-release sanity checks
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     if: startsWith(github.head_ref, 'release-v')
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -127,12 +128,14 @@ jobs:
 
       # ── Check 6: SECURITY.md is updated for major releases ──────────────────
       - name: SECURITY.md updated (major releases only)
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
           minor="${{ steps.rel.outputs.minor }}"
           patch="${{ steps.rel.outputs.patch }}"
           if [ "$minor" = "0" ] && [ "$patch" = "0" ]; then
-            base="origin/${{ github.base_ref }}"
-            git fetch origin "${{ github.base_ref }}" --depth=1
+            base="origin/$BASE_REF"
+            git fetch origin "$BASE_REF" --depth=1
             if ! git diff --name-only "$base...HEAD" | grep -qx "SECURITY.md"; then
               echo "::error file=SECURITY.md::Major release requires updating SECURITY.md"
               exit 1
