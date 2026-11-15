@@ -142,7 +142,7 @@ if ENV['CI']
       retry_cntr = 0
       begin
         summary.append(str)
-      rescue IOError # can't write to file, retry once
+      rescue IOError, Errno::EBADF # can't write to file, retry once
         if retry_cntr == 0
           retry_cntr += 1
           sleep 0.2
@@ -241,7 +241,7 @@ Minitest.after_run do
     out = $debugging_info.join.strip
     unless out.empty?
       dash = "\u2500"
-      wid = ENV['GITHUB_ACTIONS'] ? 88 : 90
+      wid = 91
       txt = " Debugging Info #{dash * 2}".rjust wid, dash
       if ENV['GITHUB_ACTIONS']
         puts "", "##[group]#{txt}", out, dash * wid, '', '::[endgroup]'
