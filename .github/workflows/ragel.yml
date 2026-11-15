@@ -4,13 +4,14 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'ext/**'
+    paths: &ragel_paths
+      - 'ext/puma_http11/*.rl'
+      - 'ext/puma_http11/http11_parser.c'
+      - 'ext/puma_http11/org/jruby/puma/Http11Parser.java'
+      - 'Rakefile'
       - '.github/workflows/ragel.yml'
   pull_request:
-    paths:
-      - 'ext/**'
-      - '.github/workflows/ragel.yml'
+    paths: *ragel_paths
   workflow_dispatch:
 
 concurrency:
@@ -45,7 +46,7 @@ jobs:
         uses: fkirc/skip-duplicate-actions@b974a9395958c231af965b70070979a577efa578 # v5.3.2
         with:
           paths_ignore: '["**.md"]'
-          paths: '["ext/**", ".github/workflows/ragel.yml"]'
+          paths: '["ext/puma_http11/*.rl", "ext/puma_http11/http11_parser.c", "ext/puma_http11/org/jruby/puma/Http11Parser.java", "Rakefile", ".github/workflows/ragel.yml"]'
           concurrent_skipping: 'never'
           skip_after_successful_duplicate: 'true'
 

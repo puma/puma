@@ -8,18 +8,18 @@ on:
     branches:
       - main
       - '*-stable'
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
-      - '.agents/**'
-      - 'benchmarks/**'
+    paths: &turbo_paths
+      - '**/*'
+      - '!**/*.md'
+      - '!docs/**'
+      - '!.agents/**'
+      - '!benchmarks/**'
+      - '!test/**'
+      - '!.github/workflows/*.yml'
+      - '.github/workflows/turbo-rails.yml'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
-      - '.agents/**'
-      - 'benchmarks/**'
+    paths: *turbo_paths
   workflow_dispatch:
 
 concurrency:

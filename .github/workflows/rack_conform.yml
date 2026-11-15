@@ -4,11 +4,15 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
-      - '.agents/**'
-      - 'benchmarks/**'
+    paths:
+      - '**/*'
+      - '!**/*.md'
+      - '!docs/**'
+      - '!.agents/**'
+      - '!benchmarks/**'
+      - '!test/**'
+      - '!.github/workflows/*.yml'
+      - '.github/workflows/rack_conform.yml'
   workflow_dispatch:
 
 concurrency:
