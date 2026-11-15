@@ -1,0 +1,59 @@
+name: FreeBSD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  freebsd:
+    name: freebsd ruby
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: repo checkout
+        uses: actions/checkout@v7
+
+      - name: test
+        uses: vmactions/freebsd-vm@v1
+        with:
+          usesh: true
+          cache-after-prepare: true
+          envs: 'CI PUMA_TEST_DEBUG TESTOPTS MT_CPU RUNNER_TOOL_CACHE GITHUB_ACTIONS'
+          prepare: |
+            pkg install -y git devel/ragel devel/ruby-gems gmake
+          run: |
+            set -e
+            # Puma's suite opens a lot of sockets; CONTRIBUTING.md recommends
+            # a file limit of 4000 or more.
+            ulimit -n 4000 || true
+            ulimit -n
+            ruby -v
+            ragel --version | head -1
+            gem install --no-document bundler
+            bundle install --jobs 4
+            bundle exec rake compile
+            rc=0
+            test/runner --verbose || rc=$?
+            # Integration servers are spawned with IO.popen and, with the
+            # default merge_err: false, inherit this session's stderr (see
+            # test/helpers/integration.rb). One that outlives the suite holds
+            # that descriptor open, the ssh command never returns, and the job
+            # then idles until it times out with every test already passed.
+            pkill -f 'bin/puma' 2>/dev/null || true
+            exit $rc
+        env:
+          CI: true
+          GITHUB_ACTIONS: true
+          PUMA_TEST_DEBUG: true
+          TESTOPTS: -v
+          MT_CPU: 2
