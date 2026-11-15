@@ -90,5 +90,17 @@ class TestMiniSSL < PumaTest
 
       assert_raises(Errno::ENOENT) { ctx.key_password }
     end
+
+    def test_engine_read_raises_on_non_tls_bytes
+      ctx = Puma::MiniSSL::Context.new
+      ctx.key  = File.expand_path "ssl/puma_keypair.pem", __dir__
+      ctx.cert = File.expand_path "ssl/cert_puma.pem", __dir__
+      ctx.verify_mode = Puma::MiniSSL::VERIFY_NONE
+
+      engine = Puma::MiniSSL::Engine.server Puma::MiniSSL::SSLContext.new(ctx)
+      engine.inject("A" * 100 + "B" * 16_610)
+
+      assert_raises(Puma::MiniSSL::SSLError) { engine.read }
+    end
   end
 end if ::Puma::HAS_SSL
