@@ -5,18 +5,17 @@ on:
     branches:
       - main
       - '*-stable'
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
-      - '.agents/**'
-      - 'benchmarks/**'
+    paths: &test_paths
+      - '**/*'
+      - '!**/*.md'
+      - '!docs/**'
+      - '!.agents/**'
+      - '!benchmarks/**'
+      - '!.github/workflows/*.yml'
+      - '.github/workflows/tests.yml'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
-      - '.agents/**'
-      - 'benchmarks/**'
+    paths: *test_paths
   workflow_dispatch:
 
 concurrency:
