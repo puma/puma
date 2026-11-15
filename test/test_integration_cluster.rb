@@ -149,6 +149,28 @@ class TestIntegrationCluster < TestIntegration
     wait_server 15
   end
 
+  def test_int_runs_after_stopped_before_waiting_for_hook_owned_child
+    skip_unless_signal_exist? :INT
+    cli_server "-w #{workers} test/rackup/hello.ru", config: <<~CONFIG
+      after_booted do
+        $helper = Process.spawn('sleep', '300', pgroup: true)
+        puts 'helper started'
+      end
+
+      after_stopped do
+        Process.kill(:TERM, $helper)
+        Process.wait($helper)
+        puts 'helper reaped'
+      end
+    CONFIG
+
+    wait_for_server_to_include 'helper started'
+    _, status = stop_server signal: :INT
+
+    assert_equal 0, status.exitstatus
+    assert_includes @server_log + @server_line_buffer + @server.read, 'helper reaped'
+  end
+
   def test_term_worker_clean_exit
     cli_server "-w #{workers} test/rackup/hello.ru"
 
