@@ -24,9 +24,10 @@ jobs:
   rubocop:
     name: RuboCop linting
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: ruby/setup-ruby@v1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ruby/setup-ruby@b3aaceaef7e0ee231b499e7b5f49c03fc1d32199 # v1.338.0
         with:
           ruby-version: 3.1
           bundler-cache: true # `bundle install` and cache
@@ -43,6 +44,7 @@ jobs:
       PUMA_NO_RUBOCOP: true
 
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     if: |
       github.event.pull_request.draft != true
       && !(   contains(github.event.pull_request.title,  '[ci skip]')
@@ -78,7 +80,7 @@ jobs:
 
     steps:
       - name: repo checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Compile Puma without SSL support
         if: matrix.no-ssl == ' no SSL'
@@ -90,7 +92,7 @@ jobs:
         run: echo 'PUMA_CI_RACK=${{ matrix.rack-v }}' >> "$GITHUB_ENV"
 
       - name: load ruby
-        uses: ruby/setup-ruby-pkgs@v1
+        uses: ruby/setup-ruby-pkgs@2233d39c1315c667a2970436418b520a6300124e # v1.33.5
         with:
           # see https://github.com/ruby/setup-ruby/blob/master/action.yml for info
           ruby-version: ${{ matrix.ruby }}
@@ -127,7 +129,7 @@ jobs:
 
   test_non_mri:
     name: >-
-      ${{ matrix.os }} ${{ matrix.ruby }}${{ matrix.no-ssl }}
+      ${{ matrix.os }} ${{ matrix.ruby }}
     env:
       CI: true
       PUMA_TEST_DEBUG: true
@@ -135,6 +137,7 @@ jobs:
       PUMA_NO_RUBOCOP: true
 
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     if: |
       github.event.pull_request.draft != true
       && !(   contains(github.event.pull_request.title,  '[ci skip]')
@@ -150,10 +153,10 @@ jobs:
 
     steps:
       - name: repo checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: load ruby
-        uses: ruby/setup-ruby-pkgs@v1
+        uses: ruby/setup-ruby-pkgs@2233d39c1315c667a2970436418b520a6300124e # v1.33.5
         with:
           # see https://github.com/ruby/setup-ruby/blob/master/action.yml for info
           ruby-version: ${{ matrix.ruby }}
@@ -161,11 +164,6 @@ jobs:
           bundler: default
           bundler-cache: true
         timeout-minutes: 10
-
-      - name: Compile Puma without SSL support
-        if: matrix.no-ssl == ' no SSL'
-        shell: bash
-        run: echo 'PUMA_DISABLE_SSL=true' >> "$GITHUB_ENV"
 
       - name: set WERRORFLAG
         shell: bash
