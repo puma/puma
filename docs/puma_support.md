@@ -20,6 +20,8 @@ CI aims for the most coverage with the fewest jobs.
 
 Every OS and architecture runs the oldest supported Ruby on its oldest runner image, and the newest Ruby on its newest image.
 
+"Runner images" means every standard GitHub-hosted runner image currently listed in [GitHub's runner docs](https://docs.github.com/en/actions/reference/runners/github-hosted-runners#supported-runners-and-hardware-resources), not only the images CI already uses.
+
 On x64, a few more jobs fill in the gaps:
 
 - The newest Ubuntu image that can build every supported Ruby runs all of them.
