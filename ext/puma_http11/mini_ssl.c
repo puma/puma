@@ -607,9 +607,9 @@ VALUE engine_read(VALUE self) {
     return rb_str_new(buf, bytes);
   }
 
-  if(SSL_want_read(conn->ssl)) return Qnil;
-
   error = SSL_get_error(conn->ssl, bytes);
+
+  if(error == SSL_ERROR_WANT_READ) return Qnil;
 
   if(error == SSL_ERROR_ZERO_RETURN) {
     rb_eof_error();
