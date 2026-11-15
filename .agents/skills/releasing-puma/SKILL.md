@@ -51,22 +51,13 @@ On the release branch, one commit titled `Release vX.Y.Z` that changes only `lib
 
 Done when the checks in `.github/workflows/release-checks.yml` pass against your branch: version matches the branch name, codename isn't a placeholder, `## X.Y.Z / YYYY-MM-DD` heading exists, and every `[#NNNN]` the section uses has a link definition.
 
-## 5. Build and verify gems
+## 5. Smoke-build the gems
 
-From a clean worktree at the release commit:
-
-```sh
-bundle exec rake build
-touch ext/puma_http11/http11_parser.c ext/puma_http11/org/jruby/puma/Http11Parser.java
-mise exec ruby@jruby -- bundle exec rake java gem
-.agents/skills/releasing-puma/scripts/check-gems release-vX.Y.Z pkg/puma-X.Y.Z.gem pkg/puma-X.Y.Z-java.gem
-```
-
-The `touch` keeps rake from regenerating the committed Ragel output, which a fresh checkout's timestamps would otherwise trigger.
+`.agents/skills/releasing-puma/scripts/build-gems release-vX.Y.Z` clones the ref into `tmp/release/build-<sha>/`, builds both gems in pinned Docker images, runs `check-gems`, and writes `pkg/SHA256SUMS`. It needs only Docker and git. Builds are byte-identical on any machine, so equal SHA256s mean equal gems.
 
 `check-gems` checks each gem's name, version and platform, checks its file list against `test/gem_manifest.rb` at the ref, compares every packaged file byte-for-byte against the git ref, and prints SHA256s. The compiled JRuby jar is the only file it doesn't compare.
 
-Done when both gems verify against the release commit. Build again if the commit changes.
+These gems are a smoke test only. The gems you publish are rebuilt from the signed tag in step 7.
 
 ## 6. CI
 
@@ -85,14 +76,15 @@ Done when every job has finished (the maintainer may waive slow ones) and every 
 
 In this order, 8.x before 7.x when releasing several series. Each step can be rerun.
 
-1. **go**: merge the PR. Then check that `git rev-parse origin/X-Y-stable^{tree}` equals the release branch's tree.
-2. **go**: `git tag -s vX.Y.Z -m "Release vX.Y.Z" <stable tip>`, `git tag -v vX.Y.Z`, push the tag.
-3. **go**: the maintainer pushes the gems with `.agents/skills/releasing-puma/scripts/push-gems`. It reads the API key from `GEM_HOST_API_KEY`, checks it against RubyGems, then asks for one OTP and pushes every gem with it. Ask the maintainer where their RubyGems API key is stored, then hand them one command that sets `GEM_HOST_API_KEY` from that source for this run only, e.g. `env GEM_HOST_API_KEY=(<read secret>) .agents/skills/releasing-puma/scripts/push-gems pkg/puma-X.Y.Z.gem pkg/puma-X.Y.Z-java.gem`. If the key check fails with a 401, the key is revoked; the maintainer makes a new one scoped to push `puma`. If RubyGems already lists a gem, its SHA256 must match yours; leave it off the command.
-4. Write the release notes: `.agents/skills/releasing-puma/scripts/release-notes X.Y.Z History.md > tmp/release/notes-X.Y.Z.md` expands `[#NNNN]` references into full links.
-5. **go**: publish the GitHub release for `vX.Y.Z` (the draft, or `https://github.com/puma/puma/releases/new?tag=vX.Y.Z&title=vX.Y.Z`) with the notes and both gems attached. **Uncheck "Set as the latest release"** when an older series is released alongside a newer one.
-6. Verify: `https://rubygems.org/api/v1/versions/puma.json` lists both platforms with your SHA256s, and the GitHub release assets match them.
+1. **go**: merge the PR.
+2. **go**: `git tag -s vX.Y.Z -m "Release vX.Y.Z" <merge commit>`, `git tag -v vX.Y.Z`, push the tag.
+3. `.agents/skills/releasing-puma/scripts/build-gems vX.Y.Z`. The `build-gems` workflow builds the same tag on push; its job summary's `SHA256SUMS` must equal yours.
+4. **go**: the maintainer runs `.agents/skills/releasing-puma/scripts/push-gems vX.Y.Z GEM...`. It refuses unless the tag is on `origin`, `git tag -v` passes and every gem passes `check-gems` against the tag. Then it checks the API key from `GEM_HOST_API_KEY` against RubyGems, asks for one OTP and pushes every gem with it. Ask the maintainer where their RubyGems API key is stored, then hand them one command that sets `GEM_HOST_API_KEY` from that source for this run only, e.g. `env GEM_HOST_API_KEY=(<read secret>) .agents/skills/releasing-puma/scripts/push-gems vX.Y.Z tmp/release/build-<sha>/pkg/*.gem`. If the key check fails with a 401, the key is revoked; the maintainer makes a new one scoped to push `puma`. If RubyGems already lists a gem, its SHA256 must match yours; leave it off the command.
+5. Write the release notes: `.agents/skills/releasing-puma/scripts/release-notes X.Y.Z History.md > tmp/release/notes-X.Y.Z.md` expands `[#NNNN]` references into full links.
+6. **go**: publish the GitHub release for `vX.Y.Z` (the draft, or `https://github.com/puma/puma/releases/new?tag=vX.Y.Z&title=vX.Y.Z`) with the notes and both gems attached. **Uncheck "Set as the latest release"** when an older series is released alongside a newer one.
+7. Verify: `https://rubygems.org/api/v1/versions/puma.json` lists both platforms with your SHA256s, and the GitHub release assets match them.
 
-Done when step 6 passes for every series.
+Done when step 7 passes for every series.
 
 ## 8. Sync main (patch releases)
 

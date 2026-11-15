@@ -116,10 +116,6 @@ jobs:
         shell: bash
         run: echo 'PUMA_MAKE_WARNINGS_INTO_ERRORS=true' >> "$GITHUB_ENV"
 
-      - name: mark committed Ragel output as up to date
-        shell: bash
-        run: touch ext/puma_http11/http11_parser.c ext/puma_http11/org/jruby/puma/Http11Parser.java
-
       - name: compile
         run: bundle exec rake compile
 
@@ -173,10 +169,6 @@ jobs:
       - name: set WERRORFLAG
         shell: bash
         run: echo 'PUMA_MAKE_WARNINGS_INTO_ERRORS=true' >> "$GITHUB_ENV"
-
-      - name: mark committed Ragel output as up to date
-        shell: bash
-        run: touch ext/puma_http11/http11_parser.c ext/puma_http11/org/jruby/puma/Http11Parser.java
 
       - name: compile
         run: bundle exec rake compile

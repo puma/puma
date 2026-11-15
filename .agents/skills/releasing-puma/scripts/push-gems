@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-[ $# -gt 0 ] || { echo "usage: GEM_HOST_API_KEY=... push-gems GEM..." >&2; exit 1; }
+[ $# -gt 1 ] || { echo "usage: GEM_HOST_API_KEY=... push-gems TAG GEM..." >&2; exit 1; }
+tag=$1; shift
 [ -n "${GEM_HOST_API_KEY:-}" ] || { echo "GEM_HOST_API_KEY is not set" >&2; exit 1; }
-for gem in "$@"; do
-  [ -f "$gem" ] || { echo "no such gem: $gem" >&2; exit 1; }
-done
+
+remote=$(git ls-remote --tags origin "refs/tags/$tag" | cut -f1)
+[ -n "$remote" ] && [ "$remote" = "$(git rev-parse "refs/tags/$tag")" ] ||
+  { echo "$tag is missing on origin or differs from the local tag" >&2; exit 1; }
+git tag -v "$tag" >/dev/null 2>&1 || { echo "$tag is not a signed tag with a valid signature" >&2; exit 1; }
+"$(dirname "$0")/check-gems" "$tag" "$@"
 
 status=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: $GEM_HOST_API_KEY" https://rubygems.org/api/v1/gems.json)
 [ "$status" = 200 ] || { echo "RubyGems rejected GEM_HOST_API_KEY (HTTP $status)" >&2; exit 1; }

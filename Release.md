@@ -17,11 +17,9 @@ Releasing Puma requires the following steps:
 
 Once the PR is merged:
 
-1. Ensure the release tag points at `HEAD`, then push that tag to GitHub.
-1. Build the CRuby gem with `bundle exec rake build`.
-1. Build the JRuby gem with `touch ext/puma_http11/http11_parser.c ext/puma_http11/org/jruby/puma/Http11Parser.java && bundle exec rake java gem` under JRuby (with mise: `mise exec ruby@jruby -- ...`). The `touch` keeps rake from regenerating the committed Ragel output.
-1. Verify both gems with `.agents/skills/releasing-puma/scripts/check-gems vX.Y.Z pkg/puma-<version>.gem pkg/puma-<version>-java.gem`.
-1. `gem push` both artifacts to rubygems.org. This requires manual 2FA.
+1. Ensure the release tag points at `HEAD`, then sign it and push it to GitHub.
+1. Build both gems from the tag with `.agents/skills/releasing-puma/scripts/build-gems vX.Y.Z`. It needs only Docker and git, and builds byte-identical gems on any machine. The `build-gems` workflow runs it on every tag push, so compare your `SHA256SUMS` with the workflow's.
+1. Push both gems with `.agents/skills/releasing-puma/scripts/push-gems vX.Y.Z <gems>`. It refuses gems that don't match a signed tag on GitHub, then asks for one OTP.
 
 Once both gems have been pushed to rubygems.org:
 
