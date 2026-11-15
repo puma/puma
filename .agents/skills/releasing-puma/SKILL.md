@@ -87,13 +87,12 @@ In this order, 8.x before 7.x when releasing several series. Each step can be re
 
 1. **go**: merge the PR. Then check that `git rev-parse origin/X-Y-stable^{tree}` equals the release branch's tree.
 2. **go**: `git tag -s vX.Y.Z -m "Release vX.Y.Z" <stable tip>`, `git tag -v vX.Y.Z`, push the tag.
-3. Preflight the RubyGems key: `curl -s -o /dev/null -w '%{http_code}' -H "Authorization: $GEM_HOST_API_KEY" https://rubygems.org/api/v1/gems.json` must print `200`. A 401 means the key is revoked; the maintainer makes a new one scoped to push `puma`.
-4. **go**: the maintainer runs `gem push pkg/puma-X.Y.Z.gem --otp <code>` and the same for the `-java` gem. If RubyGems already lists a gem, its SHA256 must match yours; skip it.
-5. Write the release notes: `.agents/skills/releasing-puma/scripts/release-notes X.Y.Z History.md > tmp/release/notes-X.Y.Z.md` expands `[#NNNN]` references into full links.
-6. **go**: publish the GitHub release for `vX.Y.Z` (the draft, or `https://github.com/puma/puma/releases/new?tag=vX.Y.Z&title=vX.Y.Z`) with the notes and both gems attached. **Uncheck "Set as the latest release"** when an older series is released alongside a newer one.
-7. Verify: `https://rubygems.org/api/v1/versions/puma.json` lists both platforms with your SHA256s, and the GitHub release assets match them.
+3. **go**: the maintainer pushes the gems with `.agents/skills/releasing-puma/scripts/push-gems`. It reads the API key from `GEM_HOST_API_KEY`, checks it against RubyGems, then asks for one OTP and pushes every gem with it. Ask the maintainer where their RubyGems API key is stored, then hand them one command that sets `GEM_HOST_API_KEY` from that source for this run only, e.g. `env GEM_HOST_API_KEY=(<read secret>) .agents/skills/releasing-puma/scripts/push-gems pkg/puma-X.Y.Z.gem pkg/puma-X.Y.Z-java.gem`. If the key check fails with a 401, the key is revoked; the maintainer makes a new one scoped to push `puma`. If RubyGems already lists a gem, its SHA256 must match yours; leave it off the command.
+4. Write the release notes: `.agents/skills/releasing-puma/scripts/release-notes X.Y.Z History.md > tmp/release/notes-X.Y.Z.md` expands `[#NNNN]` references into full links.
+5. **go**: publish the GitHub release for `vX.Y.Z` (the draft, or `https://github.com/puma/puma/releases/new?tag=vX.Y.Z&title=vX.Y.Z`) with the notes and both gems attached. **Uncheck "Set as the latest release"** when an older series is released alongside a newer one.
+6. Verify: `https://rubygems.org/api/v1/versions/puma.json` lists both platforms with your SHA256s, and the GitHub release assets match them.
 
-Done when step 7 passes for every series.
+Done when step 6 passes for every series.
 
 ## 8. Sync main (patch releases)
 
