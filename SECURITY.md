@@ -6,6 +6,8 @@ Thank you for helping to keep the internet secure. Please read this before makin
 
 We support the last two major versions and their latest minor.
 
+For non-security bugs, see the [Puma release support policy](docs/puma_support.md#puma-release-support-policy).
+
 | Version       | Supported  |
 | :------------ | :--------: |
 | Latest release in 8.x | ✅ |

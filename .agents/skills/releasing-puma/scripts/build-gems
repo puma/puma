@@ -13,6 +13,7 @@ src=$root/tmp/release/build-$sha
 rm -rf "$src"
 git clone -q --no-checkout "$root" "$src"
 git -C "$src" checkout -q --detach "$sha"
+touch "$src/ext/puma_http11/http11_parser.c" "$src/ext/puma_http11/org/jruby/puma/Http11Parser.java"
 
 run() {
   docker run --rm -v "$src:/puma" -v "$scripts:/scripts:ro" -w /puma \
