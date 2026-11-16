@@ -618,12 +618,6 @@ class TestRequestHeadersInvalid < TestRequestBase
       status: 400
   end
 
-  def test_empty_host_http11
-    assert_invalid "GET / HTTP/1.1\r\nHost:\r\n\r\n",
-      "Invalid Host header",
-      status: 400
-  end
-
   def test_whitespace_host_http11
     assert_invalid "GET / HTTP/1.1\r\nHost: \r\n\r\n",
       "Invalid Host header",

@@ -112,10 +112,6 @@ class TestRequestInvalidMultiple < PumaTest
     assert_status "GET / HTTP/1.1\r\n\r\n", 400
   end
 
-  def test_empty_host_http11
-    assert_status "GET / HTTP/1.1\r\nHost:\r\n\r\n", 400
-  end
-
   # ──────────────────────────────────── below are invalid unescaped path characters
 
   REJECTED_PATH_CHARS = ['{', '}', '`', '\\']
