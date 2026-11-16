@@ -1095,6 +1095,22 @@ class TestPumaServer < PumaTest
     assert_equal "HTTP/1.0 200 OK\r\ncontent-type: plain/text\r\ncontent-length: 5\r\n\r\nhello", response
   end
 
+  def test_http_10_keep_alive_with_unmeasurable_body
+    server_run { [200, {"Content-Type" => "plain/text"}, ["hello ", "world\n"].each] }
+
+    socket = send_http "GET / HTTP/1.0\r\nConnection: Keep-Alive\r\n\r\n"
+    response = socket.read_response
+
+    assert_equal "HTTP/1.0 200 OK", response.status
+    assert_equal ["content-type: plain/text"], response.headers
+    assert_equal "hello world\n", response.body
+
+    # Without Content-Length or chunked encoding, the body is delimited by
+    # closing the connection, so the server must not keep it alive.
+    assert socket.wait_readable(1), "server left the connection open after an unframed response"
+    assert_nil socket.read_nonblock(1, exception: false)
+  end
+
   def test_http_10_keep_alive_without_body
     server_run { [204, {}, []] }
 

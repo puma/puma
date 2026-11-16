@@ -208,6 +208,19 @@ module Puma
       end
 
       line_ending = LINE_END
+      http_11 = env[SERVER_PROTOCOL] == HTTP_11
+
+      # RFC 9112 section 6.3: when a response has neither Content-Length nor
+      # Transfer-Encoding, the body ends when the connection is closed. HTTP/1.0
+      # does not support chunked encoding, so an unmeasurable body requires
+      # closing the connection.
+      if keep_alive && !resp_info[:no_body] && !response_hijack && !content_length &&
+          !resp_info[:allow_chunked] && !resp_info[:transfer_encoding]
+        keep_alive = false
+        resp_info[:keep_alive] = false
+      end
+
+      append_connection_header io_buffer, http_11, keep_alive
 
       cork_socket socket
 
@@ -537,18 +550,22 @@ module Puma
         end
       end
 
-      # HTTP/1.1 & 1.0 assume different defaults:
-      # - HTTP 1.0 assumes the connection will be closed if not specified
-      # - HTTP 1.1 assumes the connection will be kept alive if not specified.
-      # Only set the header if we're doing something which is not the default
-      # for this protocol version
-      if http_11
-        io_buffer << CONNECTION_CLOSE if !resp_info[:keep_alive]
-      else
-        io_buffer << CONNECTION_KEEP_ALIVE if resp_info[:keep_alive]
-      end
       resp_info
     end
     private :str_headers
+
+    # HTTP/1.1 & 1.0 assume different defaults:
+    # - HTTP 1.0 assumes the connection will be closed if not specified
+    # - HTTP 1.1 assumes the connection will be kept alive if not specified.
+    # Only set the header if we're doing something which is not the default
+    # for this protocol version
+    def append_connection_header(io_buffer, http_11, keep_alive)
+      if http_11
+        io_buffer << CONNECTION_CLOSE if !keep_alive
+      else
+        io_buffer << CONNECTION_KEEP_ALIVE if keep_alive
+      end
+    end
+    private :append_connection_header
   end
 end
