@@ -1,3 +1,11 @@
+## 8.1.2 / 2026-11-17
+
+* Security
+  * Close a TLS connection when OpenSSL reports a fatal error reading it, rather than buffering everything the client sends until `first_data_timeout`. ([GHSA-4v6q-hvv7-49h9](https://github.com/puma/puma/security/advisories/GHSA-4v6q-hvv7-49h9))
+  * On JRuby, stop request headers such as `Query-String` and `Request-Path` from changing `QUERY_STRING`, `PATH_INFO` and the other env keys that come from the request line. ([GHSA-rhww-p99c-hgj9](https://github.com/puma/puma/security/advisories/GHSA-rhww-p99c-hgj9))
+
+  CVE IDs have been requested for these advisories and will be added here once assigned.
+
 ## 8.1.1 / 2026-11-15
 
 * Bugfixes
@@ -52,6 +60,14 @@
   * Add a threat model to `SECURITY.md` ([#4064])
   * Fix typos and grammar in README, CONTRIBUTING and docs ([#4035], [#3974])
   * Improve DSL documentation, including `queue_requests` ([#3966], [#3965])
+
+## 8.0.4 / 2026-11-17
+
+* Security
+  * Close a TLS connection when OpenSSL reports a fatal error reading it, rather than buffering everything the client sends until `first_data_timeout`. ([GHSA-4v6q-hvv7-49h9](https://github.com/puma/puma/security/advisories/GHSA-4v6q-hvv7-49h9))
+  * On JRuby, stop request headers such as `Query-String` and `Request-Path` from changing `QUERY_STRING`, `PATH_INFO` and the other env keys that come from the request line. ([GHSA-rhww-p99c-hgj9](https://github.com/puma/puma/security/advisories/GHSA-rhww-p99c-hgj9))
+
+  CVE IDs have been requested for these advisories and will be added here once assigned.
 
 ## 8.0.3 / 2026-11-13
 
@@ -117,6 +133,13 @@
 
 * Breaking changes
   * Default production bind address changed from `0.0.0.0` to `::` (IPv6) when a non-loopback IPv6 interface is available; falls back to `0.0.0.0` if IPv6 is unavailable ([#3847])
+
+## 7.2.3 / 2026-11-17
+
+* Security
+  * Close a TLS connection when OpenSSL reports a fatal error reading it, rather than buffering everything the client sends until `first_data_timeout`. ([GHSA-4v6q-hvv7-49h9](https://github.com/puma/puma/security/advisories/GHSA-4v6q-hvv7-49h9))
+
+  A CVE ID has been requested for this advisory and will be added here once assigned.
 
 ## 7.2.2 / 2026-11-13
 
