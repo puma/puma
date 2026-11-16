@@ -511,6 +511,37 @@ class TestRequestHeadersValid < TestRequestBase
     assert_instance_of Puma::NullIO, @client.body
   end
 
+  def test_absolute_form_target_overrides_host_header
+    request = <<~REQ.gsub("\n", "\r\n")
+      GET http://a.example/path?x=1 HTTP/1.1
+      Host: b.example
+
+    REQ
+
+    create_client request
+
+    assert_equal 'a.example', @client.env[SERVER_NAME]
+    assert_equal '80', @client.env[SERVER_PORT]
+    assert_equal 'a.example', @client.env['HTTP_HOST']
+    assert_equal '/path', @client.env[REQUEST_PATH]
+    assert_equal 'x=1', @client.env[QUERY_STRING]
+  end
+
+  def test_absolute_form_target_with_port
+    request = <<~REQ.gsub("\n", "\r\n")
+      GET http://a.example:8080/path HTTP/1.1
+      Host: b.example
+
+    REQ
+
+    create_client request
+
+    assert_equal 'a.example', @client.env[SERVER_NAME]
+    assert_equal '8080', @client.env[SERVER_PORT]
+    assert_equal 'a.example:8080', @client.env['HTTP_HOST']
+    assert_equal '/path', @client.env[REQUEST_PATH]
+  end
+
   def test_respect_x_forwarded_proto
     request = <<~REQ.gsub("\n", "\r\n")
       GET / HTTP/1.0
