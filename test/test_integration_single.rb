@@ -2,6 +2,7 @@
 
 require_relative "helper"
 require_relative "helpers/integration"
+require_relative "helpers/idle_timeout"
 
 class TestIntegrationSingle < TestIntegration
   parallelize_me!
@@ -262,6 +263,10 @@ class TestIntegrationSingle < TestIntegration
     cli_pumactl 'stop'
     assert wait_for_server_to_include('Goodbye!')
     wait_server
+  end
+
+  def test_idle_timeout_with_active_requests
+    assert_idle_timeout_with_active_requests(1)
   end
 
   def test_idle_timeout
