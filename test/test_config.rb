@@ -1414,5 +1414,7 @@ class TestConfigFileWithFakeEnv < PumaTest
 
     assert_equal 5, conf.options[:min_threads]
     assert_equal 5, conf.options[:max_threads]
+  ensure
+    Puma::Plugins.instance_variable_get(:@plugins).delete("test_config_preserve")
   end
 end
