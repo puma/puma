@@ -1,3 +1,10 @@
+## 7.2.3 / 2026-11-17
+
+* Security
+  * Close a TLS connection when OpenSSL reports a fatal error reading it, rather than buffering everything the client sends until `first_data_timeout`. ([GHSA-4v6q-hvv7-49h9](https://github.com/puma/puma/security/advisories/GHSA-4v6q-hvv7-49h9))
+
+  A CVE ID has been requested for this advisory and will be added here once assigned.
+
 ## 7.2.2 / 2026-11-13
 
 * Security
