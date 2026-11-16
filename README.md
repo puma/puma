@@ -100,6 +100,7 @@ and the loaded configuration will be printed as part of the boot process.
 * [Configuration](docs/configuration.md)
 * [Cluster mode](docs/cluster_mode.md)
 * [Binding TCP / Sockets and SSL](docs/binding.md)
+* [HTTPS behind a reverse proxy or in Puma](docs/ssl.md)
 * [Control/Status Server and stats](docs/control_server.md)
 * [Restart](docs/restart.md)
 * [Signals](docs/signals.md)
