@@ -1296,6 +1296,22 @@ class TestPumaServer < PumaTest
     assert_equal "HTTP/1.1 400 Bad Request\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", response
   end
 
+  def test_chunked_request_invalid_size_line_ends_connection
+    paths = []
+    server_run(environment: :production) { |env|
+      paths << env['PATH_INFO']
+      env['rack.input'].read
+      [200, {}, [""]]
+    }
+
+    response = send_http_read_all "PUT / HTTP/1.1\r\nHost: test.com\r\nTransfer-Encoding: chunked\r\n\r\n" \
+      "0 \r\n\r\nGET /next HTTP/1.1\r\nHost: test.com\r\n\r\n"
+
+    assert_match %r{\AHTTP/1\.1 400 }, response
+    refute_match %r{HTTP/1\.1 200 }, response
+    assert_empty paths
+  end
+
   def test_chunked_request_invalid_extension_header_length_split
     body = nil
     completed_loops = 0

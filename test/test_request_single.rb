@@ -666,7 +666,7 @@ class TestRequestContentLengthInvalid < TestRequestBase
   end
 end
 
-# Tests invalid chunked requests
+# Tests valid chunk-size lines
 class TestRequestChunkedValid < TestRequestBase
 
   # https://httpwg.org/specs/rfc9112.html#chunked.extension
@@ -693,6 +693,7 @@ class TestRequestChunkedValid < TestRequestBase
   end
 end
 
+# Tests invalid chunked requests
 class TestRequestChunkedInvalid < TestRequestBase
 
   def test_chunked_size_bad_characters_1
@@ -761,6 +762,29 @@ class TestRequestChunkedInvalid < TestRequestBase
 
     assert_invalid "#{GET_PREFIX}#{te}\r\n\r\n#{chunked}",
       "Chunk size cannot be empty or nil"
+  end
+
+  # https://httpwg.org/specs/rfc9112.html#chunked.extension
+  {
+    trailing_whitespace: ["0 \r\n\r\n", "Invalid chunk size: '0 '"],
+    leading_whitespace: [" 1\r\nA\r\n0\r\n\r\n", "Invalid chunk size: ' 1'"],
+    too_large: ["10000000000000000\r\nA\r\n0\r\n\r\n", "Invalid chunk size: '10000000000000000'"],
+    empty_extension: ["1;\r\nA\r\n0\r\n\r\n", "Invalid chunk extension: ';'"],
+    extension_name_not_token: ["1;bad[=x\r\nA\r\n0\r\n\r\n", "Invalid chunk extension: ';bad[=x'"],
+    extension_quoted_value_unterminated: ["1;a=\"\r\nA\r\n0\r\n\r\n", "Invalid chunk extension: ';a=\"'"],
+    extension_text_after_quoted_value: ["1;a=\"x\"y\r\nA\r\n0\r\n\r\n", "Invalid chunk extension: ';a=\"x\"y'"],
+    bare_lf: ["1;\nA\r\n0\r\n\r\n", "Chunk size line ends with a bare LF"],
+  }.each do |name, (chunked, msg)|
+    define_method("test_chunked_size_line_#{name}") do
+      assert_invalid "#{GET_PREFIX}Transfer-Encoding: chunked\r\n\r\n#{chunked}", msg
+    end
+  end
+
+  def test_chunked_extensions_count_toward_excess
+    chunked = "1;#{'a' * 1_000}\r\nA\r\n" * 17
+
+    assert_invalid "#{GET_PREFIX}Transfer-Encoding: chunked\r\n\r\n#{chunked}0\r\n\r\n",
+      "Maximum chunk excess detected"
   end
 end
 

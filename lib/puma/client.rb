@@ -57,8 +57,15 @@ module Puma
     # this tests all values but the last, which must be chunked
     ALLOWED_TRANSFER_ENCODING = %w[compress deflate gzip].freeze
 
-    # chunked body validation
-    CHUNK_SIZE_VALID = /\A\h+\z/.freeze
+    # chunked body validation, at most 15 hex digits so the size fits in 64 bits
+    CHUNK_SIZE_VALID = /\A\h{1,15}\z/.freeze
+
+    # https://httpwg.org/specs/rfc9112.html#chunked.extension, without the
+    # leading ';'. Puma ignores extensions, but rejects malformed ones.
+    chunk_ext_token = "[!#$%&'*+\\-.^_`|~0-9A-Za-z]+"
+    chunk_ext_quoted = '"(?:[^"\\\\\x00-\x08\x0A-\x1F\x7F]|\\\\[^\x00-\x08\x0A-\x1F\x7F])*"'
+    chunk_ext = "#{chunk_ext_token}(?:=(?:#{chunk_ext_token}|#{chunk_ext_quoted}))?"
+    CHUNK_EXTENSIONS_VALID = /\A#{chunk_ext}(?:;#{chunk_ext})*\z/.freeze
     CHUNK_VALID_ENDING = Const::LINE_END
     CHUNK_VALID_ENDING_SIZE = CHUNK_VALID_ENDING.bytesize
 
@@ -767,14 +774,16 @@ module Puma
       while !io.eof?
         line = io.gets
         if line.end_with?(CHUNK_VALID_ENDING)
-          # Puma doesn't process chunk extensions, but should parse if they're
-          # present, which is the reason for the semicolon regex
-          chunk_hex = line.strip[/\A[^;]+/]
+          chunk_hex, extensions = line.chomp(CHUNK_VALID_ENDING).split(';', 2)
           unless CHUNK_SIZE_VALID.match? chunk_hex
             err_msg = chunk_hex && !chunk_hex.empty? ?
               "Invalid chunk size: '#{chunk_hex}'" :
               "Chunk size cannot be empty or nil"
             raise HttpParserError, err_msg
+          end
+
+          if extensions && !CHUNK_EXTENSIONS_VALID.match?(extensions)
+            raise HttpParserError, "Invalid chunk extension: ';#{extensions}'"
           end
 
           len = chunk_hex.to_i(16)
@@ -825,6 +834,10 @@ module Puma
             @partial_part_left = len - part.size
           end
         else
+          # io.gets only returns a line without a CRLF ending when it ends in
+          # a bare LF, or when the rest of the line hasn't arrived yet
+          raise HttpParserError, "Chunk size line ends with a bare LF" if line.end_with?("\n")
+
           if @prev_chunk.size + line.size >= MAX_CHUNK_HEADER_SIZE
             raise HttpParserError, "maximum size of chunk header exceeded"
           end
