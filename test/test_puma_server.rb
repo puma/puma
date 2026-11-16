@@ -1131,6 +1131,46 @@ class TestPumaServer < PumaTest
     assert_equal '/upload', seen.pop(true)['PATH_INFO']
   end
 
+  def test_Expect_100_continue_callback_sees_normalized_env
+    seen = Queue.new
+    keys = %w[PATH_INFO QUERY_STRING REMOTE_ADDR SERVER_NAME SERVER_PORT rack.url_scheme puma.socket]
+    callback = ->(env) { seen << env.slice(*keys); false }
+    server_run(continue_callback: callback) { [200, {}, [""]] }
+
+    send_http_read_all "GET http://test.com:8080/upload?a=1 HTTP/1.1\r\nHost: test.com:8080\r\nConnection: close\r\nExpect: 100-continue\r\n\r\n"
+
+    env = seen.pop(true)
+    assert_equal '/upload', env['PATH_INFO']
+    assert_equal 'a=1', env['QUERY_STRING']
+    assert_equal '127.0.0.1', env['REMOTE_ADDR']
+    assert_equal 'test.com', env['SERVER_NAME']
+    assert_equal '8080', env['SERVER_PORT']
+    assert_equal 'http', env['rack.url_scheme']
+    assert env['puma.socket']
+  end
+
+  def test_Expect_100_continue_is_case_insensitive
+    calls = 0
+    callback = ->(_env) { calls += 1; false }
+    server_run(continue_callback: callback) { [200, {}, [""]] }
+
+    response = send_http_read_all "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\nExpect: 100-Continue\r\n\r\n"
+
+    assert response.start_with?("HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 200 OK\r\n"), response
+    assert_equal 1, calls
+  end
+
+  def test_Expect_100_continue_sent_twice
+    calls = 0
+    callback = ->(_env) { calls += 1; false }
+    server_run(continue_callback: callback) { [200, {}, [""]] }
+
+    response = send_http_read_all "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\nExpect: 100-continue\r\nExpect: 100-continue\r\n\r\n"
+
+    assert response.start_with?("HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 200 OK\r\n"), response
+    assert_equal 1, calls
+  end
+
   def test_Expect_100_continue_callback_response_skips_body
     app_called = false
     callback = ->(_env) { [307, { 'location' => 'https://uploads.example.com/' }, []] }
