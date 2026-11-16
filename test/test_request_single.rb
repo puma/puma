@@ -667,6 +667,32 @@ class TestRequestContentLengthInvalid < TestRequestBase
 end
 
 # Tests invalid chunked requests
+class TestRequestChunkedValid < TestRequestBase
+
+  # https://httpwg.org/specs/rfc9112.html#chunked.extension
+  {
+    extension_name: 'b;foo',
+    extension_token_value: 'b;foo=bar',
+    extension_quoted_value: 'b;foo="a \"b\""',
+    extensions_multiple: 'b;a=1;b',
+    uppercase_with_leading_zeros: '00B',
+  }.each do |name, size_line|
+    define_method("test_chunked_size_line_#{name}") do
+      create_client "#{GET_PREFIX}Transfer-Encoding: chunked\r\n\r\n" \
+        "#{size_line}\r\nHello World\r\n0\r\n\r\n"
+
+      assert_equal 'Hello World', @client.env['rack.input'].read
+    end
+  end
+
+  def test_chunked_last_chunk_extension
+    create_client "#{GET_PREFIX}Transfer-Encoding: chunked\r\n\r\n" \
+      "b\r\nHello World\r\n0;foo\r\n\r\n"
+
+    assert_equal 'Hello World', @client.env['rack.input'].read
+  end
+end
+
 class TestRequestChunkedInvalid < TestRequestBase
 
   def test_chunked_size_bad_characters_1
