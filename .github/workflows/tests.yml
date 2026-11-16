@@ -124,6 +124,13 @@ jobs:
         shell: bash
         run: echo 'RUBYOPT=--yjit' >> "$GITHUB_ENV"
 
+      # Integration tests open many short-lived loopback connections. macOS keeps
+      # each closed client port in TIME_WAIT for 2 * MSL (30s by default), and with
+      # parallel tests the ephemeral port range runs out (Errno::EADDRNOTAVAIL).
+      - name: Shorten TCP TIME_WAIT on macOS
+        if: startsWith(matrix.os, 'macos')
+        run: sudo sysctl -w net.inet.tcp.msl=1000
+
       - name: test
         timeout-minutes: 10
         run: test/runner --verbose
