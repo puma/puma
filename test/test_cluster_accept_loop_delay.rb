@@ -52,6 +52,23 @@ class TestClusterAcceptLoopDelay < PumaTest
     assert_in_delta 0.05, cal_delay.calculate(busy_threads_plus_todo: 26, max_threads: 1), 0.001
   end
 
+  def test_sub_saturation_and_overload_curve
+    cal_delay = Puma::ClusterAcceptLoopDelay.new(
+      workers: 2,
+      max_delay: 0.05
+    )
+
+    # Below thread saturation (u = 0.25), concave sqrt ramp applies stronger early
+    # backpressure than linear (0.00125 vs 0.0005)
+    sub_saturated = cal_delay.calculate(busy_threads_plus_todo: 1, max_threads: 4)
+    assert_in_delta 0.00125, sub_saturated, 0.0001
+
+    # Above thread saturation (u = 13.0, midpoint of 1..25), linear overload ramp
+    # scales smoothly from the saturation knee to max_delay
+    overload_mid = cal_delay.calculate(busy_threads_plus_todo: 13, max_threads: 1)
+    assert_in_delta 0.02625, overload_mid, 0.0001
+  end
+
   def test_always_return_float_when_non_zero
     # Dividing integers accidentally returns 0 so want to make sure we are correctly converting to float before division
     cal_delay = Puma::ClusterAcceptLoopDelay.new(
