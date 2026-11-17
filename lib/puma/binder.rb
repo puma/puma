@@ -180,7 +180,7 @@ module Puma
 
           @listeners << [str, io] if io
         when "unix"
-          path = "#{uri.host}#{uri.path}".gsub("%20", " ")
+          path = unix_path_for uri
           abstract = false
           if str.start_with? 'unix://@'
             raise "OS does not support abstract UNIXSockets" unless Puma.abstract_unix_socket?
@@ -288,7 +288,7 @@ module Puma
         # We have to unlink a unix socket path that's not being used
         uri = URI.parse str
         if uri.scheme == "unix"
-          path = "#{uri.host}#{uri.path}"
+          path = unix_path_for uri
           File.unlink path
         end
       end
@@ -471,7 +471,7 @@ module Puma
           io.close unless io.closed?
           uri = URI.parse l
           next unless uri.scheme == 'unix'
-          unix_path = "#{uri.host}#{uri.path}"
+          unix_path = unix_path_for uri
           File.unlink unix_path if @unix_paths.include?(unix_path) && File.exist?(unix_path)
         rescue Errno::EBADF
         end
@@ -499,7 +499,7 @@ module Puma
       when "tcp", "ssl"
         [[:tcp, uri.host, uri.port]]
       when "unix"
-        path = "#{uri.host}#{uri.path}".gsub("%20", " ")
+        path = unix_path_for uri
         return [] if path.start_with?("@")
 
         real_path = begin
@@ -513,6 +513,11 @@ module Puma
       end
     rescue URI::InvalidURIError
       []
+    end
+
+    # Unix socket URLs encode spaces in the path as %20.
+    def unix_path_for(uri)
+      "#{uri.host}#{uri.path}".gsub("%20", " ")
     end
 
     # @!attribute [r] loopback_addresses
