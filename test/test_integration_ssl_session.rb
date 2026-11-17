@@ -46,6 +46,8 @@ class TestIntegrationSSLSession < TestIntegration
 
       #{set_pumactl_config}
 
+      date_header false
+
       app do |env|
         [200, {}, [env['rack.url_scheme']]]
       end

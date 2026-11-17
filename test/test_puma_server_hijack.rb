@@ -47,6 +47,7 @@ class TestPumaServerHijack < PumaTest
     options[:log_writer]  ||= @log_writer
     options[:min_threads] ||= 1
     options[:max_threads] ||= 1
+    options[:date_header] ||= false
     @server = Puma::Server.new block || @app, @events, options
     @bind_port = (@server.add_tcp_listener @host, 0).addr[1]
     @server.run
