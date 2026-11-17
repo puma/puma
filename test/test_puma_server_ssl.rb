@@ -43,7 +43,7 @@ class TestPumaServerSSL < PumaTest
   end
 
   # yields ctx to block, use for ctx setup & configuration
-  def start_server(&server_ctx)
+  def start_server(**server_opts, &server_ctx)
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
     ctx = Puma::MiniSSL::Context.new
@@ -63,7 +63,7 @@ class TestPumaServerSSL < PumaTest
     @log_stdout = StringIO.new
     @log_stderr = StringIO.new
     @log_writer = SSLLogWriterHelper.new @log_stdout, @log_stderr
-    @server = Puma::Server.new app, nil, {log_writer: @log_writer}
+    @server = Puma::Server.new app, nil, {log_writer: @log_writer}.merge(server_opts)
     @port = (@server.add_ssl_listener HOST, 0, ctx).addr[1]
     @bind_port = @port
     @server.run
@@ -277,6 +277,43 @@ class TestPumaServerSSL < PumaTest
       refute_equal default_cipher, cipher[0]
       assert_equal cipher_suite  , cipher[0]
       assert_equal cipher[1], 'TLSv1.3'
+    end
+
+    def test_non_tls_bytes_close_connection_before_first_data_timeout
+      start_server first_data_timeout: 30
+
+      skt = new_socket
+      chunk = "A" * 100 + "B" * 65_436
+      max_bytes = 4 * 1_024 * 1_024
+      sent = 0
+      closed = false
+      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      deadline = started + 3
+      close_deadline = started + 10
+
+      begin
+        while Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline && sent < max_bytes
+          written = skt.write_nonblock chunk, exception: false
+          if written == :wait_writable
+            skt.wait_writable 0.2
+          else
+            sent += written
+          end
+        end
+
+        until closed
+          timed_out = Process.clock_gettime(Process::CLOCK_MONOTONIC) >= close_deadline
+          if skt.wait_readable(timed_out ? 0 : 0.2)
+            closed = skt.read_nonblock(65_536, exception: false).nil?
+          elsif timed_out
+            break
+          end
+        end
+      rescue Errno::EPIPE, Errno::ECONNRESET, Errno::ECONNABORTED
+        closed = true
+      end
+
+      assert closed, "SSL listener accepted #{sent} bytes of non-TLS data and kept the connection open for 10 seconds"
     end
   end
 end if ::Puma::HAS_SSL
