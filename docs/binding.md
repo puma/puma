@@ -25,6 +25,9 @@ Need a bit of security? Use SSL sockets:
 ```
 $ puma -b 'ssl://127.0.0.1:9292?key=path_to_key&cert=path_to_cert'
 ```
+
+If a reverse proxy already handles HTTPS, Puma usually needs no SSL bind. See [HTTPS with Puma](ssl.md).
+
 ## Self-signed SSL certificates (via the [`localhost`] gem, for development use):
 
 Puma supports the [`localhost`] gem for self-signed certificates. This is particularly useful if you want to use Puma with SSL locally, and self-signed certificates will work for your use-case. Currently, the integration can only be used in MRI.

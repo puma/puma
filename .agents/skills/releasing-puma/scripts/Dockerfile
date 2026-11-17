@@ -1,0 +1,2 @@
+FROM ruby:4.0@sha256:a69f361db050bb2c65ec66ef75411bfc4ce2e1d993ba1179fac4e4ba6ecfe91f AS ruby
+FROM jruby:10.1.3.0-jdk21@sha256:40b63556cb55b72d6ff734c052482a3950db7253b5964b82d3e8ab345c1536d1 AS jruby

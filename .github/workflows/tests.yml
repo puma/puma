@@ -116,10 +116,6 @@ jobs:
         shell: bash
         run: echo 'PUMA_MAKE_WARNINGS_INTO_ERRORS=true' >> "$GITHUB_ENV"
 
-      - name: mark committed Ragel output as up to date
-        shell: bash
-        run: touch ext/puma_http11/http11_parser.c ext/puma_http11/org/jruby/puma/Http11Parser.java
-
       - name: compile
         run: bundle exec rake compile
 
@@ -127,6 +123,13 @@ jobs:
         if: matrix.yjit == ' yjit'
         shell: bash
         run: echo 'RUBYOPT=--yjit' >> "$GITHUB_ENV"
+
+      # Integration tests open many short-lived loopback connections. macOS keeps
+      # each closed client port in TIME_WAIT for 2 * MSL (30s by default), and with
+      # parallel tests the ephemeral port range runs out (Errno::EADDRNOTAVAIL).
+      - name: Shorten TCP TIME_WAIT on macOS
+        if: startsWith(matrix.os, 'macos')
+        run: sudo sysctl -w net.inet.tcp.msl=1000
 
       - name: test
         timeout-minutes: 10
@@ -173,10 +176,6 @@ jobs:
       - name: set WERRORFLAG
         shell: bash
         run: echo 'PUMA_MAKE_WARNINGS_INTO_ERRORS=true' >> "$GITHUB_ENV"
-
-      - name: mark committed Ragel output as up to date
-        shell: bash
-        run: touch ext/puma_http11/http11_parser.c ext/puma_http11/org/jruby/puma/Http11Parser.java
 
       - name: compile
         run: bundle exec rake compile

@@ -6,3 +6,10 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 7
+
+  - package-ecosystem: "docker"
+    directory: "/.agents/skills/releasing-puma/scripts"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
