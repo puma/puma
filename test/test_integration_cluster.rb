@@ -406,7 +406,8 @@ class TestIntegrationCluster < TestIntegration
 
     socks.each { |s| read_body s }
 
-    refute_includes pids, get_worker_pids(1, wrkrs - 1)
+    common_pids = pids & get_worker_pids(1, wrkrs - 1)
+    assert_empty common_pids
   end
 
   # use three workers to keep accepting clients
@@ -435,7 +436,8 @@ class TestIntegrationCluster < TestIntegration
 
     socks.each { |s| read_body s }
 
-    refute_includes pids, get_worker_pids(1, wrkrs - 1)
+    common_pids = pids & get_worker_pids(1, wrkrs - 1)
+    assert_empty common_pids
   end
 
   def test_mold_worker_reforks_at_each_threshold
