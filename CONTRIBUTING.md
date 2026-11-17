@@ -18,7 +18,7 @@ There are lots of ways to contribute to Puma. Some examples include:
 [existing bug reports]: https://github.com/puma/puma/issues?q=is%3Aopen+is%3Aissue+label%3Aneeds-repro
 [pull requests]: https://github.com/puma/puma/pulls
 [documentation]: https://github.com/puma/puma/tree/main/docs
-[reproduction steps]: https://github.com/puma/puma/blob/CONTRIBUTING.md#reproduction-steps
+[reproduction steps]: https://github.com/puma/puma/blob/main/CONTRIBUTING.md#reproduction-steps
 [reproducing bug]: https://github.com/puma/puma/issues?utf8=%E2%9C%93&q=is%3Aopen+is%3Aissue+label%3Abug
 
 Newbies welcome! We would be happy to help you make your first contribution to a F/OSS project.
