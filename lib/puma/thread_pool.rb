@@ -318,7 +318,8 @@ module Puma
       with_mutex do
         while true
           return if @shutdown
-          return if (@spawned - @waiting + @todo.size) < @max
+          io_threads = [@processors.count(&:marked_as_io_thread?), @max_io_threads].min
+          return if (@spawned - @waiting + @todo.size) < @max + io_threads
 
           @not_full.wait @mutex
         end
@@ -367,6 +368,7 @@ module Puma
         if @waiting < @todo.size and can_spawn_processor?
           spawn_thread
         end
+        @not_full.signal
       end
     end
 
