@@ -52,7 +52,7 @@ void engine_free(void *ptr) {
   SSL_free(conn->ssl);
   SSL_CTX_free(conn->ctx);
 
-  free(conn);
+  ruby_xfree(conn);
 }
 
 const rb_data_type_t engine_data_type = {
