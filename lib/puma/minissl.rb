@@ -84,13 +84,16 @@ module Puma
         output
       end
 
-      def read_nonblock(size, *_)
+      def read_nonblock(size, *_, exception: true)
         # *_ is to deal with keyword args that were added
         # at some point (and being used in the wild)
         output = engine_read_all
         return output if output
 
-        raise IO::EAGAINWaitReadable unless flush_write_buffer_nonblock
+        unless flush_write_buffer_nonblock
+          raise IO::EAGAINWaitReadable if exception
+          return :wait_readable
+        end
 
         data = @socket.read_nonblock(size, exception: false)
         if data == :wait_readable || data == :wait_writable
@@ -103,7 +106,8 @@ module Puma
           # In the meantime, we can emulate the correct behavior by
           # capturing :wait_readable & :wait_writable and raising EAGAIN
           # ourselves.
-          raise IO::EAGAINWaitReadable
+          raise IO::EAGAINWaitReadable if exception
+          return :wait_readable
         elsif data.nil?
           raise SSLError.exception "HTTP connection?" if bad_tlsv1_3?
           return nil
@@ -115,7 +119,8 @@ module Puma
 
         queue_ciphertext
         flush_write_buffer_nonblock
-        raise IO::EAGAINWaitReadable
+        raise IO::EAGAINWaitReadable if exception
+        :wait_readable
       end
 
       def write_pending?

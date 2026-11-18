@@ -49,11 +49,11 @@ class TestMiniSSLSocket < PumaTest
 
   def server_read(size)
     Timeout.timeout(5) do
-      begin
-        @server.read_nonblock size
-      rescue IO::WaitReadable
+      loop do
+        data = @server.read_nonblock size, exception: false
+        break data unless data == :wait_readable
+
         @raw_server.wait_readable 1
-        retry
       end
     end
   end
