@@ -50,6 +50,7 @@ module Puma
       }
 
       @envs = {}
+      @priorities = {}
       @ios = []
     end
 
@@ -63,6 +64,12 @@ module Puma
 
     def env(sock)
       @envs.fetch(sock, @proto_env)
+    end
+
+    # The scheduling priority of connections accepted on +sock+, set with
+    # the +priority+ query parameter of its bind.
+    def priority(sock)
+      @priorities.fetch(sock, 0)
     end
 
     def close
@@ -155,6 +162,9 @@ module Puma
       log_writer ||= @log_writer
       binds.each do |str|
         uri = URI.parse str
+        ios_len = @ios.length
+        priority = listener_priority(uri)
+
         case uri.scheme
         when "tcp"
           if fd = @inherited_fds.delete(str)
@@ -164,7 +174,6 @@ module Puma
             io = inherit_tcp_listener uri.host, uri.port, sock
             log_writer.log "* Activated #{str}"
           else
-            ios_len = @ios.length
             params = Util.parse_query uri.query
 
             low_latency = params.key?('low_latency') && params['low_latency'] != 'false'
@@ -258,7 +267,6 @@ module Puma
             io = inherit_ssl_listener sock, ctx
             log_writer.log "* Activated #{str}"
           else
-            ios_len = @ios.length
             backlog = params.fetch('backlog', 1024).to_i
             low_latency = params['low_latency'] != 'false'
             io = add_ssl_listener uri.host, uri.port, ctx, low_latency, backlog
@@ -273,6 +281,8 @@ module Puma
         else
           log_writer.error "Invalid URI: #{str}"
         end
+
+        @ios[ios_len..-1].each { |listener| @priorities[listener] = priority } if priority != 0
       end
 
       # If we inherited fds but didn't use them (because of a
@@ -492,6 +502,26 @@ module Puma
     end
 
     private
+
+    def listener_priority(uri)
+      params = Util.parse_query(uri.query)
+      return 0 unless params.key?("priority")
+
+      value = params["priority"]
+      priority = Integer(value, 10, exception: false) if value.is_a?(String)
+      if priority.nil?
+        raise ArgumentError, "Invalid priority #{value.inspect} in bind #{uri}, must be an integer"
+      end
+
+      # Without queue_requests, Puma accepts a connection only once a thread
+      # is free, so a priority connection waits in the socket backlog with
+      # everything else and its priority could not be honored.
+      if priority != 0 && !@options[:queue_requests]
+        raise ArgumentError, "Bind #{uri} sets a priority, which requires queue_requests"
+      end
+
+      priority
+    end
 
     def activated_keys_for(url)
       uri = URI.parse url

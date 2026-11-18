@@ -723,7 +723,8 @@ class TestPumaServer < PumaTest
   def test_error_response_in_reactor_does_not_wait_for_a_client_that_is_not_reading
     skip_unless :unix
 
-    pool = []
+    pool = Object.new
+    pool.define_singleton_method(:push) { |_work, _priority| }
     @server.instance_variable_set :@thread_pool, pool
 
     rd, wr = UNIXSocket.pair
@@ -761,7 +762,7 @@ class TestPumaServer < PumaTest
     skip_unless :unix
 
     pool = Object.new
-    pool.define_singleton_method(:<<) { |_| raise "Unable to add work while shutting down" }
+    pool.define_singleton_method(:push) { |_work, _priority| raise "Unable to add work while shutting down" }
     @server.instance_variable_set :@thread_pool, pool
 
     rd, wr = UNIXSocket.pair
@@ -783,7 +784,7 @@ class TestPumaServer < PumaTest
 
     queued = []
     pool = Object.new
-    pool.define_singleton_method(:<<) { |c| queued << c; raise ThreadError, "can't create Thread" }
+    pool.define_singleton_method(:push) { |c, _priority| queued << c; raise ThreadError, "can't create Thread" }
     @server.instance_variable_set :@thread_pool, pool
 
     rd, wr = UNIXSocket.pair

@@ -136,3 +136,40 @@ echo "this is my password"
 
 `key_password_command` can be used with `key` or `key_pem`. If the key
 is not encrypted, the executable will not be called.
+
+## Listener priority
+
+When every thread is busy, accepted requests wait in a queue for the next free
+thread. Set `priority` on a bind to let requests from that listener skip ahead
+of requests from lower priority listeners that are already waiting:
+
+```ruby
+# config/puma.rb
+bind "tcp://0.0.0.0:3000"
+bind "tcp://0.0.0.0:3001?priority=100"
+```
+
+A common use is a health check listener, so that a Kubernetes probe isn't
+queued behind application traffic and timed out while Puma is busy but still
+serving requests. Kubernetes sends `httpGet` and `tcpSocket` probes to the pod
+IP, so for those, bind the priority listener to `0.0.0.0` and keep its port out
+of the Service. A listener on a loopback address or a UNIX socket is only
+reachable from inside the pod, for example by an `exec` probe that runs `curl`.
+
+- `priority` is any integer. The default is `0` and higher runs first, so a
+  negative priority puts a listener behind normal traffic.
+- Requests of equal priority are taken in the order they arrived.
+- Priority only decides which waiting request the next free thread takes. It
+  never interrupts a running request, and no threads are reserved for it, so
+  priority requests still wait while every thread is busy.
+- Priority is set by the listener that accepted the connection, so it holds
+  for every request on that connection, whatever its path or headers.
+- It requires `queue_requests`, which is on by default. Puma refuses to boot
+  if a bind sets a priority and `queue_requests` is disabled.
+- In cluster mode each worker has its own queue. A priority request is taken
+  ahead of the other requests waiting in the worker that accepted it, but it
+  can't move to an idle worker.
+- Requests from a high priority listener that never stops sending traffic will
+  starve lower priority listeners. Keep high priorities for occasional
+  traffic, and don't expose priority listeners to clients, who could use them
+  to skip the queue.

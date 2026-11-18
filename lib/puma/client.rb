@@ -94,7 +94,7 @@ module Puma
                 :allow_underscore_headers, :continue_callback
 
     attr_accessor :remote_addr_header, :listener, :env_set_http_version,
-                  :reactor_error
+                  :reactor_error, :priority
 
     def initialize(io, env=nil)
       @io = io
@@ -129,6 +129,7 @@ module Puma
       @peerip = nil
       @peer_family = nil
       @listener = nil
+      @priority = 0
       @remote_addr_header = nil
       @expect_proxy_proto = false
 

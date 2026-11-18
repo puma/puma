@@ -504,4 +504,70 @@ class TestThreadPool < PumaTest
     mutex.unlock if mutex.owned?
     pool.shutdown(1)
   end
+  def test_priority_queue_takes_highest_priority_first
+    queue = Puma::ThreadPool::PriorityQueue.new
+    assert queue.empty?
+    assert_nil queue.shift
+
+    queue.push :normal_1
+    queue.push :high_1, 10
+    queue.push :low, -1
+    queue.push :high_2, 10
+    queue.push :normal_2
+
+    assert_equal 5, queue.size
+    assert_equal [:high_1, :high_2, :normal_1, :normal_2, :low], Array.new(5) { queue.shift }
+    assert queue.empty?
+  end
+
+  def test_push_runs_waiting_work_by_priority
+    started = Queue.new
+    release = Queue.new
+    ran = Queue.new
+    pool = new_pool(1, 1) do |_processor, work|
+      if work == :blocker
+        started << true
+        release.pop
+      end
+      ran << work
+    end
+
+    pool << :blocker
+    started.pop
+
+    pool << :normal_1
+    pool.push :medium_1, 10
+    pool.push :high, 100
+    pool << :normal_2
+    pool.push :medium_2, 10
+    pool.push :low, -5
+    assert_equal 6, pool.backlog
+
+    release << true
+    assert_equal [:blocker, :high, :medium_1, :medium_2, :normal_1, :normal_2, :low], Array.new(7) { ran.pop }
+  ensure
+    release << true
+  end
+
+  def test_backlog_counts_every_priority
+    pool = new_pool(0, 0)
+
+    pool << 1
+    pool.push 2, 100
+    pool.push 3, -1
+
+    assert_equal 3, pool.backlog
+    assert_equal 3, pool.stats[:backlog]
+    assert_equal 3, pool.busy_threads
+  end
+
+  def test_priority_queue_rejects_non_integer_priority
+    queue = Puma::ThreadPool::PriorityQueue.new
+
+    assert_raises(ArgumentError) { queue.push :a, "100" }
+    queue.push :b, 5
+
+    assert_equal 1, queue.size
+    assert_equal :b, queue.shift
+  end
 end

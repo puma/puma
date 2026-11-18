@@ -16,7 +16,7 @@ module Puma
   # First a connection to a client is made in `Puma::Server`. It is wrapped in a
   # `Puma::Client` instance and then passed to the `Puma::Reactor` to ensure
   # the whole request is buffered into memory. Once the request is ready, it is passed into
-  # a thread pool via the `Puma::ThreadPool#<<` operator where it is stored in a `@todo` array.
+  # a thread pool via `Puma::ThreadPool#push` where it is stored in a `@todo` queue.
   #
   # Each thread in the pool has an internal loop where it pulls a request from the `@todo` array
   # and processes it.
@@ -69,6 +69,53 @@ module Puma
       end
     end
 
+    # The pool's work queue: one FIFO per priority, drained highest priority
+    # first. Not synchronized, the pool only uses it while holding its mutex.
+    class PriorityQueue # :nodoc:
+      attr_reader :size
+
+      def initialize
+        @queues = { 0 => [] }
+        @priorities = [0]
+        @size = 0
+      end
+
+      def empty?
+        @size == 0
+      end
+
+      def push(work, priority = 0)
+        queue = @queues[priority] || add_priority(priority)
+        queue << work
+        @size += 1
+        self
+      end
+
+      def shift
+        return if @size == 0
+
+        @priorities.each do |priority|
+          queue = @queues[priority]
+          next if queue.empty?
+
+          @size -= 1
+          return queue.shift
+        end
+      end
+
+      private
+
+      def add_priority(priority)
+        unless priority.is_a?(Integer)
+          raise ArgumentError, "priority must be an Integer, got #{priority.inspect}"
+        end
+
+        @priorities << priority
+        @priorities.sort! { |a, b| b <=> a }
+        @queues[priority] = []
+      end
+    end
+
     # How long, after raising the ForceShutdown of a thread during
     # forced shutdown mode, to wait for the thread to try and finish
     # up its work before leaving the thread to die on the vine.
@@ -88,7 +135,7 @@ module Puma
       @not_empty = ConditionVariable.new
       @not_full = ConditionVariable.new
       @mutex = Mutex.new
-      @todo = Queue.new
+      @todo = PriorityQueue.new
 
       @backlog_max = 0
       @spawned = 0
@@ -344,12 +391,19 @@ module Puma
 
     # Add +work+ to the todo list for a Thread to pickup and process.
     def <<(work)
+      push(work)
+    end
+
+    # Add +work+ to the todo list at +priority+. Threads take the oldest work
+    # of the highest priority first, so it runs ahead of lower priority work
+    # that is already waiting, but never interrupts work that has started.
+    def push(work, priority = 0)
       with_mutex do
         if @shutdown
           raise "Unable to add work while shutting down"
         end
 
-        @todo << work
+        @todo.push(work, priority)
         t = @todo.size
         @backlog_max = t if t > @backlog_max
 

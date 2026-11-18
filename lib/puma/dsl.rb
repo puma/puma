@@ -274,6 +274,9 @@ module Puma
     #   +low_latency+, default is to not optimize for low latency. This is done
     #   via +Socket::TCP_NODELAY+.
     # * Set socket permissions with +umask+.
+    # * Set the listener's scheduling priority with +priority+, an integer,
+    #   default 0. Waiting requests from higher priority listeners get the
+    #   next free thread first. Requires +queue_requests+.
     #
     # @example Backlog depth
     #   bind 'unix:///var/run/puma.sock?backlog=512'
@@ -285,6 +288,8 @@ module Puma
     #   bind 'tcp://[::]:9292?low_latency=false'
     # @example Socket permissions
     #   bind 'unix:///var/run/puma.sock?umask=0111'
+    # @example Health checks ahead of queued requests
+    #   bind 'tcp://0.0.0.0:3001?priority=100'
     #
     # @see Puma::Runner#load_and_bind
     # @see Puma::Cluster#run
@@ -302,9 +307,10 @@ module Puma
     #
     # Systemd can present sockets as file descriptors that are already opened.
     # By default Puma only uses these if it was explicitly told to bind to
-    # the socket, otherwise it closes them. Since only SSL config on a bind
-    # is relevant for activated sockets (unix and TCP socket options are
-    # ignored), this often means duplicating configuration for no benefit.
+    # the socket, otherwise it closes them. Since only SSL config and +priority+
+    # on a bind are relevant for activated sockets (other unix and TCP socket
+    # options are ignored), this often means duplicating configuration for no
+    # benefit.
     #
     # This method tells the launcher to bind to all activated sockets,
     # regardless of existing binds. Passing `'only'` also clears any

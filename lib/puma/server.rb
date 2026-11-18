@@ -310,7 +310,7 @@ module Puma
     #
     # The method checks to see if it has the full header and body with
     # the `Puma::Client#try_to_finish` method. If the full request has been sent,
-    # then the request is passed to the ThreadPool (`@thread_pool << client`)
+    # then the request is passed to the ThreadPool (`@thread_pool.push`)
     # so that a "processor thread" can pick up the request and begin to execute application logic.
     # The Client is then removed from the reactor (return `true`).
     #
@@ -348,7 +348,7 @@ module Puma
     end
 
     def hand_to_thread_pool(client)
-      @thread_pool << client
+      @thread_pool.push(client, client.priority)
       true
     rescue ThreadError
       true
@@ -363,7 +363,10 @@ module Puma
 
       begin
         check = @check
-        sockets = [check] + @binder.ios
+        # IO.select reports ready sockets in the order given, so sorting puts
+        # higher priority listeners first in each round of accepts.
+        listeners = @binder.ios.sort_by.with_index { |listener, index| [-@binder.priority(listener), index] }
+        sockets = [check] + listeners
         pool = @thread_pool
         queue_requests = @queue_requests
         drain = options[:drain_on_shutdown] ? 0 : nil
@@ -443,7 +446,7 @@ module Puma
 
                 client = new_client(io, sock)
                 client.send(addr_send_name, addr_value) if addr_value
-                pool << client
+                pool.push(client, client.priority)
               end
             end
           rescue IOError, Errno::EBADF
@@ -493,6 +496,7 @@ module Puma
     def new_client(io, sock)
       client = Client.new(io, @binder.env(sock))
       client.listener = sock
+      client.priority = @binder.priority(sock)
       client.env_set_http_version = @env_set_http_version
       client.http_content_length_limit = @http_content_length_limit
       client.supported_http_methods = @supported_http_methods
@@ -582,7 +586,7 @@ module Puma
               else
                 @thread_pool.with_mutex do
                   unless shutting_down?
-                    @thread_pool << client
+                    @thread_pool.push(client, client.priority)
                     close_socket = false
                   end
                 end

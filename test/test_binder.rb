@@ -470,6 +470,106 @@ class TestBinderParallel < TestBinderBase
     assert binder.proto_env["rack.multiprocess"]
   end
 
+  def test_priority_defaults_to_zero
+    @binder.parse ["tcp://127.0.0.1:0"], @log_writer
+
+    assert_equal 0, @binder.priority(@binder.ios.first)
+  end
+
+  def test_priority_is_set_per_listener
+    @binder.parse ["tcp://127.0.0.1:0", "tcp://127.0.0.1:0?priority=100", "tcp://127.0.0.1:0?priority=-5"], @log_writer
+
+    assert_equal [0, 100, -5], @binder.ios.map { |io| @binder.priority(io) }
+  end
+
+  def test_priority_on_unix_listener
+    skip_unless :unix
+    unix_path = tmp_path('.sock')
+    @binder.parse ["unix://#{unix_path}?priority=100"], @log_writer
+
+    assert_equal 100, @binder.priority(@binder.ios.first)
+  end
+
+  def test_priority_on_ssl_listener
+    skip_unless :ssl
+    @binder.parse ["ssl://127.0.0.1:0?#{ssl_query}&priority=100"], @log_writer
+
+    assert_equal 100, @binder.priority(@binder.ios.first)
+  end
+
+  def test_priority_on_inherited_listener
+    skip_if :windows # Puma doesn't inherit listeners on Windows, see Launcher#restart!
+    bind = "tcp://127.0.0.1:0?priority=100"
+    @binder.parse [bind], @log_writer
+    listener = @binder.ios.first.dup
+    listener.autoclose = false
+
+    inherited = Puma::Binder.new(@log_writer, @config.options)
+    inherited.instance_variable_set(:@inherited_fds, { bind => listener.fileno })
+    inherited.parse [bind], @log_writer
+
+    assert_equal 100, inherited.priority(inherited.ios.first)
+  ensure
+    inherited&.ios&.each { |io| io.autoclose = false }
+    listener&.autoclose = true
+    listener&.close
+  end
+
+  def test_priority_must_be_an_integer
+    error = assert_raises(ArgumentError) do
+      @binder.parse ["tcp://127.0.0.1:0?priority=high"], @log_writer
+    end
+
+    assert_match "Invalid priority", error.message
+    assert_empty @binder.ios
+  end
+
+  def test_priority_without_a_value_is_rejected
+    ["priority", "priority="].each do |query|
+      assert_raises(ArgumentError, query) do
+        @binder.parse ["tcp://127.0.0.1:0?#{query}"], @log_writer
+      end
+    end
+
+    assert_empty @binder.ios
+  end
+
+  def test_priority_requires_truthy_queue_requests
+    config = Puma::Configuration.new { |c| c.queue_requests nil }
+    config.clamp
+    binder = Puma::Binder.new(@log_writer, config.options)
+
+    assert_raises(ArgumentError) do
+      binder.parse ["tcp://127.0.0.1:0?priority=100"], @log_writer
+    end
+    assert_empty binder.ios
+  end
+
+  def test_priority_requires_queue_requests
+    config = Puma::Configuration.new { |c| c.queue_requests false }
+    config.clamp
+    binder = Puma::Binder.new(@log_writer, config.options)
+
+    error = assert_raises(ArgumentError) do
+      binder.parse ["tcp://127.0.0.1:0?priority=100"], @log_writer
+    end
+
+    assert_match "requires queue_requests", error.message
+    assert_empty binder.ios
+  end
+
+  def test_zero_priority_allowed_without_queue_requests
+    config = Puma::Configuration.new { |c| c.queue_requests false }
+    config.clamp
+    binder = Puma::Binder.new(@log_writer, config.options)
+
+    binder.parse ["tcp://127.0.0.1:0?priority=0"], @log_writer
+
+    assert_equal 0, binder.priority(binder.ios.first)
+  ensure
+    binder&.close
+  end
+
   private
 
   def assert_activates_sockets(path: nil, port: nil, url: nil, sock: nil)
