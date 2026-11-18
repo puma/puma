@@ -22,6 +22,7 @@ module PumaGemManifest
     .gitignore
     .rubocop.yml
     .rubocop_todo.yml
+    AGENTS.md
     CODE_OF_CONDUCT.md
     CONTRIBUTING.md
     GOVERNANCE.md

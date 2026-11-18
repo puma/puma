@@ -126,7 +126,9 @@ Puma stickers, shirts, hoodies, and mugs are available at [commitgoods.com](http
 
 ## Contributing
 
-Find details for contributing in the [contribution guide](CONTRIBUTING.md).
+Find details for contributing in the [contribution guide](CONTRIBUTING.md). AI-assisted contributions are welcome; coding agents should start with [AGENTS.md](AGENTS.md).
+
+Report a suspected vulnerability privately, as described in the [security policy](SECURITY.md), not in a public issue or pull request.
 
 ## License
 
