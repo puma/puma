@@ -121,12 +121,14 @@ class TestPumaServerSSL < PumaTest
     assert_equal "https\na=1&b=2", body
   end
 
-  def rejection(version, &server_ctx)
-    low_seclevel = ->(ctx) { ctx.ssl_cipher_filter = "DEFAULT:@SECLEVEL=0" unless Puma::IS_JRUBY }
+  def rejection(version)
+    skip_if :jruby, suffix: " - the JDK disables TLS 1.0 and 1.1"
+
+    low_seclevel = ->(ctx) { ctx.ssl_cipher_filter = "DEFAULT:@SECLEVEL=0" }
     client_ctx = new_ctx do |ctx|
       ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
       ctx.max_version = version
-      ctx.ciphers = "DEFAULT:@SECLEVEL=0" unless Puma::IS_JRUBY
+      ctx.ciphers = "DEFAULT:@SECLEVEL=0"
     end
 
     start_server(&low_seclevel)
@@ -139,7 +141,7 @@ class TestPumaServerSSL < PumaTest
 
     start_server do |ctx|
       low_seclevel.call ctx
-      server_ctx.call ctx
+      yield ctx
     end
 
     assert_raises(OpenSSL::SSL::SSLError, EOFError, Errno::ECONNRESET) do
@@ -149,10 +151,7 @@ class TestPumaServerSSL < PumaTest
     deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
     sleep 0.01 until @log_writer.error || Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
 
-    expected = Puma::IS_JRUBY ?
-      /No appropriate protocol|protocol is disabled/ :
-      /unsupported protocol|version too low/
-    assert_match expected, @log_writer.error&.message.to_s
+    assert_match(/unsupported protocol|version too low/, @log_writer.error&.message.to_s)
 
     assert_equal "https", send_http_read_resp_body(ctx: new_ctx)
   end
