@@ -44,12 +44,17 @@ void raise_param_error(const char* caller, const char *param) {
 
 void engine_free(void *ptr) {
   ms_conn *conn = ptr;
-  ms_cert_buf* cert_buf = (ms_cert_buf*)SSL_get_app_data(conn->ssl);
-  if(cert_buf) {
-    OPENSSL_free(cert_buf->buf);
-    free(cert_buf);
+  if(conn->ssl) {
+    ms_cert_buf* cert_buf = (ms_cert_buf*)SSL_get_app_data(conn->ssl);
+    if(cert_buf) {
+      OPENSSL_free(cert_buf->buf);
+      free(cert_buf);
+    }
+    SSL_free(conn->ssl);
+  } else {
+    BIO_free(conn->read);
+    BIO_free(conn->write);
   }
-  SSL_free(conn->ssl);
   SSL_CTX_free(conn->ctx);
 
   ruby_xfree(conn);
