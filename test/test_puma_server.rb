@@ -58,6 +58,60 @@ class TestPumaServer < PumaTest
     server&.stop(true)
   end
 
+  # Wraps the default parser, and marks each env it fills,
+  # so a test can tell which parser handled a request.
+  class MarkingHttpParser
+    def initialize
+      @parser = Puma::HttpParser.new
+    end
+
+    def execute(env, data, start)
+      nread = @parser.execute(env, data, start)
+      env["puma.test.http_parser"] = "marking"
+      nread
+    end
+
+    def body
+      @parser.body
+    end
+
+    def error?
+      @parser.error?
+    end
+
+    def finish
+      @parser.finish
+    end
+
+    def finished?
+      @parser.finished?
+    end
+
+    def nread
+      @parser.nread
+    end
+
+    def reset
+      @parser.reset
+    end
+  end
+
+  def test_http_parser_option_parses_with_the_given_class
+    server_run(http_parser: MarkingHttpParser) do |env|
+      [200, {}, [env["puma.test.http_parser"].to_s]]
+    end
+
+    assert_equal "marking", send_http_read_body(GET_11)
+  end
+
+  def test_http_parser_option_defaults_to_puma_http_parser
+    server_run do |env|
+      [200, {}, [env["puma.test.http_parser"].to_s]]
+    end
+
+    assert_equal "", send_http_read_body(GET_11)
+  end
+
   def test_http10_req_to_http10_resp
     server_run do |env|
       [200, {}, [env["SERVER_PROTOCOL"]]]

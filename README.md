@@ -112,6 +112,10 @@ and the loaded configuration will be printed as part of the boot process.
 * [Support policy](docs/puma_support.md)
 * [Upgrade guides](docs/upgrading)
 
+## HTTP Parser
+
+Puma parses requests with its `puma_http11` extension. The `http_parser` option replaces it with another class, and Puma can then run without the extension. See the [HTTP parser documentation](docs/http_parser.md) for the interface a parser has to follow.
+
 ## Platform Constraints
 
 Some platforms do not support all Puma features.
