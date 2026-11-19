@@ -384,6 +384,9 @@ module Puma
             ios = IO.select sockets, nil, nil, (shutting_down? ? 0 : @idle_timeout)
             unless ios
               unless shutting_down?
+                # A quiet listener does not mean requests have finished.
+                next if pool.busy_threads > 0
+
                 if @clustered
                   unless @idle_timeout_reached
                     @idle_timeout_reached = true
