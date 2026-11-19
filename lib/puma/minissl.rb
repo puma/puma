@@ -246,11 +246,6 @@ module Puma
       end
     end
 
-    if IS_JRUBY
-      OPENSSL_NO_SSL3 = false
-      OPENSSL_NO_TLS1 = false
-    end
-
     class Context
       attr_accessor :verify_mode
       attr_reader :no_tlsv1, :no_tlsv1_1

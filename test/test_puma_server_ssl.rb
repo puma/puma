@@ -121,45 +121,48 @@ class TestPumaServerSSL < PumaTest
     assert_equal "https\na=1&b=2", body
   end
 
-  def rejection(server_ctx, min_max)
-    if server_ctx
-      start_server(&server_ctx)
-    else
-      start_server
+  def rejection(version, &server_ctx)
+    low_seclevel = ->(ctx) { ctx.ssl_cipher_filter = "DEFAULT:@SECLEVEL=0" unless Puma::IS_JRUBY }
+    client_ctx = new_ctx do |ctx|
+      ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
+      ctx.max_version = version
+      ctx.ciphers = "DEFAULT:@SECLEVEL=0" unless Puma::IS_JRUBY
     end
 
-    msg = nil
-
-    assert_raises(OpenSSL::SSL::SSLError) do
-      begin
-        send_http_read_response ctx: new_ctx { |ctx| ctx.max_version = min_max }
-      rescue => e
-        msg = e.message
-        raise e
-      end
+    start_server(&low_seclevel)
+    begin
+      assert_equal "https", send_http_read_resp_body(ctx: client_ctx)
+    rescue OpenSSL::SSL::SSLError => e
+      skip "#{version} is unavailable: #{e.message}"
     end
+    @server.stop true
+
+    start_server do |ctx|
+      low_seclevel.call ctx
+      server_ctx.call ctx
+    end
+
+    assert_raises(OpenSSL::SSL::SSLError, EOFError, Errno::ECONNRESET) do
+      send_http_read_response ctx: client_ctx
+    end
+
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
+    sleep 0.01 until @log_writer.error || Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
 
     expected = Puma::IS_JRUBY ?
-      /No appropriate protocol \(protocol is disabled or cipher suites are inappropriate\)/ :
-      /SSL_connect SYSCALL returned=5|wrong version number|(unknown|unsupported) protocol|no protocols available|version too low|unknown SSL method/
-    assert_match expected, msg
+      /No appropriate protocol|protocol is disabled/ :
+      /unsupported protocol|version too low/
+    assert_match expected, @log_writer.error&.message.to_s
 
-    # make sure a good request succeeds
     assert_equal "https", send_http_read_resp_body(ctx: new_ctx)
   end
 
-  def test_ssl_v3_rejection
-    skip("SSLv3 protocol is unavailable") if Puma::MiniSSL::OPENSSL_NO_SSL3
-
-    rejection nil, :SSL3
-  end
-
   def test_tls_v1_rejection
-    rejection ->(ctx) { ctx.no_tlsv1 = true }, :TLS1
+    rejection(:TLS1) { |ctx| ctx.no_tlsv1 = true }
   end
 
   def test_tls_v1_1_rejection
-    rejection ->(ctx) { ctx.no_tlsv1_1 = true }, :TLS1_1
+    rejection(:TLS1_1) { |ctx| ctx.no_tlsv1_1 = true }
   end
 
   def test_tls_v1_3

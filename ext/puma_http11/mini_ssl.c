@@ -802,27 +802,6 @@ void Init_mini_ssl(VALUE puma) {
   rb_define_const(mod, "OPENSSL_LIBRARY_VERSION", rb_str_new2(SSLeay_version(SSLEAY_VERSION)));
 #endif
 
-#if defined(OPENSSL_NO_SSL3) || defined(OPENSSL_NO_SSL3_METHOD)
-  /* True if SSL3 is not available */
-  rb_define_const(mod, "OPENSSL_NO_SSL3", Qtrue);
-#else
-  rb_define_const(mod, "OPENSSL_NO_SSL3", Qfalse);
-#endif
-
-#if defined(OPENSSL_NO_TLS1) || defined(OPENSSL_NO_TLS1_METHOD)
-  /* True if TLS1 is not available */
-  rb_define_const(mod, "OPENSSL_NO_TLS1", Qtrue);
-#else
-  rb_define_const(mod, "OPENSSL_NO_TLS1", Qfalse);
-#endif
-
-#if defined(OPENSSL_NO_TLS1_1) || defined(OPENSSL_NO_TLS1_1_METHOD)
-  /* True if TLS1_1 is not available */
-  rb_define_const(mod, "OPENSSL_NO_TLS1_1", Qtrue);
-#else
-  rb_define_const(mod, "OPENSSL_NO_TLS1_1", Qfalse);
-#endif
-
   rb_define_singleton_method(mod, "check", noop, 0);
 
   eError = rb_define_class_under(mod, "SSLError", rb_eStandardError);
