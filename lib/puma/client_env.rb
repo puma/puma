@@ -34,7 +34,29 @@ module Puma
     # @param client [Puma::Client] only needed for Client#peerip
     #
     def normalize_env
-      if host = @env[HTTP_HOST]
+      absolute_uri = nil
+      unless @env[REQUEST_PATH]
+        # it might be a dumbass full host request header
+        absolute_uri = begin
+          URI.parse(@env[REQUEST_URI])
+        rescue URI::InvalidURIError
+          raise Puma::HttpParserError
+        end
+        @env[REQUEST_PATH] = absolute_uri.path
+
+        # A nil env value will cause a LintError (and fatal errors elsewhere),
+        # so only set the env value if there actually is a value.
+        @env[QUERY_STRING] = absolute_uri.query if absolute_uri.query
+      end
+
+      if absolute_uri&.host && absolute_uri.port
+        # RFC 9112 section 3.2.2: for an absolute-form request target, use the
+        # host information from the target and ignore the Host header.
+        @env[SERVER_NAME] = absolute_uri.host
+        @env[SERVER_PORT] = absolute_uri.port.to_s
+        @env[HTTP_HOST] = absolute_uri.port == absolute_uri.default_port ?
+          absolute_uri.host : "#{absolute_uri.host}:#{absolute_uri.port}"
+      elsif host = @env[HTTP_HOST]
         # host can be a hostname, ipv4 or bracketed ipv6. Followed by an optional port.
         if colon = host.rindex("]:") # IPV6 with port
           @env[SERVER_NAME] = host[0, colon+1]
@@ -49,20 +71,6 @@ module Puma
       else
         @env[SERVER_NAME] = LOCALHOST
         @env[SERVER_PORT] = default_server_port
-      end
-
-      unless @env[REQUEST_PATH]
-        # it might be a dumbass full host request header
-        uri = begin
-          URI.parse(@env[REQUEST_URI])
-        rescue URI::InvalidURIError
-          raise Puma::HttpParserError
-        end
-        @env[REQUEST_PATH] = uri.path
-
-        # A nil env value will cause a LintError (and fatal errors elsewhere),
-        # so only set the env value if there actually is a value.
-        @env[QUERY_STRING] = uri.query if uri.query
       end
 
       @env[PATH_INFO] = @env[REQUEST_PATH].to_s # #to_s in case it's nil
