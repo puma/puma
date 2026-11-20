@@ -402,9 +402,11 @@ module Puma
     # processes the `env` and the request body
     def process_env_body
       validate_env
-      temp = setup_body
+      reject_framing_header_aliases
       normalize_env
       req_env_post_parse
+      temp = setup_body
+      @env[RACK_INPUT] = @body || EmptyBody
       raise HttpParserError if @error_status_code
       temp
     end
@@ -509,23 +511,36 @@ module Puma
       addr.delete_prefix(IPV4_MAPPED_IPV6_PREFIX)
     end
 
-    # Checks the request `Transfer-Encoding` and/or `Content-Length` to see if
-    # they are valid.  Raises errors if not, otherwise reads the body.
-    # @return [Boolean] true if the body can be completely read, false otherwise
-    #
-    def setup_body
-      # The parsers preserve underscores as commas to distinguish these aliases
-      # from real framing headers. Reject them before 100 Continue or body reads,
-      # regardless of allow_underscore_headers, to avoid proxy disagreements.
+    # The parsers preserve underscores as commas to distinguish these aliases
+    # from real framing headers. Reject them before 100 Continue or body reads,
+    # regardless of allow_underscore_headers, to avoid proxy disagreements.
+    # This must run before +req_env_post_parse+, which renames or drops them.
+    def reject_framing_header_aliases
       if @env.key?('HTTP_CONTENT,LENGTH') || @env.key?('HTTP_TRANSFER,ENCODING')
         @error_status_code = 400
         @env[HTTP_CONNECTION] = CLOSE
         raise HttpParserError, 'Underscores are not allowed in HTTP framing headers'
       end
+    end
 
+    # The expectation value is case-insensitive (RFC 9110 10.1.1), and a
+    # repeated header arrives joined with commas.
+    def expect_continue?
+      expect = @env[HTTP_EXPECT]
+      return false unless expect
+      return true if expect == CONTINUE
+
+      expect.split(',').any? { |e| e.strip.casecmp?(CONTINUE) }
+    end
+
+    # Checks the request `Transfer-Encoding` and/or `Content-Length` to see if
+    # they are valid.  Raises errors if not, otherwise reads the body.
+    # @return [Boolean] true if the body can be completely read, false otherwise
+    #
+    def setup_body
       @body_read_start = Process.clock_gettime(Process::CLOCK_MONOTONIC, :float_millisecond)
 
-      if @env[HTTP_EXPECT] == CONTINUE
+      if expect_continue?
         if @continue_callback && (response = @continue_callback.call(@env))
           reject_continue response
         end
