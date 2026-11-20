@@ -511,6 +511,22 @@ class TestRequestHeadersValid < TestRequestBase
     assert_instance_of Puma::NullIO, @client.body
   end
 
+  def test_ipv6_port_http11
+    request = <<~REQ.gsub("\n", "\r\n")
+      GET / HTTP/1.1
+      Host: [::1]:8080
+      Connection: close
+
+    REQ
+
+    create_client request
+
+    assert_equal '[::1]', @client.env[SERVER_NAME]
+    assert_equal '8080', @client.env[SERVER_PORT]
+    assert_equal '[::1]:8080', @client.env[HTTP_HOST]
+    assert_instance_of Puma::NullIO, @client.body
+  end
+
   def test_respect_x_forwarded_proto
     request = <<~REQ.gsub("\n", "\r\n")
       GET / HTTP/1.0
@@ -626,6 +642,24 @@ class TestRequestHeadersInvalid < TestRequestBase
 
   def test_whitespace_host_http11
     assert_invalid "GET / HTTP/1.1\r\nHost: \r\n\r\n",
+      "Invalid Host header",
+      status: 400
+  end
+
+  def test_duplicate_host_http11
+    assert_invalid "GET / HTTP/1.1\r\nHost: a.example\r\nHost: b.example\r\n\r\n",
+      "Invalid Host header",
+      status: 400
+  end
+
+  def test_duplicate_host_with_port_http11
+    assert_invalid "GET / HTTP/1.1\r\nHost: a.example:8080\r\nHost: b.example\r\n\r\n",
+      "Invalid Host header",
+      status: 400
+  end
+
+  def test_comma_separated_host_http11
+    assert_invalid "GET / HTTP/1.1\r\nHost: a.example, b.example\r\n\r\n",
       "Invalid Host header",
       status: 400
   end
