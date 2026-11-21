@@ -98,15 +98,6 @@ def allocations_per_parse(parser, request)
   (GC.stat(:total_allocated_objects) - before).fdiv(n)
 end
 
-# Parse once with each parser before anything is timed, while this code is
-# still interpreted. If YJIT compiles RubyHttpParser#execute before it has
-# ever run, as happens when an already compiled loop makes the first call,
-# the compiled method stays about as slow as the interpreter. In a server the
-# first requests are interpreted, so this matches what Puma sees.
-CASES.each_value do |request|
-  PARSERS.each_value { |klass| klass.new.execute({}, String.new(capacity: request.bytesize) << request, 0) }
-end
-
 seconds = Float(ARGV.fetch(0, "3"))
 yjit = defined?(RubyVM::YJIT) && RubyVM::YJIT.enabled?
 puts RUBY_DESCRIPTION

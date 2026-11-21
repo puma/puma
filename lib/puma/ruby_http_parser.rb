@@ -66,15 +66,10 @@ module Puma
     MAX_QUERY_STRING_LENGTH = limit
     MAX_QUERY_STRING_LENGTH_ERR = "HTTP element QUERY_STRING is longer than the #{text} allowed length (was %d)".freeze
 
+    MAX_METHOD_LENGTH = 20
+
     PARSE_ERR = "Invalid HTTP format, parsing fails. Are you trying to open an SSL connection to a non-SSL Puma?"
     START_ERR = "Requested start is after data buffer end."
-
-    REQUEST_METHOD = "REQUEST_METHOD"
-    REQUEST_URI = "REQUEST_URI"
-    FRAGMENT = "FRAGMENT"
-    QUERY_STRING = "QUERY_STRING"
-    SERVER_PROTOCOL = "SERVER_PROTOCOL"
-    REQUEST_PATH = "REQUEST_PATH"
 
     # Runs of bytes allowed in each element, transcribed from the grammar.
     # Bytes above 127 are allowed wherever the grammar's +national+ class or
@@ -98,45 +93,6 @@ module Puma
     TOKEN_BYTE  = byte_table(TOKEN_RUN)
     VALUE_BYTE  = byte_table(VALUE_RUN)
 
-    MAX_METHOD_LENGTH = 20
-    PROTOCOL_PREFIX = "HTTP/".bytes.freeze
-
-    CR = 13
-    LF = 10
-    SPACE = 32
-    HASH = 35
-    STAR = 42
-    DOT = 46
-    SLASH = 47
-    COLON = 58
-    QUESTION = 63
-
-    # Parser states. ERROR and START share the C parser's numbering.
-    ERROR = 0
-    START = 1
-    METHOD = 2
-    URI_START = 3
-    URI_STAR = 4
-    URI_SCHEME = 5
-    URI_ABSOLUTE = 6
-    URI_PATH = 7
-    URI_QUERY = 8
-    URI_FRAGMENT = 9
-    PROTOCOL_PREFIX_START = 10 # 10..14 match the bytes of "HTTP/"
-    PROTOCOL_MAJOR_START = 15
-    PROTOCOL_MAJOR = 16
-    PROTOCOL_MINOR_START = 17
-    PROTOCOL_MINOR = 18
-    REQUEST_LINE_LF = 19
-    FIELD_START = 20
-    FIELD_NAME = 21
-    VALUE_SPACES = 22
-    FIELD_VALUE = 23
-    FIELD_LF = 24
-    HEADERS_END_LF = 25
-    DONE = 26
-    PROTOCOL_PREFIX_STATES = (PROTOCOL_PREFIX_START...PROTOCOL_MAJOR_START).freeze
-
     # Interned env keys for common headers, keyed by the snake-upcased field
     # name. The C parser stores CONTENT_LENGTH and CONTENT_TYPE without the
     # HTTP_ prefix; every other header gets it.
@@ -154,13 +110,46 @@ module Puma
       .merge("CONTENT_LENGTH" => "CONTENT_LENGTH", "CONTENT_TYPE" => "CONTENT_TYPE")
       .freeze
 
+    # The parsing methods below refer to no constants except to raise errors.
+    # States are symbols, bytes are integer literals, and everything else is
+    # copied here into instance variables. Under YJIT, filling or clearing a
+    # constant cache invalidates the compiled code that reads it, and on Ruby
+    # 4.0 and 4.1-dev that code can be left exiting to the interpreter on every
+    # call, for the life of the process, so the parser ran about twice as
+    # slow. Both happen in ordinary use: the first query string after a run of
+    # requests without one fills caches, and code anywhere defining a constant
+    # with the same name, such as SPACE, clears them. See
+    # test/test_http_parser_yjit.rb.
     def initialize
+      @method_run = METHOD_RUN
+      @scheme_run = SCHEME_RUN
+      @uri_run = URI_RUN
+      @path_run = PATH_RUN
+      @digit_run = DIGIT_RUN
+      @token_run = TOKEN_RUN
+      @space_run = SPACE_RUN
+      @value_run = VALUE_RUN
+      @method_byte = METHOD_BYTE
+      @scheme_byte = SCHEME_BYTE
+      @token_byte = TOKEN_BYTE
+      @value_byte = VALUE_BYTE
+      @max_method_length = MAX_METHOD_LENGTH
+      @max_request_uri_length = MAX_REQUEST_URI_LENGTH
+      @max_request_path_length = MAX_REQUEST_PATH_LENGTH
+      @max_query_string_length = MAX_QUERY_STRING_LENGTH
+      @max_fragment_length = MAX_FRAGMENT_LENGTH
+      @max_field_name_length = MAX_FIELD_NAME_LENGTH
+      @max_field_value_length = MAX_FIELD_VALUE_LENGTH
+      @max_header_length = MAX_HEADER_LENGTH
+      @field_keys = FIELD_KEYS
+      @binary = Encoding::BINARY
+      @scanner = StringScanner.new("")
       reset
     end
 
     # Resets the parser to its initial state so it can be reused.
     def reset
-      @cs = START
+      @cs = :start
       @nread = 0
       @mark = 0
       @query_start = 0
@@ -168,7 +157,7 @@ module Puma
       @field_len = 0
       @field_name = nil
       @body = nil
-      @scanner&.string = "" # release the caller's buffer
+      @scanner.string = "" # release the caller's buffer
       nil
     end
 
@@ -183,14 +172,10 @@ module Puma
       # Matching uses a binary view so any buffer encoding behaves like the
       # binary socket data Puma reads. Header names are upcased in place in
       # +buffer+, as the C parser does, unless it is frozen.
-      buf = buffer.encoding == Encoding::BINARY ? buffer : buffer.b
+      buf = buffer.encoding == @binary ? buffer : buffer.b
       mutate = !buffer.frozen?
       ss = @scanner
-      if ss.nil?
-        ss = @scanner = StringScanner.new(buf)
-      elsif !ss.string.equal?(buf)
-        ss.string = buf
-      end
+      ss.string = buf unless ss.string.equal?(buf)
 
       cs = @cs
       p = start
@@ -202,46 +187,46 @@ module Puma
 
       while p < len
         case cs
-        when FIELD_VALUE
+        when :field_value
           ss.pos = p
-          p += ss.skip(VALUE_RUN)
+          p += ss.skip(@value_run)
           break if p == len
-          if buf.getbyte(p) == CR
+          if buf.getbyte(p) == 13 # "\r"
             store_field env, buf, name, field_len, mark, p - mark
-            cs = FIELD_LF
+            cs = :field_lf
             p += 1
           else
-            cs = ERROR
+            cs = :error
             break
           end
 
-        when FIELD_LF
-          if buf.getbyte(p) == LF
-            cs = FIELD_START
+        when :field_lf
+          if buf.getbyte(p) == 10 # "\n"
+            cs = :field_start
             p += 1
           else
-            cs = ERROR
+            cs = :error
             break
           end
 
-        when FIELD_START
+        when :field_start
           b = buf.getbyte(p)
-          if b == CR
-            cs = HEADERS_END_LF
+          if b == 13 # "\r"
+            cs = :headers_end_lf
             p += 1
-          elsif TOKEN_BYTE[b]
+          elsif @token_byte[b]
             field_start = p
             name = nil
-            cs = FIELD_NAME
+            cs = :field_name
           else
-            cs = ERROR
+            cs = :error
             break
           end
 
-        when FIELD_NAME
+        when :field_name
           segment_start = p
           ss.pos = p
-          n = ss.skip(TOKEN_RUN)
+          n = ss.skip(@token_run)
           if n > 0
             # The C parser snake-upcases each name byte in the buffer as it
             # consumes it, including in a name that then turns out invalid.
@@ -255,247 +240,247 @@ module Puma
             p += n
           end
           break if p == len
-          if buf.getbyte(p) == COLON
+          if buf.getbyte(p) == 58 # ":"
             field_len = p - field_start
             # When the whole name was consumed in this call it is already in
             # hand; otherwise read it back from the buffer.
             name = segment_start == field_start ? up : read_field_name(buf, field_start, field_len, mutate)
             mark = p + 1
-            cs = VALUE_SPACES
+            cs = :value_spaces
             p += 1
           else
-            cs = ERROR
+            cs = :error
             break
           end
 
-        when VALUE_SPACES
+        when :value_spaces
           # Mirrors where the C parser's start_value action leaves its mark:
           # on the first byte after the spaces, or on the last space when the
           # value is all spaces. Leading tabs are part of the value.
           ss.pos = p
-          n = ss.skip(SPACE_RUN)
+          n = ss.skip(@space_run)
           if n > 0
             p += n
             mark = p - 1
           end
           break if p == len
           b = buf.getbyte(p)
-          if b == CR
+          if b == 13 # "\r"
             store_field env, buf, name, field_len, mark, p - mark
-            cs = FIELD_LF
+            cs = :field_lf
             p += 1
-          elsif VALUE_BYTE[b]
+          elsif @value_byte[b]
             mark = p
-            cs = FIELD_VALUE
+            cs = :field_value
           else
-            cs = ERROR
+            cs = :error
             break
           end
 
-        when HEADERS_END_LF
-          if buf.getbyte(p) == LF
+        when :headers_end_lf
+          if buf.getbyte(p) == 10 # "\n"
             p += 1
             @body = buf.byteslice(p, len - p)
-            cs = DONE
+            cs = :done
             break
           else
-            cs = ERROR
+            cs = :error
             break
           end
 
-        when START
-          if METHOD_BYTE[buf.getbyte(p)]
+        when :start
+          if @method_byte[buf.getbyte(p)]
             mark = p
-            cs = METHOD
+            cs = :method
           else
-            cs = ERROR
+            cs = :error
             break
           end
 
-        when METHOD
+        when :method
           ss.pos = p
-          p += ss.skip(METHOD_RUN)
-          if p - mark > MAX_METHOD_LENGTH
-            p = mark + MAX_METHOD_LENGTH
-            cs = ERROR
+          p += ss.skip(@method_run)
+          if p - mark > @max_method_length
+            p = mark + @max_method_length
+            cs = :error
             break
           end
           break if p == len
-          if buf.getbyte(p) == SPACE
-            env[REQUEST_METHOD] = buf.byteslice(mark, p - mark)
-            cs = URI_START
+          if buf.getbyte(p) == 32 # " "
+            env["REQUEST_METHOD"] = buf.byteslice(mark, p - mark)
+            cs = :uri_start
             p += 1
           else
-            cs = ERROR
+            cs = :error
             break
           end
 
-        when URI_START
+        when :uri_start
           b = buf.getbyte(p)
           mark = p
-          if b == SLASH
-            cs = URI_PATH
-          elsif b == STAR
-            cs = URI_STAR
-          elsif b == COLON
-            cs = URI_ABSOLUTE
-          elsif SCHEME_BYTE[b]
-            cs = URI_SCHEME
+          if b == 47 # "/"
+            cs = :uri_path
+          elsif b == 42 # "*"
+            cs = :uri_star
+          elsif b == 58 # ":"
+            cs = :uri_absolute
+          elsif @scheme_byte[b]
+            cs = :uri_scheme
           else
-            cs = ERROR
+            cs = :error
             break
           end
           p += 1
 
-        when URI_PATH
+        when :uri_path
           ss.pos = p
-          p += ss.skip(PATH_RUN)
+          p += ss.skip(@path_run)
           break if p == len
           b = buf.getbyte(p)
-          if b == QUESTION
+          if b == 63 # "?"
             request_path env, buf, mark, p
             query_start = p + 1
-            cs = URI_QUERY
+            cs = :uri_query
             p += 1
-          elsif b == SPACE || b == HASH
+          elsif b == 32 || b == 35 # " " or "#"
             request_path env, buf, mark, p
             request_uri env, buf, mark, p
             mark = p + 1
-            cs = b == SPACE ? PROTOCOL_PREFIX_START : URI_FRAGMENT
+            cs = b == 32 ? :protocol_prefix : :uri_fragment # " "
             p += 1
           else
-            cs = ERROR
+            cs = :error
             break
           end
 
-        when URI_QUERY
+        when :uri_query
           ss.pos = p
-          p += ss.skip(URI_RUN)
+          p += ss.skip(@uri_run)
           break if p == len
           b = buf.getbyte(p)
-          if b == SPACE || b == HASH
+          if b == 32 || b == 35 # " " or "#"
             query_string env, buf, query_start, p
             request_uri env, buf, mark, p
             mark = p + 1
-            cs = b == SPACE ? PROTOCOL_PREFIX_START : URI_FRAGMENT
+            cs = b == 32 ? :protocol_prefix : :uri_fragment # " "
             p += 1
           else
-            cs = ERROR
+            cs = :error
             break
           end
 
-        when URI_SCHEME
+        when :uri_scheme
           ss.pos = p
-          p += ss.skip(SCHEME_RUN)
+          p += ss.skip(@scheme_run)
           break if p == len
-          if buf.getbyte(p) == COLON
-            cs = URI_ABSOLUTE
+          if buf.getbyte(p) == 58 # ":"
+            cs = :uri_absolute
             p += 1
           else
-            cs = ERROR
+            cs = :error
             break
           end
 
-        when URI_ABSOLUTE
+        when :uri_absolute
           ss.pos = p
-          p += ss.skip(URI_RUN)
+          p += ss.skip(@uri_run)
           break if p == len
           b = buf.getbyte(p)
-          if b == SPACE || b == HASH
+          if b == 32 || b == 35 # " " or "#"
             request_uri env, buf, mark, p
             mark = p + 1
-            cs = b == SPACE ? PROTOCOL_PREFIX_START : URI_FRAGMENT
+            cs = b == 32 ? :protocol_prefix : :uri_fragment # " "
             p += 1
           else
-            cs = ERROR
+            cs = :error
             break
           end
 
-        when URI_STAR
+        when :uri_star
           b = buf.getbyte(p)
-          if b == SPACE || b == HASH
+          if b == 32 || b == 35 # " " or "#"
             request_uri env, buf, mark, p
             mark = p + 1
-            cs = b == SPACE ? PROTOCOL_PREFIX_START : URI_FRAGMENT
+            cs = b == 32 ? :protocol_prefix : :uri_fragment # " "
             p += 1
           else
-            cs = ERROR
+            cs = :error
             break
           end
 
-        when URI_FRAGMENT
+        when :uri_fragment
           ss.pos = p
-          p += ss.skip(URI_RUN)
+          p += ss.skip(@uri_run)
           break if p == len
-          if buf.getbyte(p) == SPACE
+          if buf.getbyte(p) == 32 # " "
             n = p - mark
-            raise HttpParserError, format(MAX_FRAGMENT_LENGTH_ERR, n) if n > MAX_FRAGMENT_LENGTH
-            env[FRAGMENT] = buf.byteslice(mark, n)
+            raise HttpParserError, format(MAX_FRAGMENT_LENGTH_ERR, n) if n > @max_fragment_length
+            env["FRAGMENT"] = buf.byteslice(mark, n)
             mark = p + 1
-            cs = PROTOCOL_PREFIX_START
+            cs = :protocol_prefix
             p += 1
           else
-            cs = ERROR
+            cs = :error
             break
           end
 
-        when PROTOCOL_PREFIX_STATES
-          index = cs - PROTOCOL_PREFIX_START
-          if buf.getbyte(p) == PROTOCOL_PREFIX[index]
-            mark = p if index == 0
-            cs += 1
+        when :protocol_prefix
+          # Matches the bytes of "HTTP/". Every way into this state leaves
+          # +mark+ on the "H", so p - mark is the index of the next byte.
+          if buf.getbyte(p) == "HTTP/".getbyte(p - mark)
             p += 1
+            cs = :protocol_major_start if p - mark == 5
           else
-            cs = ERROR
+            cs = :error
             break
           end
 
-        when PROTOCOL_MAJOR_START, PROTOCOL_MINOR_START
+        when :protocol_major_start, :protocol_minor_start
           b = buf.getbyte(p)
-          if b >= 48 && b <= 57
-            cs += 1
+          if b >= 48 && b <= 57 # "0".."9"
+            cs = cs == :protocol_major_start ? :protocol_major : :protocol_minor
             p += 1
           else
-            cs = ERROR
+            cs = :error
             break
           end
 
-        when PROTOCOL_MAJOR
+        when :protocol_major
           ss.pos = p
-          p += ss.skip(DIGIT_RUN)
+          p += ss.skip(@digit_run)
           break if p == len
-          if buf.getbyte(p) == DOT
-            cs = PROTOCOL_MINOR_START
+          if buf.getbyte(p) == 46 # "."
+            cs = :protocol_minor_start
             p += 1
           else
-            cs = ERROR
+            cs = :error
             break
           end
 
-        when PROTOCOL_MINOR
+        when :protocol_minor
           ss.pos = p
-          p += ss.skip(DIGIT_RUN)
+          p += ss.skip(@digit_run)
           break if p == len
-          if buf.getbyte(p) == CR
-            env[SERVER_PROTOCOL] = buf.byteslice(mark, p - mark)
-            cs = REQUEST_LINE_LF
+          if buf.getbyte(p) == 13 # "\r"
+            env["SERVER_PROTOCOL"] = buf.byteslice(mark, p - mark)
+            cs = :request_line_lf
             p += 1
           else
-            cs = ERROR
+            cs = :error
             break
           end
 
-        when REQUEST_LINE_LF
-          if buf.getbyte(p) == LF
-            cs = FIELD_START
+        when :request_line_lf
+          if buf.getbyte(p) == 10 # "\n"
+            cs = :field_start
             p += 1
           else
-            cs = ERROR
+            cs = :error
             break
           end
 
-        else # DONE accepts no more input, and ERROR stays put
-          cs = ERROR
+        else # :done accepts no more input, and :error stays put
+          cs = :error
           break
         end
       end
@@ -510,10 +495,10 @@ module Puma
       @field_len = field_len
       @field_name = name
 
-      if @nread > MAX_HEADER_LENGTH
+      if @nread > @max_header_length
         raise HttpParserError, format(MAX_HEADER_LENGTH_ERR, @nread)
       end
-      raise HttpParserError, PARSE_ERR if cs == ERROR
+      raise HttpParserError, PARSE_ERR if cs == :error
 
       @nread
     end
@@ -524,11 +509,11 @@ module Puma
     end
 
     def error?
-      @cs == ERROR
+      @cs == :error
     end
 
     def finished?
-      @cs == DONE
+      @cs == :done
     end
 
     # Returns the number of bytes parsed since the last reset.
@@ -546,34 +531,34 @@ module Puma
 
     def request_path(env, buf, from, to)
       n = to - from
-      raise HttpParserError, format(MAX_REQUEST_PATH_LENGTH_ERR, n) if n > MAX_REQUEST_PATH_LENGTH
-      env[REQUEST_PATH] = buf.byteslice(from, n)
+      raise HttpParserError, format(MAX_REQUEST_PATH_LENGTH_ERR, n) if n > @max_request_path_length
+      env["REQUEST_PATH"] = buf.byteslice(from, n)
     end
 
     def query_string(env, buf, from, to)
       n = to - from
-      raise HttpParserError, format(MAX_QUERY_STRING_LENGTH_ERR, n) if n > MAX_QUERY_STRING_LENGTH
-      env[QUERY_STRING] = buf.byteslice(from, n)
+      raise HttpParserError, format(MAX_QUERY_STRING_LENGTH_ERR, n) if n > @max_query_string_length
+      env["QUERY_STRING"] = buf.byteslice(from, n)
     end
 
     def request_uri(env, buf, from, to)
       n = to - from
-      raise HttpParserError, format(MAX_REQUEST_URI_LENGTH_ERR, n) if n > MAX_REQUEST_URI_LENGTH
-      env[REQUEST_URI] = buf.byteslice(from, n)
+      raise HttpParserError, format(MAX_REQUEST_URI_LENGTH_ERR, n) if n > @max_request_uri_length
+      env["REQUEST_URI"] = buf.byteslice(from, n)
     end
 
     # Stores one header, as http_field in puma_http11.c does: lengths are
     # checked before the value is trimmed, the key is interned UTF-8, and a
     # repeated header is appended to the existing value after ", ".
     def store_field(env, buf, name, field_len, mark, value_len)
-      if field_len > MAX_FIELD_NAME_LENGTH
+      if field_len > @max_field_name_length
         raise HttpParserError, format(MAX_FIELD_NAME_LENGTH_ERR, field_len)
       end
-      if value_len > MAX_FIELD_VALUE_LENGTH
+      if value_len > @max_field_value_length
         raise HttpParserError, format(MAX_FIELD_VALUE_LENGTH_ERR, value_len)
       end
 
-      key = FIELD_KEYS[name] || -"HTTP_#{name}"
+      key = @field_keys[name] || -"HTTP_#{name}"
 
       value = buf.byteslice(mark, value_len)
       # The grammar admits no whitespace in a value other than spaces and
@@ -601,7 +586,7 @@ module Puma
 
     if "".respond_to?(:bytesplice)
       def write_bytes(str, pos, bytes)
-        if str.encoding == Encoding::BINARY
+        if str.encoding == @binary
           str.bytesplice(pos, bytes.bytesize, bytes)
         else
           bytes.bytesize.times { |i| str.setbyte(pos + i, bytes.getbyte(i)) }
