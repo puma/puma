@@ -21,9 +21,12 @@ end
 
 require_relative 'puma/detect'
 require_relative 'puma/json_serialization'
-require_relative 'puma/ruby_http_parser'
 
 module Puma
+  # Loaded on first use, so it reads and checks its PUMA_*_MAX_LENGTH
+  # settings only when Puma parses with it.
+  autoload :RubyHttpParser, "#{__dir__}/puma/ruby_http_parser"
+
   # The extension's parser stays reachable under this name, so it can be
   # compared against Puma::RubyHttpParser in the same process.
   NativeHttpParser = HttpParser if const_defined?(:HttpParser, false)
