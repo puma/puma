@@ -309,9 +309,13 @@ class Http11ParserTest < TestIntegration
   def test_trims_whitespace_from_headers
     parser = parser_class.new
     req = {}
-    # Unfrozen because the C parser upcases header names in the buffer, even a
-    # frozen one, and both parser test classes share this literal.
-    http = +"GET / HTTP/1.1\r\nX-Strip-Me: \t Strip This \t      \r\n\r\n"
+    # The C parser upcases header names in the buffer it is given, even a
+    # frozen one, and writes through to any string that shares the buffer's
+    # bytes. Before Ruby 3.2, +request (a copy) shares a long literal's bytes,
+    # and both parser test classes run this method with the same literal. So
+    # the buffer gets bytes of its own.
+    request = "GET / HTTP/1.1\r\nX-Strip-Me: \t Strip This \t      \r\n\r\n"
+    http = String.new(capacity: request.bytesize) << request
 
     parser.execute(req, http, 0)
 
