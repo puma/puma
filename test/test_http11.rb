@@ -355,6 +355,26 @@ class Http11ParserTest < TestIntegration
     assert_equal "Valid\tValue", req['HTTP_DUMMY']
   end
 
+  # A header value can follow tens of kilobytes of spaces, so they must be
+  # skipped in C, not one method call per byte. Counting C method calls
+  # stands in for timing the parse.
+  def test_spaces_before_header_value_are_skipped_in_one_step
+    me = Thread.current
+    calls = [10, 10_000].map do |n|
+      parser = parser_class.new
+      req = {}
+      http = "GET / HTTP/1.1\r\nX-A: #{' ' * n}v\r\n\r\n".b
+      count = 0
+      trace = TracePoint.new(:c_call) { count += 1 if Thread.current == me }
+      trace.enable { parser.execute(req, http, 0) }
+      assert_equal "v", req["HTTP_X_A"]
+      count
+    end
+
+    assert_operator calls[1], :<=, calls[0] + 2,
+      "C method calls with 10 leading spaces, then 10,000: #{calls.inspect}"
+  end
+
   def test_request_line_key_named_headers_are_http_prefixed
     keys = %w[QUERY_STRING REQUEST_PATH REQUEST_URI REQUEST_METHOD SERVER_PROTOCOL FRAGMENT]
 

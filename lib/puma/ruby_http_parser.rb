@@ -303,17 +303,20 @@ module Puma
         when :value_spaces
           # Value shortcut: a value whose line is complete, with no bytes the
           # grammar rejects, is stored in one step. Otherwise, or when a length
-          # limit would be exceeded, the code below handles it, so errors are
-          # raised in only one place. The value starts after the spaces. For
-          # an all-space value the code below marks the last space instead,
-          # but a length of 1 rather than 0 can't reach the limit, and both
-          # strip to "".
-          v = p
-          v += 1 while buf.getbyte(v) == 32 # " "
-          r = buf.index("\r", v)
+          # limit might be exceeded, the code below handles it, so errors are
+          # raised in only one place.
+          #
+          # The leading spaces are not skipped first. strip! removes them in C
+          # with the trailing ones, whereas skipping them in Ruby costs a call
+          # per space, and a request can carry tens of kilobytes of them. So
+          # the length checked here includes them and is never shorter than
+          # the one the C parser checks, which starts after them. A value over
+          # the limit by this measure takes the code below, which measures it
+          # as the C parser does.
+          r = buf.index("\r", p)
           if r && buf.getbyte(r + 1) == 10 # "\n"
-            if field_len <= @max_field_name_length && r - v <= @max_field_value_length
-              value = buf.byteslice(v, r - v)
+            if field_len <= @max_field_name_length && r - p <= @max_field_value_length
+              value = buf.byteslice(p, r - p)
               unless value.match?(@value_ctl)
                 value.strip!
                 key ||= @field_keys[name] || -"HTTP_#{name}"
@@ -323,7 +326,6 @@ module Puma
                 else
                   existing << ", " << value
                 end
-                mark = v
                 cs = :field_start
                 p = r + 2
                 next
