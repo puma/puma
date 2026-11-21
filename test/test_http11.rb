@@ -359,6 +359,7 @@ class Http11ParserTest < TestIntegration
   # skipped in C, not one method call per byte. Counting C method calls
   # stands in for timing the parse.
   def test_spaces_before_header_value_are_skipped_in_one_step
+    skip_if :truffleruby, suffix: " (its TracePoint has no :c_call event)"
     me = Thread.current
     calls = [10, 10_000].map do |n|
       parser = parser_class.new
