@@ -11,8 +11,12 @@ require 'thread'
 # use require, see https://github.com/puma/puma/pull/2381
 begin
   require 'puma/puma_http11'
-rescue LoadError
-  # Without the extension Puma uses the pure Ruby HTTP parser and has no SSL.
+rescue LoadError => e
+  # Puma can run without the extension, but a broken build ends up here too,
+  # e.g. one compiled for another Ruby or missing its OpenSSL library.
+  warn "WARNING: Puma could not load its C extension (#{e.message}). " \
+    "It will use the slower pure Ruby HTTP parser, and SSL and the child " \
+    "subreaper used by mold_worker are unavailable."
 end
 
 require_relative 'puma/detect'

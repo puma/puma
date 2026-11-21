@@ -7,16 +7,19 @@ require_relative "helper"
 require_relative "helpers/integration"
 require "digest"
 
-require "puma/puma_http11"
-
 # Runs against the extension's parser. Http11RubyParserTest below runs the
 # same tests against Puma::RubyHttpParser.
 class Http11ParserTest < TestIntegration
 
   parallelize_me! unless ::Puma::IS_JRUBY && RUBY_DESCRIPTION.include?('x86_64-darwin')
 
+  def setup
+    skip "needs the puma_http11 extension" unless parser_class
+    super
+  end
+
   def parser_class
-    Puma::NativeHttpParser
+    Puma::NativeHttpParser if defined?(Puma::NativeHttpParser)
   end
 
   def test_parse_simple
