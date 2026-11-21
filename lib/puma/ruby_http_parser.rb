@@ -118,8 +118,8 @@ module Puma
     # call, for the life of the process, so the parser ran about twice as
     # slow. Both happen in ordinary use: the first query string after a run of
     # requests without one fills caches, and code anywhere defining a constant
-    # with the same name, such as SPACE, clears them. See
-    # test/test_http_parser_yjit.rb.
+    # with the same name, such as SPACE, clears them. Reported as
+    # https://bugs.ruby-lang.org/issues/22617. See test/test_http_parser_yjit.rb.
     def initialize
       @method_run = METHOD_RUN
       @scheme_run = SCHEME_RUN
@@ -486,7 +486,10 @@ module Puma
       end
 
       # A length-limit error raised above skips these updates, leaving
-      # #error? false and #nread unchanged, as in the C parser.
+      # #error? false and #nread unchanged, as in the C parser. The element
+      # offsets keep their old values too, whereas the C parser has already
+      # moved some of them on, so the two differ if a parser is used again
+      # after such an error without #reset. Puma closes the connection instead.
       @cs = cs
       @nread += p - start
       @mark = mark
