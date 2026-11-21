@@ -3,6 +3,12 @@
 There are some `cflags` provided to change Puma's default configuration for its
 C extension.
 
+These limits are fixed when the C extension is compiled. The JRuby parser, and
+the pure Ruby parser that Puma uses when the extension cannot be loaded or when
+`PUMA_PURE_RUBY_PARSER` is set, read the same names from the environment instead
+when Puma is loaded, e.g. `PUMA_QUERY_STRING_MAX_LENGTH=64000 bundle exec puma`.
+A limit compiled into the C extension does not carry over to them.
+
 ## Query String, `PUMA_QUERY_STRING_MAX_LENGTH`
 
 By default, the max length of `QUERY_STRING` is `1024 * 10`. But you may want to
