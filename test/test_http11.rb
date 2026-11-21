@@ -9,12 +9,18 @@ require "digest"
 
 require "puma/puma_http11"
 
+# Runs against the extension's parser. Http11RubyParserTest below runs the
+# same tests against Puma::RubyHttpParser.
 class Http11ParserTest < TestIntegration
 
   parallelize_me! unless ::Puma::IS_JRUBY && RUBY_DESCRIPTION.include?('x86_64-darwin')
 
+  def parser_class
+    Puma::NativeHttpParser
+  end
+
   def test_parse_simple
-    parser = Puma::HttpParser.new
+    parser = parser_class.new
     req = {}
     http = "GET /?a=1 HTTP/1.1\r\n\r\n"
     nread = parser.execute(req, http, 0)
@@ -36,7 +42,7 @@ class Http11ParserTest < TestIntegration
   end
 
   def test_parse_escaping_in_query
-    parser = Puma::HttpParser.new
+    parser = parser_class.new
     req = {}
     http = "GET /admin/users?search=%27%%27 HTTP/1.1\r\n\r\n"
     nread = parser.execute(req, http, 0)
@@ -54,7 +60,7 @@ class Http11ParserTest < TestIntegration
   end
 
   def test_parse_absolute_uri
-    parser = Puma::HttpParser.new
+    parser = parser_class.new
     req = {}
     http = "GET http://192.168.1.96:3000/api/v1/matches/test?1=1 HTTP/1.1\r\n\r\n"
     nread = parser.execute(req, http, 0)
@@ -78,7 +84,7 @@ class Http11ParserTest < TestIntegration
   end
 
   def test_parse_dumbfuck_headers
-    parser = Puma::HttpParser.new
+    parser = parser_class.new
     req = {}
     should_be_good = "GET / HTTP/1.1\r\naaaaaaaaaaaaa:++++++++++\r\n\r\n"
     nread = parser.execute(req, should_be_good, 0)
@@ -88,7 +94,7 @@ class Http11ParserTest < TestIntegration
   end
 
   def test_parse_error
-    parser = Puma::HttpParser.new
+    parser = parser_class.new
     req = {}
     bad_http = "GET / SsUTF/1.1"
 
@@ -105,7 +111,7 @@ class Http11ParserTest < TestIntegration
   end
 
   def test_fragment_in_uri
-    parser = Puma::HttpParser.new
+    parser = parser_class.new
     req = {}
     get = "GET /forums/1/topics/2375?page=1#posts-17408 HTTP/1.1\r\n\r\n"
 
@@ -117,7 +123,7 @@ class Http11ParserTest < TestIntegration
   end
 
   def test_semicolon_in_path
-    parser = Puma::HttpParser.new
+    parser = parser_class.new
     req = {}
     get = "GET /forums/1/path;stillpath/2375?page=1 HTTP/1.1\r\n\r\n"
 
@@ -131,7 +137,7 @@ class Http11ParserTest < TestIntegration
   REJECTED_PATH_CHARS = ['{', '}', '`', '\\']
 
   def test_rejects_unescaped_characters_in_path
-    parser = Puma::HttpParser.new
+    parser = parser_class.new
 
     REJECTED_PATH_CHARS.each do |char|
       get = "GET /path#{char}here HTTP/1.1\r\n\r\n"
@@ -144,7 +150,7 @@ class Http11ParserTest < TestIntegration
   end
 
   def test_accepts_browser_unescaped_characters_in_path
-    parser = Puma::HttpParser.new
+    parser = parser_class.new
     req = {}
     parser.execute(req, "GET /a|b[c]^d HTTP/1.1\r\n\r\n", 0)
 
@@ -153,7 +159,7 @@ class Http11ParserTest < TestIntegration
   end
 
   def test_accepts_browser_unescaped_characters_in_query
-    parser = Puma::HttpParser.new
+    parser = parser_class.new
     req = {}
     parser.execute(req, "GET /search?filter[status]=active&q={a}|b^c`d\\e HTTP/1.1\r\n\r\n", 0)
 
@@ -162,7 +168,7 @@ class Http11ParserTest < TestIntegration
   end
 
   def test_parse_absolute_uri_with_ipv6_literal
-    parser = Puma::HttpParser.new
+    parser = parser_class.new
     req = {}
     http = "GET http://[::1]:9292/x HTTP/1.1\r\n\r\n"
     nread = parser.execute(req, http, 0)
@@ -241,7 +247,7 @@ class Http11ParserTest < TestIntegration
   end
 
   def test_max_uri_path_length
-    parser = Puma::HttpParser.new
+    parser = parser_class.new
     req = {}
 
     # Support URI path length to a max of 8192
@@ -261,7 +267,7 @@ class Http11ParserTest < TestIntegration
   end
 
   def test_horrible_queries
-    parser = Puma::HttpParser.new
+    parser = parser_class.new
 
     # then that large header names are caught
     10.times do |c|
@@ -301,9 +307,11 @@ class Http11ParserTest < TestIntegration
   end
 
   def test_trims_whitespace_from_headers
-    parser = Puma::HttpParser.new
+    parser = parser_class.new
     req = {}
-    http = "GET / HTTP/1.1\r\nX-Strip-Me: \t Strip This \t      \r\n\r\n"
+    # Unfrozen because the C parser upcases header names in the buffer, even a
+    # frozen one, and both parser test classes share this literal.
+    http = +"GET / HTTP/1.1\r\nX-Strip-Me: \t Strip This \t      \r\n\r\n"
 
     parser.execute(req, http, 0)
 
@@ -311,7 +319,7 @@ class Http11ParserTest < TestIntegration
   end
 
   def test_newline_smuggler
-    parser = Puma::HttpParser.new
+    parser = parser_class.new
     req = {}
     http = "GET / HTTP/1.1\r\nHost: localhost:8080\r\nDummy: x\nDummy2: y\r\n\r\n"
 
@@ -321,7 +329,7 @@ class Http11ParserTest < TestIntegration
   end
 
   def test_newline_smuggler_two
-    parser = Puma::HttpParser.new
+    parser = parser_class.new
     req = {}
     http = "GET / HTTP/1.1\r\nHost: localhost:8080\r\nDummy: x\r\nDummy: y\nDummy2: z\r\n\r\n"
 
@@ -331,7 +339,7 @@ class Http11ParserTest < TestIntegration
   end
 
   def test_htab_in_header_val
-    parser = Puma::HttpParser.new
+    parser = parser_class.new
     req = {}
     http = "GET / HTTP/1.1\r\nHost: localhost:8080\r\nDummy: Valid\tValue\r\n\r\n"
 
@@ -345,16 +353,45 @@ class Http11ParserTest < TestIntegration
 
     ['GET /p', 'GET /p?a=1', 'GET http://h/p', 'OPTIONS *'].each do |line|
       expected = {}
-      Puma::HttpParser.new.execute(expected, "#{line} HTTP/1.1\r\nHost: h\r\n\r\n", 0)
+      parser_class.new.execute(expected, "#{line} HTTP/1.1\r\nHost: h\r\n\r\n", 0)
 
       keys.each do |key|
         name = key.split('_').map(&:capitalize).join('-')
         req = {}
-        Puma::HttpParser.new.execute(req, "#{line} HTTP/1.1\r\nHost: h\r\n#{name}: value\r\n\r\n", 0)
+        parser_class.new.execute(req, "#{line} HTTP/1.1\r\nHost: h\r\n#{name}: value\r\n\r\n", 0)
 
         assert_equal expected.slice(*keys), req.slice(*keys), "#{line} with #{name} header"
         assert_equal 'value', req["HTTP_#{key}"], "#{line} with #{name} header"
       end
     end
+  end
+end
+
+class Http11RubyParserTest < Http11ParserTest
+  def parser_class
+    Puma::RubyHttpParser
+  end
+
+  # Checks the JRuby extension's constants, not the parser under test.
+  undef_method :test_get_const_length
+
+  # The C parser's sources that Puma::RubyHttpParser transcribes: the
+  # grammar, its actions, and the limits, messages and env keys.
+  C_PARSER_SOURCES = %w[http11_parser_common.rl http11_parser.rl puma_http11.c].freeze
+  C_PARSER_SOURCES_DIGEST = "9ce4aa83cc484a430fc99d84eab4fbb41522b83614b7e4bf148b279d6c82c47b"
+
+  # Fails whenever those sources change, so that a change to the C parser
+  # isn't left out of the Ruby one. The C and Java parsers drifted apart
+  # that way (#1978); the differential fuzzer would catch drift only by chance.
+  def test_c_parser_sources_unchanged
+    dir = File.expand_path "../ext/puma_http11", __dir__
+    sources = C_PARSER_SOURCES.map { |f| File.binread(File.join(dir, f)).gsub("\r\n", "\n") }
+    digest = Digest::SHA256.hexdigest sources.join("\0")
+
+    assert_equal C_PARSER_SOURCES_DIGEST, digest, <<~MSG
+      The C parser's sources changed (#{C_PARSER_SOURCES.join(", ")} in ext/puma_http11).
+      Make the same change in lib/puma/ruby_http_parser.rb, or confirm it needs none,
+      then set C_PARSER_SOURCES_DIGEST in #{__FILE__} to the new digest.
+    MSG
   end
 end

@@ -9,12 +9,33 @@ require 'stringio'
 require 'thread'
 
 # use require, see https://github.com/puma/puma/pull/2381
-require 'puma/puma_http11'
+begin
+  require 'puma/puma_http11'
+rescue LoadError
+  # Without the extension Puma uses the pure Ruby HTTP parser and has no SSL.
+end
 
 require_relative 'puma/detect'
 require_relative 'puma/json_serialization'
+require_relative 'puma/ruby_http_parser'
 
 module Puma
+  # The extension's parser stays reachable under this name, so it can be
+  # compared against Puma::RubyHttpParser in the same process.
+  NativeHttpParser = HttpParser if const_defined?(:HttpParser, false)
+
+  if !ENV.fetch('PUMA_PURE_RUBY_PARSER', '').empty? || !const_defined?(:HttpParser, false)
+    remove_const(:HttpParser) if const_defined?(:HttpParser, false)
+    HttpParser = RubyHttpParser
+  end
+
+  # Defined by the extension; without it, Puma cannot become a child subreaper.
+  unless respond_to?(:enable_child_subreaper)
+    def self.enable_child_subreaper
+      false
+    end
+  end
+
   # when Puma is loaded via `Puma::CLI`, all files are loaded via
   # `require_relative`.  The below are for non-standard loading
   autoload :Const,     "#{__dir__}/puma/const"
