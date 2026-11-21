@@ -63,6 +63,8 @@ module HttpParserFuzzer
     "PUT /api/v1/items/42 HTTP/1.1\r\nHost: api.example.com\r\nX_Forwarded_For: 10.0.0.1\r\n" \
       "X-Forwarded-For: 10.0.0.2\r\nContent-Type: application/json\r\nContent-Length: 2\r\n\r\n{}",
     "GET /caf\xC3\xA9?q=\xFF HTTP/1.1\r\nHost: test.com\r\nX-Bytes: \x80\xFE\r\n\r\n",
+    "GET / HTTP/1.1\r\nhost: a\r\nuser-agent: curl/8\r\nDNT: 1\r\nTE: trailers\r\nsec-ch-ua-mobile: ?0\r\n" \
+      "X-Request-ID: 7\r\naccept:\r\ncookie:   \r\nAccept-Encoding:\t gzip \t\r\nX-Api-Key: k\r\nHOST: b\r\n\r\n",
   ].map { |s| s.b.freeze }.freeze
 
   INTERESTING = ["\r", "\n", "\r\n", "\t", " ", ":", "?", "#", "/", "%", "*", "{", "}", "`",
@@ -73,6 +75,16 @@ module HttpParserFuzzer
 
   # Lengths either side of the parser's limits, for inputs that probe them.
   LIMIT_LENGTHS = [20, 256, 1024, 8192, 10 * 1024, 12 * 1024, 80 * 1024].flat_map { |n| [n - 1, n, n + 1] }.freeze
+
+  # Names the Ruby parser's name shortcut looks up, and values that probe its
+  # value shortcut: spaces and tabs, bare line breaks, rejected bytes, and
+  # lengths either side of the field value limit, with trailing spaces too.
+  TABLE_NAMES = Puma::RubyHttpParser::HEADER_TABLE.keys.freeze
+  AWKWARD_VALUES = (
+    ["", " ", "   ", "v", " v", "\tv", " \t v \t ", " v  \t\t", " \t", "\t ", " a\nb", " \n", " a\rb",
+     " a\r", " a\x01b", " a\x7fb", " \x80\xff", " a,  b"] +
+    [80 * 1024 - 1, 80 * 1024, 80 * 1024 + 1].flat_map { |n| [" #{"x" * n}", " #{"x" * (n - 2)}  "] }
+  ).map { |s| s.b.freeze }.freeze
 
   module_function
 
@@ -199,7 +211,7 @@ module HttpParserFuzzer
     rng.rand(1..3).times do
       len = out.bytesize
       pos = len.zero? ? 0 : rng.rand(0..len)
-      case rng.rand(10)
+      case rng.rand(11)
       when 0 # overwrite a byte
         out.setbyte(pos, rng.rand(256)) if pos < len
       when 1 # insert an interesting token
@@ -228,6 +240,20 @@ module HttpParserFuzzer
       when 9 # stretch to a length near one of the limits
         filler = ["a", "/", "%", " ", "\t", "?", "b=c&"].sample(random: rng)
         out.insert(pos, (filler * LIMIT_LENGTHS.sample(random: rng)).byteslice(0, LIMIT_LENGTHS.sample(random: rng)).b)
+      when 10 # add a header with a name from the table, maybe altered, and an awkward value
+        line_end = out.index("\r\n")
+        if line_end
+          name = TABLE_NAMES.sample(random: rng).dup
+          i = rng.rand(name.bytesize)
+          b = name.getbyte(i)
+          case rng.rand(4)
+          when 0 then name.setbyte(i, b ^ 0x20) if (65..90).cover?(b) || (97..122).cover?(b)
+          when 1 then name.setbyte(i, NAME_BYTES.sample(random: rng))
+          end
+          line = "#{name}:#{AWKWARD_VALUES.sample(random: rng)}\r\n".b
+          line *= 2 if rng.rand(4).zero?
+          out.insert(line_end + 2, line)
+        end
       end
     end
     out

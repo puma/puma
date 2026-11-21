@@ -110,6 +110,30 @@ module Puma
       .merge("CONTENT_LENGTH" => "CONTENT_LENGTH", "CONTENT_TYPE" => "CONTENT_TYPE")
       .freeze
 
+    # The FIELD_KEYS names as clients spell them: capitalized words, all
+    # lowercase (as HTTP/2 proxies and Chrome's sec-ch-* headers send them),
+    # and some irregular capitals. Each maps to its env key, its snake-upcased
+    # form and whether snake-upcasing changes it. Built once and frozen;
+    # nothing is ever added for names seen in requests. Built in a method,
+    # like the byte tables, so YJIT doesn't compile a block that reads a
+    # constant.
+    def self.header_table(field_keys, irregular)
+      spellings = field_keys.keys.flat_map do |up|
+        [up.split("_").map(&:capitalize).join("-"), up.downcase.tr("_", "-")]
+      end
+      (spellings + irregular).uniq.to_h { |raw|
+        up = raw.upcase.tr("_-", ",_")
+        [raw.b.freeze, [field_keys.fetch(up), up.b.freeze, raw != up].freeze]
+      }.freeze
+    end
+    private_class_method :header_table
+
+    HEADER_TABLE = header_table(FIELD_KEYS, %w[DNT TE Sec-CH-UA Sec-CH-UA-Mobile Sec-CH-UA-Platform X-Real-IP X-Request-ID])
+    HEADER_NAME_MAX = HEADER_TABLE.each_key.map(&:bytesize).max
+
+    # Bytes VALUE_RUN does not allow.
+    VALUE_CTL = /[\x00-\x08\x0a-\x1f\x7f]/n
+
     # The parsing methods below refer to no constants except to raise errors.
     # States are symbols, bytes are integer literals, and everything else is
     # copied here into instance variables. Under YJIT, filling or clearing a
@@ -142,6 +166,9 @@ module Puma
       @max_field_value_length = MAX_FIELD_VALUE_LENGTH
       @max_header_length = MAX_HEADER_LENGTH
       @field_keys = FIELD_KEYS
+      @header_table = HEADER_TABLE
+      @header_name_max = HEADER_NAME_MAX
+      @value_ctl = VALUE_CTL
       @binary = Encoding::BINARY
       @scanner = StringScanner.new("")
       reset
@@ -184,6 +211,7 @@ module Puma
       field_start = @field_start
       field_len = @field_len
       name = @field_name
+      key = nil # the env key, when the name shortcut found it
 
       while p < len
         case cs
@@ -192,7 +220,7 @@ module Puma
           p += ss.skip(@value_run)
           break if p == len
           if buf.getbyte(p) == 13 # "\r"
-            store_field env, buf, name, field_len, mark, p - mark
+            store_field env, buf, key, name, field_len, mark, p - mark
             cs = :field_lf
             p += 1
           else
@@ -217,7 +245,26 @@ module Puma
           elsif @token_byte[b]
             field_start = p
             name = nil
+            key = nil
             cs = :field_name
+            # Name shortcut: one lookup of a common name, as clients spell it,
+            # stands in for :field_name's scan and snake-upcasing and for the
+            # env key lookup. A hit is a valid name. When the colon is too far
+            # away to end a name in the table, there is no lookup, so a line
+            # without one isn't sliced. On a miss, :field_name runs as usual.
+            c = buf.index(":", p)
+            if c && c - p <= @header_name_max && (entry = @header_table[buf.byteslice(p, c - p)])
+              if entry[2] && mutate
+                write_bytes buffer, p, entry[1]
+                write_bytes buf, p, entry[1] unless buf.equal?(buffer)
+              end
+              key = entry[0]
+              name = entry[1]
+              field_len = c - p
+              mark = c + 1
+              cs = :value_spaces
+              p = c + 1
+            end
           else
             cs = :error
             break
@@ -254,6 +301,36 @@ module Puma
           end
 
         when :value_spaces
+          # Value shortcut: a value whose line is complete, with no bytes the
+          # grammar rejects, is stored in one step. Otherwise, or when a length
+          # limit would be exceeded, the code below handles it, so errors are
+          # raised in only one place. The value starts after the spaces. For
+          # an all-space value the code below marks the last space instead,
+          # but a length of 1 rather than 0 can't reach the limit, and both
+          # strip to "".
+          v = p
+          v += 1 while buf.getbyte(v) == 32 # " "
+          r = buf.index("\r", v)
+          if r && buf.getbyte(r + 1) == 10 # "\n"
+            if field_len <= @max_field_name_length && r - v <= @max_field_value_length
+              value = buf.byteslice(v, r - v)
+              unless value.match?(@value_ctl)
+                value.strip!
+                key ||= @field_keys[name] || -"HTTP_#{name}"
+                existing = env[key]
+                if existing.nil?
+                  env[key] = value
+                else
+                  existing << ", " << value
+                end
+                mark = v
+                cs = :field_start
+                p = r + 2
+                next
+              end
+            end
+          end
+
           # Mirrors where the C parser's start_value action leaves its mark:
           # on the first byte after the spaces, or on the last space when the
           # value is all spaces. Leading tabs are part of the value.
@@ -266,7 +343,7 @@ module Puma
           break if p == len
           b = buf.getbyte(p)
           if b == 13 # "\r"
-            store_field env, buf, name, field_len, mark, p - mark
+            store_field env, buf, key, name, field_len, mark, p - mark
             cs = :field_lf
             p += 1
           elsif @value_byte[b]
@@ -553,7 +630,7 @@ module Puma
     # Stores one header, as http_field in puma_http11.c does: lengths are
     # checked before the value is trimmed, the key is interned UTF-8, and a
     # repeated header is appended to the existing value after ", ".
-    def store_field(env, buf, name, field_len, mark, value_len)
+    def store_field(env, buf, key, name, field_len, mark, value_len)
       if field_len > @max_field_name_length
         raise HttpParserError, format(MAX_FIELD_NAME_LENGTH_ERR, field_len)
       end
@@ -561,7 +638,7 @@ module Puma
         raise HttpParserError, format(MAX_FIELD_VALUE_LENGTH_ERR, value_len)
       end
 
-      key = @field_keys[name] || -"HTTP_#{name}"
+      key ||= @field_keys[name] || -"HTTP_#{name}"
 
       value = buf.byteslice(mark, value_len)
       # The grammar admits no whitespace in a value other than spaces and
