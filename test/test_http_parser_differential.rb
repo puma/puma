@@ -7,7 +7,11 @@ require_relative "helpers/http_parser_fuzzer"
 # parser, using the differential fuzzer in helpers/http_parser_fuzzer.rb.
 #
 # The mutation test is seeded from Minitest's --seed. Set FUZZ_SEED to replay
-# a failure and FUZZ_ITERATIONS for a longer run.
+# a failure and FUZZ_ITERATIONS for a longer run. A long run also needs
+# TEST_CASE_TIMEOUT raised above its 45 second default, e.g.
+#
+#   TEST_CASE_TIMEOUT=900 FUZZ_ITERATIONS=20000 bundle exec ruby -Itest \
+#     test/test_http_parser_differential.rb -n test_mutations
 class TestHttpParserDifferential < PumaTest
   parallelize_me!
 
