@@ -41,7 +41,7 @@ jobs:
 
   test_mri:
     name: >-
-      ${{ matrix.os }} ${{ matrix.ruby }}${{ matrix.no-ssl }}${{ matrix.yjit }}${{ matrix.rack-v }}
+      ${{ matrix.os }} ${{ matrix.ruby }}${{ matrix.no-ssl }}${{ matrix.yjit }}${{ matrix.rack-v }}${{ matrix.ruby-parser }}
     env:
       CI: true
       PUMA_TEST_DEBUG: true
@@ -69,6 +69,10 @@ jobs:
           - { os: ubuntu-24.04    , ruby: '4.0' }
           - { os: ubuntu-26.04    , ruby: '4.0' }
           - { os: ubuntu-26.04    , ruby:  head , yjit: ' yjit'     }
+          # The whole suite again with Puma::RubyHttpParser in place of the C parser
+          - { os: ubuntu-24.04    , ruby: '3.0' , ruby-parser: ' Ruby parser' }
+          - { os: ubuntu-26.04    , ruby:  head , yjit: ' yjit'     , ruby-parser: ' Ruby parser' }
+          - { os: windows-2025    , ruby: '4.0' , ruby-parser: ' Ruby parser' }
           - { os: ubuntu-22.04-arm, ruby: '3.0' }
           - { os: ubuntu-26.04-arm, ruby: '4.0' }
           - { os: macos-15        , ruby: '3.0' }
@@ -123,6 +127,11 @@ jobs:
         if: matrix.yjit == ' yjit'
         shell: bash
         run: echo 'RUBYOPT=--yjit' >> "$GITHUB_ENV"
+
+      - name: Use the pure Ruby HTTP parser
+        if: matrix.ruby-parser == ' Ruby parser'
+        shell: bash
+        run: echo 'PUMA_PURE_RUBY_PARSER=1' >> "$GITHUB_ENV"
 
       # Integration tests open many short-lived loopback connections. macOS keeps
       # each closed client port in TIME_WAIT for 2 * MSL (30s by default), and with
