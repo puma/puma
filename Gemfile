@@ -48,6 +48,6 @@ gem "localhost", require: false
 # Duel requires Ruby 3.4 or later. It's only run on CRuby, and StackProf
 # doesn't build on Windows.
 if RUBY_ENGINE == "ruby" && !::Gem.win_platform? && Gem::Version.new(RUBY_VERSION) >= Gem::Version.new("3.4")
-  gem "duel", "~> 0.3.0"
+  gem "duel", "~> 0.3.1"
   gem "stackprof"
 end

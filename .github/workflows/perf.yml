@@ -27,7 +27,7 @@ permissions: {}
 jobs:
   # Duel's job, which runs the branch's code, so it only reads.
   duel:
-    uses: sferik/duel-ruby/.github/workflows/duel.yml@14e3fd0c230d19872715e4e3ecd30955825f1233 # v0.3.0
+    uses: sferik/duel-ruby/.github/workflows/duel.yml@3c0c99d95dc2d5620f59e4bb298179422086adf7 # v0.3.1
     permissions:
       contents: read
       pull-requests: read # for the pull request's labels (see c.accept_label)
@@ -45,7 +45,7 @@ jobs:
   push:
     needs: duel
     if: ${{ !cancelled() && github.event_name == 'push' }}
-    uses: sferik/duel-ruby/.github/workflows/duel-push.yml@14e3fd0c230d19872715e4e3ecd30955825f1233 # v0.3.0
+    uses: sferik/duel-ruby/.github/workflows/duel-push.yml@3c0c99d95dc2d5620f59e4bb298179422086adf7 # v0.3.1
     permissions:
       contents: write # to comment on the commit, move the passed branch, and the badge's
     with:

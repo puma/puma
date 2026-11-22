@@ -18,10 +18,10 @@ on:
   pull_request_target:
     types: [labeled, unlabeled]
 
-# Each Perf run's report gets a run of its own, which nothing cancels,
-# and a pull request's label changes run in turn. (The group has a part
-# of its own, -caller, as inside the workflow it calls, github.workflow
-# is this one's name.)
+# Each Perf run's report has a run of its own, which nothing cancels, and
+# a pull request's label changes run in turn. (The group's -caller keeps
+# it apart from any of the workflow it calls, where github.workflow is
+# this one's name too.)
 concurrency:
   group: ${{ github.workflow }}-caller-${{ github.event.pull_request.number || github.event.workflow_run.id }}
   cancel-in-progress: false
@@ -30,7 +30,7 @@ permissions: {}
 
 jobs:
   comment:
-    uses: sferik/duel-ruby/.github/workflows/duel-comment.yml@14e3fd0c230d19872715e4e3ecd30955825f1233 # v0.3.0
+    uses: sferik/duel-ruby/.github/workflows/duel-comment.yml@3c0c99d95dc2d5620f59e4bb298179422086adf7 # v0.3.1
     permissions:
       actions: write # to get the report from the Perf run, and run its Duel job again
       pull-requests: write # to comment on the pull request with the report
