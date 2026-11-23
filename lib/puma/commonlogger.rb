@@ -98,6 +98,9 @@ module Puma
     def write(env, msg)
       logger = @logger || env['rack.errors']
 
+      hex = ->(str) { str.bytes.map { |byte| "\\x%02X" % byte }.join }
+      msg = msg.dup.force_encoding(Encoding::UTF_8).scrub(&hex).gsub(/[\p{Cc}\u2028\u2029](?!\z)/, &hex)
+
       # Standard library logger doesn't support write but it supports << which actually
       # calls to write on the log device without formatting
       if logger.respond_to?(:write)
