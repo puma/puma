@@ -462,6 +462,22 @@ class TestRequestHeadersValid < TestRequestBase
     assert_instance_of Puma::NullIO, @client.body
   end
 
+  { hostname: 'example.com', ipv4: '192.0.2.1', ipv6: '[::1]', empty: '' }.each do |name, host|
+    define_method("test_#{name}_empty_port_uses_default") do
+      create_client "GET / HTTP/1.1\r\nHost: #{host}:\r\n\r\n"
+
+      assert_equal host, @client.env[SERVER_NAME]
+      assert_equal '80', @client.env[SERVER_PORT]
+    end
+  end
+
+  def test_empty_port_uses_https_default
+    create_client "GET / HTTP/1.1\r\nHost: example.com:\r\nX-Forwarded-Proto: https\r\n\r\n"
+
+    assert_equal 'example.com', @client.env[SERVER_NAME]
+    assert_equal '443', @client.env[SERVER_PORT]
+  end
+
   def test_host_header_missing_http10
     create_client "GET / HTTP/1.0\r\n\r\n"
 
@@ -628,6 +644,14 @@ class TestRequestHeadersInvalid < TestRequestBase
     assert_invalid "GET / HTTP/1.1\r\nHost: \r\n\r\n",
       "Invalid Host header",
       status: 400
+  end
+
+  ['example.com:abc', 'example.com:80:90', 'example.com:-1', 'example.com: 80',
+    '192.0.2.1:abc', '[::1]:abc', '[::1]:80:90'].product(['1.0', '1.1']).each_with_index do |(host, version), index|
+    define_method("test_invalid_host_port_#{index}_http#{version.delete('.')}") do
+      assert_invalid "GET / HTTP/#{version}\r\nHost: #{host}\r\n\r\n",
+        'Invalid Host header port', status: 400
+    end
   end
 end
 
