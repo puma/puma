@@ -145,6 +145,36 @@ class TestLogWriter < PumaTest
     server&.stop(true)
   end
 
+  def test_parse_error_with_control_characters_is_logged_as_one_line
+    app = proc { |_env| [200, {"Content-Type" => "plain/text"}, ["hello\n"]] }
+    log_writer = Puma::LogWriter.strings
+    server = Puma::Server.new app, nil, {log_writer: log_writer}
+
+    host = '127.0.0.1'
+    port = (server.add_tcp_listener host, 0).addr[1]
+    server.run
+
+    [
+      "GET /a\e[31mRED HTTP/1.1\r\nHost: test.com\r\n\r\n",
+      "GET / HTTP/1.1\r\nHost: test.com\r\nBad Header\r\nmore text\r\n\r\n",
+      "GET / HTTP/1.1\u009B31m\r\nHost: test.com\r\n\r\n"
+    ].each do |request|
+      TCPSocket.open(host, port) do |sock|
+        sock << request
+        sock.read
+      end
+    end
+
+    stderr = log_writer.stderr.string
+    assert_equal 3, stderr.count("\n")
+    assert_includes stderr, 'Bad path /a\x1B[31mRED'
+    assert_includes stderr, 'more text'
+    assert_includes stderr, 'Bad protocol HTTP/1.1\xC2\x9B31m'
+    refute_match(/[\e\u009B]/, stderr)
+  ensure
+    server&.stop(true)
+  end
+
   # test_puma_server_ssl.rb checks that ssl errors are raised correctly,
   # but it mocks the actual error code.  This test the code, but it will
   # break if the logged message changes
