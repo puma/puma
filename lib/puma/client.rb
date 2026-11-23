@@ -455,9 +455,8 @@ module Puma
       return @peerip if @peerip
 
       if @remote_addr_header
-        hdr = (@env[@remote_addr_header] || socket_peerip).split(/[\s,]/).first
-        @peerip = hdr
-        return hdr
+        hdr = @env[@remote_addr_header]&.split(/[\s,]/)&.first
+        return @peerip = hdr if hdr && !hdr.empty?
       end
 
       @peerip ||= socket_peerip
