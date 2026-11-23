@@ -154,10 +154,6 @@ class TestRequestInvalidMultiple < PumaTest
 
   # ──────────────────────────────────── below have http_content_length_limit set
 
-  # Sets the server to have a http_content_length_limit of 190 kB, then sends a
-  # 200 kB body with Content-Length set to the same.
-  # Verifies that the connection is closed properly.
-  # @todo Why doesn't this work on Windows?
   def test_http_11_req_oversize_content_length
     lleh_err = nil
 
@@ -165,23 +161,15 @@ class TestRequestInvalidMultiple < PumaTest
       lleh_err = err
       [500, {'Content-Type' => 'text/plain'}, ['error']]
     }
-    long_string = 'a' * 200_000
     server_run(http_content_length_limit: 190_000, lowlevel_error_handler: lleh) { [200, {}, ['Hello World']] }
 
-    socket = send_http "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: Keep-Alive\r\nContent-Length: 200000\r\n\r\n" \
-      "#{long_string}"
+    socket = send_http "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: Keep-Alive\r\nContent-Length: 200000\r\n\r\n"
+    response = socket.read_response
 
-    unless Puma::IS_WINDOWS
-      response = socket.read_response
-
-      # Content Too Large
-      assert_equal "HTTP/1.1 413 #{STATUS_CODES[413]}", response.status
-      assert_equal HEADERS_413, response.headers
-    end
-
+    assert_equal "HTTP/1.1 413 #{STATUS_CODES[413]}", response.status
+    assert_equal HEADERS_413, response.headers
+    assert_raises(*ERROR_ON_CLOSED) { socket.read_response }
     refute lleh_err
-    sleep 0.1 if Puma::IS_JRUBY || Puma::IS_WINDOWS
-    assert_raises(*ERROR_ON_CLOSED) { socket << GET_11 }
   end
 
   # Sets the server to have a http_content_length_limit of 100 kB, then sends a
@@ -219,6 +207,13 @@ class TestRequestInvalidMultiple < PumaTest
 
     refute lleh_err
     sleep 0.1
-    assert_raises(*ERROR_ON_CLOSED) { socket << GET_11 }
+    # Linux raises on the first write to the closed socket. BSD buffers that
+    # write and only reports the error on a later one, so write again after a
+    # short pause; back-to-back writes both land in the buffer first.
+    assert_raises(*ERROR_ON_CLOSED) do
+      socket << GET_11
+      sleep 0.05
+      socket << GET_11
+    end
   end
 end

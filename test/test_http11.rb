@@ -339,4 +339,22 @@ class Http11ParserTest < TestIntegration
 
     assert_equal "Valid\tValue", req['HTTP_DUMMY']
   end
+
+  def test_request_line_key_named_headers_are_http_prefixed
+    keys = %w[QUERY_STRING REQUEST_PATH REQUEST_URI REQUEST_METHOD SERVER_PROTOCOL FRAGMENT]
+
+    ['GET /p', 'GET /p?a=1', 'GET http://h/p', 'OPTIONS *'].each do |line|
+      expected = {}
+      Puma::HttpParser.new.execute(expected, "#{line} HTTP/1.1\r\nHost: h\r\n\r\n", 0)
+
+      keys.each do |key|
+        name = key.split('_').map(&:capitalize).join('-')
+        req = {}
+        Puma::HttpParser.new.execute(req, "#{line} HTTP/1.1\r\nHost: h\r\n#{name}: value\r\n\r\n", 0)
+
+        assert_equal expected.slice(*keys), req.slice(*keys), "#{line} with #{name} header"
+        assert_equal 'value', req["HTTP_#{key}"], "#{line} with #{name} header"
+      end
+    end
+  end
 end

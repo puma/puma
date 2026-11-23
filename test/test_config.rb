@@ -15,6 +15,7 @@ class TestConfigFile < PumaTest
     conf = Puma::Configuration.new
     conf.clamp
     assert_equal max_threads, conf.options.default_options[:max_threads]
+    assert_equal 25, conf.options.default_options[:shutdown_body_timeout]
   end
 
   def test_app_from_rackup
@@ -126,7 +127,7 @@ class TestConfigFile < PumaTest
     skip_if :jruby
     skip_unless :ssl
 
-    cert_path = File.expand_path "../examples/puma/client_certs", __dir__
+    cert_path = File.expand_path "ssl/client_certs", __dir__
     cert_pem = File.read("#{cert_path}/server.crt")
     key_pem = File.read("#{cert_path}/server.key")
 
@@ -456,6 +457,7 @@ class TestConfigFile < PumaTest
 
     assert_equal 6, conf.options[:persistent_timeout]
     assert_equal 3, conf.options[:first_data_timeout]
+    assert_equal 7.0, conf.options[:shutdown_body_timeout]
     assert_equal 2, conf.options[:workers]
     assert_equal 4, conf.options[:min_threads]
     assert_equal 8, conf.options[:max_threads]

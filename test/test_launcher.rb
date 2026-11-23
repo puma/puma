@@ -7,9 +7,6 @@ require "puma/binder"
 require "puma/configuration"
 require 'puma/log_writer'
 
-# Do not add any tests creating workers to this, as Cluster may call `Process.waitall`,
-# which may cause issues in the test process.
-
 # Intermittent failures & errors when run parallel in GHA, local use may run fine.
 class TestLauncher < PumaTest
   include TmpPath

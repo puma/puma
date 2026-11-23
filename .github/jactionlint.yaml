@@ -1,0 +1,4 @@
+ignores:
+  - rule: dangerous-triggers
+    file: .github/workflows/pr-label-status.yml
+    reason: Label writes on fork PRs require pull_request_target; checkout uses the base branch and no contributor code runs.

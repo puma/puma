@@ -44,15 +44,20 @@ void raise_param_error(const char* caller, const char *param) {
 
 void engine_free(void *ptr) {
   ms_conn *conn = ptr;
-  ms_cert_buf* cert_buf = (ms_cert_buf*)SSL_get_app_data(conn->ssl);
-  if(cert_buf) {
-    OPENSSL_free(cert_buf->buf);
-    free(cert_buf);
+  if(conn->ssl) {
+    ms_cert_buf* cert_buf = (ms_cert_buf*)SSL_get_app_data(conn->ssl);
+    if(cert_buf) {
+      OPENSSL_free(cert_buf->buf);
+      free(cert_buf);
+    }
+    SSL_free(conn->ssl);
+  } else {
+    BIO_free(conn->read);
+    BIO_free(conn->write);
   }
-  SSL_free(conn->ssl);
   SSL_CTX_free(conn->ctx);
 
-  free(conn);
+  ruby_xfree(conn);
 }
 
 const rb_data_type_t engine_data_type = {
@@ -444,7 +449,14 @@ sslctx_initialize(VALUE self, VALUE mini_ssl_ctx) {
 
   if (!NIL_P(ssl_cipher_filter)) {
     StringValue(ssl_cipher_filter);
-    SSL_CTX_set_cipher_list(ctx, RSTRING_PTR(ssl_cipher_filter));
+    ERR_clear_error();
+    if (SSL_CTX_set_cipher_list(ctx, RSTRING_PTR(ssl_cipher_filter)) != 1) {
+      if (ERR_GET_REASON(ERR_peek_last_error()) == SSL_R_NO_CIPHER_MATCH) {
+        ERR_clear_error();
+      } else {
+        raise_param_error("SSL_CTX_set_cipher_list", "ssl_cipher_filter");
+      }
+    }
   }
   else {
     SSL_CTX_set_cipher_list(ctx, "HIGH:!aNULL@STRENGTH");
@@ -600,9 +612,9 @@ VALUE engine_read(VALUE self) {
     return rb_str_new(buf, bytes);
   }
 
-  if(SSL_want_read(conn->ssl)) return Qnil;
-
   error = SSL_get_error(conn->ssl, bytes);
+
+  if(error == SSL_ERROR_WANT_READ) return Qnil;
 
   if(error == SSL_ERROR_ZERO_RETURN) {
     rb_eof_error();
@@ -788,27 +800,6 @@ void Init_mini_ssl(VALUE puma) {
   rb_define_const(mod, "OPENSSL_LIBRARY_VERSION", rb_str_new2(OpenSSL_version(OPENSSL_VERSION)));
 #else
   rb_define_const(mod, "OPENSSL_LIBRARY_VERSION", rb_str_new2(SSLeay_version(SSLEAY_VERSION)));
-#endif
-
-#if defined(OPENSSL_NO_SSL3) || defined(OPENSSL_NO_SSL3_METHOD)
-  /* True if SSL3 is not available */
-  rb_define_const(mod, "OPENSSL_NO_SSL3", Qtrue);
-#else
-  rb_define_const(mod, "OPENSSL_NO_SSL3", Qfalse);
-#endif
-
-#if defined(OPENSSL_NO_TLS1) || defined(OPENSSL_NO_TLS1_METHOD)
-  /* True if TLS1 is not available */
-  rb_define_const(mod, "OPENSSL_NO_TLS1", Qtrue);
-#else
-  rb_define_const(mod, "OPENSSL_NO_TLS1", Qfalse);
-#endif
-
-#if defined(OPENSSL_NO_TLS1_1) || defined(OPENSSL_NO_TLS1_1_METHOD)
-  /* True if TLS1_1 is not available */
-  rb_define_const(mod, "OPENSSL_NO_TLS1_1", Qtrue);
-#else
-  rb_define_const(mod, "OPENSSL_NO_TLS1_1", Qfalse);
 #endif
 
   rb_define_singleton_method(mod, "check", noop, 0);

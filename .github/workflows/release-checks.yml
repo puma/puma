@@ -18,10 +18,11 @@ jobs:
   release-checks:
     name: Pre-release sanity checks
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     if: startsWith(github.head_ref, 'release-v')
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -103,14 +104,19 @@ jobs:
           fi
           echo "History.md date: $line ✓"
 
-      # ── Check 5: Upgrade guide exists for major releases ────────────────────
+      # ── Check 5: every [#NNNN] in the entry has a link definition ──────────
+      - name: History.md links resolve
+        shell: bash
+        run: git show origin/main:.agents/skills/releasing-puma/scripts/release-notes | ruby - "${{ steps.rel.outputs.version }}" History.md > /dev/null
+
+      # ── Check 6: Upgrade guide exists for major releases ────────────────────
       - name: Upgrade guide exists (major releases only)
         run: |
           major="${{ steps.rel.outputs.major }}"
           minor="${{ steps.rel.outputs.minor }}"
           patch="${{ steps.rel.outputs.patch }}"
           if [ "$minor" = "0" ] && [ "$patch" = "0" ]; then
-            guide="docs/${major}.0-Upgrade.md"
+            guide="docs/upgrading/${major}.0-Upgrade.md"
             if [ ! -f "$guide" ]; then
               echo "::error::Major release but $guide does not exist — create an upgrade guide before merging"
               exit 1
@@ -125,14 +131,16 @@ jobs:
             echo "Minor/patch release — no upgrade guide required"
           fi
 
-      # ── Check 6: SECURITY.md is updated for major releases ──────────────────
+      # ── Check 7: SECURITY.md is updated for major releases ──────────────────
       - name: SECURITY.md updated (major releases only)
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
           minor="${{ steps.rel.outputs.minor }}"
           patch="${{ steps.rel.outputs.patch }}"
           if [ "$minor" = "0" ] && [ "$patch" = "0" ]; then
-            base="origin/${{ github.base_ref }}"
-            git fetch origin "${{ github.base_ref }}" --depth=1
+            base="origin/$BASE_REF"
+            git fetch origin "$BASE_REF" --depth=1
             if ! git diff --name-only "$base...HEAD" | grep -qx "SECURITY.md"; then
               echo "::error file=SECURITY.md::Major release requires updating SECURITY.md"
               exit 1

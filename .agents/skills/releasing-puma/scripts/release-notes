@@ -1,0 +1,7 @@
+#!/usr/bin/env ruby
+version, path = ARGV
+abort "usage: release-notes VERSION HISTORY_MD" unless version && path
+history = File.read(path)
+section = history[/^## #{Regexp.escape(version)} \/[^\n]*\n(.*?)(?=^## )/m, 1] or abort "no ## #{version} section in #{path}"
+links = history.scan(/^\[#(\d+)\]:\s*(\S+)/).to_h
+puts section.strip.gsub(/\[#(\d+)\](?![(:])/) { links[$1] ? "[##{$1}](#{links[$1]})" : abort("no link definition for [##{$1}]") }

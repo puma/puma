@@ -269,7 +269,6 @@ module Puma
       @status = :stop if @status == :run
       wakeup!
       @control&.stop true
-      Process.waitall
     end
 
     def halt

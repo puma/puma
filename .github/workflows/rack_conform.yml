@@ -4,6 +4,15 @@ on:
   push:
     branches:
       - main
+    paths:
+      - '**/*'
+      - '!**/*.md'
+      - '!docs/**'
+      - '!.agents/**'
+      - '!benchmarks/**'
+      - '!test/**'
+      - '!.github/workflows/*.yml'
+      - '.github/workflows/rack_conform.yml'
   workflow_dispatch:
 
 concurrency:
@@ -14,23 +23,17 @@ permissions:
   contents: read # to fetch code (actions/checkout)
 
 jobs:
-  skip_duplicate_runs:
-    uses: ./.github/workflows/skip_duplicate_workflow_runs.yml
-
   rack-conform:
     name: >-
       ${{ matrix.os }} Ruby ${{ matrix.ruby }} rack-conform
-    needs: skip_duplicate_runs
     runs-on: ${{ matrix.os }}
-    if: needs.skip_duplicate_runs.outputs.should_skip != 'true'
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-22.04 , ruby: '3.2' }
-          - { os: ubuntu-22.04 , ruby: '3.3' }
-          - { os: ubuntu-22.04 , ruby: '3.4' }
-          - { os: ubuntu-24.04 , ruby: head  }
+          - { os: ubuntu-26.04 , ruby: '4.0' }
+          - { os: ubuntu-26.04 , ruby: head  }
 
     env:
       BUNDLE_GEMFILE: gems/puma-head-rack-v3.rb
@@ -38,12 +41,23 @@ jobs:
       RACK_CONFORM_ENDPOINT: http://localhost:9292
 
     steps:
+      - name: skip duplicate runs
+        id: skip
+        uses: fkirc/skip-duplicate-actions@b974a9395958c231af965b70070979a577efa578 # v5.3.2
+        with:
+          paths_ignore: '["**.md", "docs/**", ".agents/**", "benchmarks/**"]'
+          concurrent_skipping: 'never'
+          skip_after_successful_duplicate: 'true'
+
       - name: checkout rack-conform
-        uses: actions/checkout@v7
+        if: steps.skip.outputs.should_skip != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: socketry/rack-conform
+          ref: f7b96a7d7fa40566775dd530a19b7b49bcdef1ac
 
       - name: Update gems/puma-head-rack-v3.rb
+        if: steps.skip.outputs.should_skip != 'true'
         run: |
           # use Puma from current repo (may be a fork) & sha
           SRC="gem ['\"]puma['\"].*"
@@ -51,7 +65,8 @@ jobs:
           sed -i "s#$SRC#$DST#" gems/puma-head-rack-v3.rb
 
       - name: load ruby
-        uses: ruby/setup-ruby@v1
+        if: steps.skip.outputs.should_skip != 'true'
+        uses: ruby/setup-ruby@b3aaceaef7e0ee231b499e7b5f49c03fc1d32199 # v1.338.0
         with:
           ruby-version: ${{ matrix.ruby }}
           rubygems: latest
@@ -60,14 +75,15 @@ jobs:
         timeout-minutes: 10
 
       - name: cat gems/puma-head-rack-v3.rb.lock
+        if: steps.skip.outputs.should_skip != 'true'
         run: cat gems/puma-head-rack-v3.rb.lock
 
       - name: rack-conform test
+        if: steps.skip.outputs.should_skip != 'true'
         id: test
         timeout-minutes: 10
         run: bundle exec bake test
-        continue-on-error: true
 
-      - name: >-
-          Test outcome: ${{ steps.test.outcome }}
+      - name: server log
+        if: always() && steps.skip.outputs.should_skip != 'true'
         run: cat server.log

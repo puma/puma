@@ -1,5 +1,6 @@
 persistent_timeout "6"
 first_data_timeout "3"
+shutdown_body_timeout "7"
 
 workers "2"
 threads "4", "8"

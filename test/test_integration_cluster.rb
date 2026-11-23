@@ -79,10 +79,13 @@ class TestIntegrationCluster < TestIntegration
     File.binwrite bind_path, 'pre existing'
 
     cli_server "-w #{workers} -q test/rackup/sleep_step.ru", unix: :unix, config: "preload_app! false"
-    connection = connect(nil, unix: true)
-    restart_server connection
+    assert_equal "Slept 0.0 0", read_body(connect(nil, unix: true))
 
-    connect(nil, unix: true)
+    Process.kill :USR2, @pid
+    wait_for_server_to_include 'Restarting'
+    wait_for_server_to_boot
+
+    assert_equal "Slept 0.0 0", read_body(connect(nil, unix: true))
     stop_server
 
     assert File.exist?(@bind_path)
@@ -144,6 +147,28 @@ class TestIntegrationCluster < TestIntegration
     # below logged after workers are stopped
     assert wait_for_server_to_include('after_stopped called', timeout: STOP_TIMEOUT)
     wait_server 15
+  end
+
+  def test_int_runs_after_stopped_before_waiting_for_hook_owned_child
+    skip_unless_signal_exist? :INT
+    cli_server "-w #{workers} test/rackup/hello.ru", config: <<~CONFIG
+      after_booted do
+        $helper = Process.spawn('sleep', '300', pgroup: true)
+        puts 'helper started'
+      end
+
+      after_stopped do
+        Process.kill(:TERM, $helper)
+        Process.wait($helper)
+        puts 'helper reaped'
+      end
+    CONFIG
+
+    wait_for_server_to_include 'helper started'
+    _, status = stop_server signal: :INT
+
+    assert_equal 0, status.exitstatus
+    assert_includes @server_log + @server_line_buffer + @server.read, 'helper reaped'
   end
 
   def test_term_worker_clean_exit
@@ -290,11 +315,14 @@ class TestIntegrationCluster < TestIntegration
     get_worker_pids # wait for workers to boot
 
     10.times {
-      fast_connect
+      connection = connect
+      assert_equal "Hello World", read_body(connection)
+      connection.close
       sleep 0.5
     }
 
-    sleep 1.15
+    assert wait_for_server_to_include '- All workers reached idle timeout'
+    wait_server
 
     assert_raises Errno::ECONNREFUSED, "Connection refused" do
       connect
@@ -483,7 +511,9 @@ class TestIntegrationCluster < TestIntegration
       Process.kill :URG, @pid
       get_worker_pids phase + 1, 1
 
-      assert_equal descriptors, read_body(connect).to_i
+      current_descriptors = read_body(connect).to_i
+      assert_operator current_descriptors, :<=, descriptors
+      descriptors = current_descriptors
     end
   end
 

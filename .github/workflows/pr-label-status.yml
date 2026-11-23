@@ -1,22 +1,35 @@
 name: PR Label Manager
 on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review, edited]
+  pull_request_review:
+    types: [submitted, dismissed]
   workflow_dispatch:
   schedule:
-    - cron: '0 * * * *' # hourly
+    - cron: '0 3 * * *'
 
-permissions:
-  contents: read
-  pull-requests: write
-  issues: write
+concurrency:
+  group: pr-label-status-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: false
+
+permissions: {}
 
 jobs:
   manage-labels:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
 
       - name: Update PR Labels
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             // Configuration
@@ -34,14 +47,27 @@ jobs:
               MERGE: 'waiting-for-merge'
             };
 
-            // Get all open PRs
-            const prs = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open'
-            });
+            let prs;
+            if (context.payload.pull_request) {
+              const { data: pr } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.pull_request.number
+              });
+              prs = [pr];
+            } else {
+              prs = await github.paginate(github.rest.pulls.list, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                per_page: 100
+              });
+            }
 
-            for (const pr of prs.data) {
+            for (const pr of prs) {
+              if (pr.state !== 'open') {
+                continue;
+              }
               // Skip draft PRs and WIP PRs
               if (pr.draft || pr.title.toLowerCase().includes('wip')) {
                 continue;

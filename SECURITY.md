@@ -6,6 +6,8 @@ Thank you for helping to keep the internet secure. Please read this before makin
 
 We support the last two major versions and their latest minor.
 
+For non-security bugs, see the [Puma release support policy](docs/puma_support.md#puma-release-support-policy).
+
 | Version       | Supported  |
 | :------------ | :--------: |
 | Latest release in 8.x | ✅ |
@@ -45,6 +47,20 @@ If you throw enough traffic at _any_ web server, it eventually will fall over. S
 
 * **A small effort in Puma can cause outsized harm to Puma or other users**, such as a process crash or restart.
 * **The attack gets around a limit enforced by Puma**, such as timeout on how long a connection can be held.
+
+### Slow clients
+
+Puma writes each response from one of its request threads. A client that reads a large response slowly keeps that thread busy until the response is sent, so a few slow readers can occupy every thread. This is a known limitation ([#3110](https://github.com/puma/puma/issues/3110)), not a vulnerability. If untrusted clients can reach Puma, put it behind a reverse proxy that buffers responses.
+
+A report about slow clients is in scope when it gets around a limit Puma does enforce, such as a client that stops reading and holds a thread for longer than the write timeout.
+
+### Logging
+
+Where your logs go (stdout, stderr, files, pipes, log shippers) is part of your process setup, which we trust. Puma writes logs synchronously and on a best-effort basis. If the log destination fills up, returns errors, or stops reading, Puma may slow down or stop serving requests. While the log destination is healthy, logging must not crash Puma.
+
+A DoS attack that uses logging must still meet the "outsized harm" rule in "What's a Denial of Service?" above.
+
+Puma shouldn't deliberately log secrets such as the control token or private keys.
 
 ### Request smuggling
 

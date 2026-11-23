@@ -36,7 +36,7 @@ public enum EnvKey {
     ETAG,
     EXPECT,
     EXPIRES,
-    FRAGMENT(true),
+    FRAGMENT(true, false),
     FROM,
     HOST,
     IF_MATCH,
@@ -51,15 +51,15 @@ public enum EnvKey {
     PRAGMA,
     PROXY_AUTHENTICATE,
     PROXY_AUTHORIZATION,
-    QUERY_STRING(true),
+    QUERY_STRING(true, false),
     RANGE,
     REFERER,
-    REQUEST_METHOD(true),
-    REQUEST_PATH(true),
-    REQUEST_URI(true),
+    REQUEST_METHOD(true, false),
+    REQUEST_PATH(true, false),
+    REQUEST_URI(true, false),
     RETRY_AFTER,
     SERVER,
-    SERVER_PROTOCOL(true),
+    SERVER_PROTOCOL(true, false),
     TE,
     TRAILER,
     TRANSFER_ENCODING,
@@ -73,14 +73,20 @@ public enum EnvKey {
     WWW_AUTHENTICATE;
 
     final ByteList httpName;
+    final boolean fieldKey;
 
     EnvKey() {
         this(false);
     }
 
     EnvKey(boolean raw) {
+        this(raw, true);
+    }
+
+    EnvKey(boolean raw, boolean fieldKey) {
         String httpName = raw ? name() : "HTTP_" + name();
         this.httpName = new ByteList(ByteList.plain(httpName), false);
+        this.fieldKey = fieldKey;
     }
 
     /**
@@ -99,7 +105,7 @@ public enum EnvKey {
         if (key <= MAX_HASH_VALUE) {
             EnvKey match = keyList[key];
 
-            if (match != null && equalsIgnoreCase(buffer, start, len, match.name())) {
+            if (match != null && match.fieldKey && equalsIgnoreCase(buffer, start, len, match.name())) {
                 return match;
             }
         }

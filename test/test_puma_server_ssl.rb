@@ -43,17 +43,17 @@ class TestPumaServerSSL < PumaTest
   end
 
   # yields ctx to block, use for ctx setup & configuration
-  def start_server(&server_ctx)
+  def start_server(**server_opts, &server_ctx)
     app = lambda { |env| [200, {}, [env['rack.url_scheme']]] }
 
     ctx = Puma::MiniSSL::Context.new
 
     if Puma.jruby?
-      ctx.keystore =  File.expand_path "../examples/puma/keystore.jks", __dir__
+      ctx.keystore =  File.expand_path "ssl/keystore.jks", __dir__
       ctx.keystore_pass = 'jruby_puma'
     else
-      ctx.key  =  File.expand_path "../examples/puma/puma_keypair.pem", __dir__
-      ctx.cert = File.expand_path "../examples/puma/cert_puma.pem", __dir__
+      ctx.key  =  File.expand_path "ssl/puma_keypair.pem", __dir__
+      ctx.cert = File.expand_path "ssl/cert_puma.pem", __dir__
     end
 
     ctx.verify_mode = Puma::MiniSSL::VERIFY_NONE
@@ -63,7 +63,7 @@ class TestPumaServerSSL < PumaTest
     @log_stdout = StringIO.new
     @log_stderr = StringIO.new
     @log_writer = SSLLogWriterHelper.new @log_stdout, @log_stderr
-    @server = Puma::Server.new app, nil, {log_writer: @log_writer}
+    @server = Puma::Server.new app, nil, {log_writer: @log_writer}.merge(server_opts)
     @port = (@server.add_ssl_listener HOST, 0, ctx).addr[1]
     @bind_port = @port
     @server.run
@@ -121,45 +121,47 @@ class TestPumaServerSSL < PumaTest
     assert_equal "https\na=1&b=2", body
   end
 
-  def rejection(server_ctx, min_max)
-    if server_ctx
-      start_server(&server_ctx)
-    else
-      start_server
+  def rejection(version)
+    skip_if :jruby, suffix: " - the JDK disables TLS 1.0 and 1.1"
+
+    low_seclevel = ->(ctx) { ctx.ssl_cipher_filter = "DEFAULT:@SECLEVEL=0" }
+    client_ctx = new_ctx do |ctx|
+      ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
+      ctx.max_version = version
+      ctx.ciphers = "DEFAULT:@SECLEVEL=0"
     end
 
-    msg = nil
+    start_server(&low_seclevel)
+    begin
+      assert_equal "https", send_http_read_resp_body(ctx: client_ctx)
+    rescue OpenSSL::SSL::SSLError => e
+      skip "#{version} is unavailable: #{e.message}"
+    end
+    @server.stop true
 
-    assert_raises(OpenSSL::SSL::SSLError) do
-      begin
-        send_http_read_response ctx: new_ctx { |ctx| ctx.max_version = min_max }
-      rescue => e
-        msg = e.message
-        raise e
-      end
+    start_server do |ctx|
+      low_seclevel.call ctx
+      yield ctx
     end
 
-    expected = Puma::IS_JRUBY ?
-      /No appropriate protocol \(protocol is disabled or cipher suites are inappropriate\)/ :
-      /SSL_connect SYSCALL returned=5|wrong version number|(unknown|unsupported) protocol|no protocols available|version too low|unknown SSL method/
-    assert_match expected, msg
+    assert_raises(OpenSSL::SSL::SSLError, EOFError, Errno::ECONNRESET) do
+      send_http_read_response ctx: client_ctx
+    end
 
-    # make sure a good request succeeds
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
+    sleep 0.01 until @log_writer.error || Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+
+    assert_match(/unsupported protocol|version too low/, @log_writer.error&.message.to_s)
+
     assert_equal "https", send_http_read_resp_body(ctx: new_ctx)
   end
 
-  def test_ssl_v3_rejection
-    skip("SSLv3 protocol is unavailable") if Puma::MiniSSL::OPENSSL_NO_SSL3
-
-    rejection nil, :SSL3
-  end
-
   def test_tls_v1_rejection
-    rejection ->(ctx) { ctx.no_tlsv1 = true }, :TLS1
+    rejection(:TLS1) { |ctx| ctx.no_tlsv1 = true }
   end
 
   def test_tls_v1_1_rejection
-    rejection ->(ctx) { ctx.no_tlsv1_1 = true }, :TLS1_1
+    rejection(:TLS1_1) { |ctx| ctx.no_tlsv1_1 = true }
   end
 
   def test_tls_v1_3
@@ -278,6 +280,43 @@ class TestPumaServerSSL < PumaTest
       assert_equal cipher_suite  , cipher[0]
       assert_equal cipher[1], 'TLSv1.3'
     end
+
+    def test_non_tls_bytes_close_connection_before_first_data_timeout
+      start_server first_data_timeout: 30
+
+      skt = new_socket
+      chunk = "A" * 100 + "B" * 65_436
+      max_bytes = 4 * 1_024 * 1_024
+      sent = 0
+      closed = false
+      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      deadline = started + 3
+      close_deadline = started + 10
+
+      begin
+        while Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline && sent < max_bytes
+          written = skt.write_nonblock chunk, exception: false
+          if written == :wait_writable
+            skt.wait_writable 0.2
+          else
+            sent += written
+          end
+        end
+
+        until closed
+          timed_out = Process.clock_gettime(Process::CLOCK_MONOTONIC) >= close_deadline
+          if skt.wait_readable(timed_out ? 0 : 0.2)
+            closed = skt.read_nonblock(65_536, exception: false).nil?
+          elsif timed_out
+            break
+          end
+        end
+      rescue Errno::EPIPE, Errno::ECONNRESET, Errno::ECONNABORTED
+        closed = true
+      end
+
+      assert closed, "SSL listener accepted #{sent} bytes of non-TLS data and kept the connection open for 10 seconds"
+    end
   end
 end if ::Puma::HAS_SSL
 
@@ -288,7 +327,7 @@ class TestPumaServerSSLClient < PumaTest
   include TestPuma
   include TestPuma::PumaSocket
 
-  CERT_PATH = File.expand_path "../examples/puma/client_certs", __dir__
+  CERT_PATH = File.expand_path "ssl/client_certs", __dir__
 
   # Context can be shared, may help with JRuby
   CTX = Puma::MiniSSL::Context.new.tap { |ctx|
@@ -510,7 +549,7 @@ class TestPumaServerSSLClientCloseError < PumaTest
   include TestPuma
   include TestPuma::PumaSocket
 
-  CERT_PATH = File.expand_path "../examples/puma/client_certs", __dir__
+  CERT_PATH = File.expand_path "ssl/client_certs", __dir__
 
   # Context can be shared, may help with JRuby
   CTX = Puma::MiniSSL::Context.new.tap { |ctx|
@@ -583,7 +622,7 @@ class TestPumaServerSSLWithCertPemAndKeyPem < PumaTest
   include TestPuma
   include TestPuma::PumaSocket
 
-  CERT_PATH = File.expand_path "../examples/puma/client_certs", __dir__
+  CERT_PATH = File.expand_path "ssl/client_certs", __dir__
 
   def test_server_ssl_with_cert_pem_and_key_pem
     ctx = Puma::MiniSSL::Context.new
@@ -616,16 +655,16 @@ end if ::Puma::HAS_SSL && !Puma::IS_JRUBY
 
 #
 # Test certificate chain support, The certs and the whole certificate chain for
-# this tests are located in ../examples/puma/chain_cert and were generated with
+# this tests are located in test/ssl/chain_cert and were generated with
 # the following commands:
 #
-#   bundle exec ruby ../examples/puma/chain_cert/generate_chain_test.rb
+#   bundle exec ruby test/ssl/generate_chain_test.rb
 #
 class TestPumaSSLCertChain < PumaTest
   include TestPuma
   include TestPuma::PumaSocket
 
-  CHAIN_DIR = File.expand_path '../examples/puma/chain_cert', __dir__
+  CHAIN_DIR = File.expand_path 'ssl/chain_cert', __dir__
 
   # OpenSSL::X509::Name#to_utf8 only available in Ruby 2.5 and later
   USE_TO_UTFT8 = OpenSSL::X509::Name.instance_methods(false).include? :to_utf8

@@ -8,12 +8,18 @@ on:
     branches:
       - main
       - '*-stable'
-      - 'release-v*'
-    paths-ignore:
-      - '**/*.md'
+    paths: &turbo_paths
+      - '**/*'
+      - '!**/*.md'
+      - '!docs/**'
+      - '!.agents/**'
+      - '!benchmarks/**'
+      - '!test/**'
+      - '!.github/workflows/*.yml'
+      - '.github/workflows/turbo-rails.yml'
   pull_request:
-    paths-ignore:
-      - '**/*.md'
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths: *turbo_paths
   workflow_dispatch:
 
 concurrency:
@@ -28,15 +34,17 @@ jobs:
     name: >-
       ${{ matrix.os }} Ruby ${{ matrix.ruby }} Rails ${{ matrix.rails }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
     if: |
-      !(   contains(github.event.pull_request.title,  '[ci skip]')
-        || contains(github.event.pull_request.title,  '[skip ci]'))
+      github.event.pull_request.draft != true
+      && !(   contains(github.event.pull_request.title,  '[ci skip]')
+           || contains(github.event.pull_request.title,  '[skip ci]'))
     strategy:
       fail-fast: false
       matrix:
         include:
           # Run only the latest stable Ruby/Rails pairing.
-          - { os: ubuntu-24.04 , ruby: '4.0', rails: '8.1' }
+          - { os: ubuntu-26.04 , ruby: '4.0', rails: '8.1' }
     env:
       CI: true
       FERRUM_PROCESS_TIMEOUT: 60
@@ -45,10 +53,10 @@ jobs:
 
     steps:
       - name: checkout hotwired/turbo-rails
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: hotwired/turbo-rails
-          ref: main
+          ref: 37530c08780fa6f6dbb56a633de4b81169bdd174
 
       - name: turbo-rails updates
         run: |
@@ -80,7 +88,7 @@ jobs:
           cat Gemfile
 
       - name: load ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@b3aaceaef7e0ee231b499e7b5f49c03fc1d32199 # v1.338.0
         with:
           ruby-version: ${{ matrix.ruby }}
           rubygems: latest

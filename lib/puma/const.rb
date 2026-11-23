@@ -100,14 +100,17 @@ module Puma
   # too taxing on performance.
   module Const
 
-    PUMA_VERSION = VERSION = "8.0.2"
-    CODE_NAME = "Into the Arena"
+    PUMA_VERSION = VERSION = "8.1.2"
+    CODE_NAME = "Puma Psychosis"
 
     PUMA_SERVER_STRING = ["puma", PUMA_VERSION, CODE_NAME].join(" ").freeze
 
     # How long to wait when getting some write blocking on the socket when
     # sending data back
     WRITE_TIMEOUT = 10
+
+    # How long the accept loop waits after running out of file descriptors
+    ACCEPT_ERROR_DELAY = 0.1
 
     # The original URI requested by the client.
     REQUEST_URI= "REQUEST_URI"

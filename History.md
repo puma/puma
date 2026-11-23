@@ -1,3 +1,92 @@
+## 8.1.2 / 2026-11-17
+
+* Security
+  * Close a TLS connection when OpenSSL reports a fatal error reading it, rather than buffering everything the client sends until `first_data_timeout`. ([GHSA-4v6q-hvv7-49h9](https://github.com/puma/puma/security/advisories/GHSA-4v6q-hvv7-49h9))
+  * On JRuby, stop request headers such as `Query-String` and `Request-Path` from changing `QUERY_STRING`, `PATH_INFO` and the other env keys that come from the request line. ([GHSA-rhww-p99c-hgj9](https://github.com/puma/puma/security/advisories/GHSA-rhww-p99c-hgj9))
+
+  CVE IDs have been requested for these advisories and will be added here once assigned.
+
+## 8.1.1 / 2026-11-15
+
+* Bugfixes
+  * Fix `pumactl stop` and SIGINT hanging in cluster mode when an `after_stopped` hook owns child processes ([#4135])
+  * Fix TLS stream corruption on TruffleRuby when flushing to a full socket ([#4108])
+  * Stop shipping development-only files in the gem ([#4124])
+
+## 8.1.0 / 2026-11-15
+
+* Features
+  * Add experimental `mold_worker` cluster mode, an alternative to `fork_worker` where new workers are forked from a retired worker that no longer serves traffic ([#4038], [#4044], [#4055])
+  * Add `on_worker_boot` hooks and `hook_error_handler` ([#3982])
+  * Add `Puma::Client.connection_closed?` API ([#4019])
+  * Add `continue_callback` to answer `Expect: 100-continue` before the request body is read ([#4028])
+  * Send a systemd watchdog ping immediately on ready ([#3980])
+  * Support the HTTP `QUERY` method ([#3973])
+  * Allow a sub-second `worker_check_interval` ([#3964])
+  * Add `allow_underscore_headers` option; set it to `false` to discard request headers with underscores in their names ([#3937])
+
+* Security (Hardening)
+  * Limit the size of a chunked request trailer section ([#4059])
+  * Reject unescaped `{`, `}`, `` ` `` and `\` in the request path ([#3976])
+  * Reject `Content_Length` and `Transfer_Encoding` framing headers regardless of `allow_underscore_headers` ([#4021])
+  * Clear the SSL key password callback after loading the private key ([#4027])
+  * Respond with 400 to HTTP/1.1 requests with a missing or empty `Host` header ([#3957])
+  * Reject empty chunk sizes ([#3952])
+
+* Bugfixes
+  * Fix `IO#close` hang when `notify_safely` runs in a signal handler ([#4098])
+  * Fix `fork_worker` refork recovery ([#4056])
+  * Keep a socket-activated control URL for the control server ([#4037])
+  * Close path-backed response files when writing fails ([#4033])
+  * Don't send `content-length: 0` on 304 responses with an empty body ([#4036])
+  * Fix accepting one more request after the worker shutdown command is sent ([#4032])
+  * Honour the `close` option when it appears in a `Connection` header list ([#4031])
+  * Fix wakeup deadlock ([#4025])
+  * Fix `NoMethodError` when a malformed request has no request line ([#3992])
+  * Require `null_io` in `client.rb` so `puma/client` loads on its own ([#4024])
+  * Avoid keep-alive requeue into a shutting-down thread pool ([#4016])
+  * Fix `CommonLogger` nil-logger fallback to `rack.errors` ([#4023])
+  * Fix chunked body parsing when the last-chunk terminator arrives split ([#3970])
+  * Run `after_stopped` hooks after request draining ([#4001])
+  * Restore admission gate when `queue_requests` is disabled ([#3969])
+  * Fix `pool_capacity` leak when extra IO threads exit ([#3968])
+  * Fix worker shutdown hang in `notify_safely` ([#3940])
+  * Defer removal of `on_booted`, `on_restart` and `on_stopped` to Puma 9 ([#3938])
+  * Fix `Configuration#clamp` being called twice in `Launcher` ([#3939])
+
+* Docs
+  * Add an initial Puma support document ([#3700])
+  * Document the bundled `sd_notify` license in the README ([#4102])
+  * Add a threat model to `SECURITY.md` ([#4064])
+  * Fix typos and grammar in README, CONTRIBUTING and docs ([#4035], [#3974])
+  * Improve DSL documentation, including `queue_requests` ([#3966], [#3965])
+
+## 8.0.4 / 2026-11-17
+
+* Security
+  * Close a TLS connection when OpenSSL reports a fatal error reading it, rather than buffering everything the client sends until `first_data_timeout`. ([GHSA-4v6q-hvv7-49h9](https://github.com/puma/puma/security/advisories/GHSA-4v6q-hvv7-49h9))
+  * On JRuby, stop request headers such as `Query-String` and `Request-Path` from changing `QUERY_STRING`, `PATH_INFO` and the other env keys that come from the request line. ([GHSA-rhww-p99c-hgj9](https://github.com/puma/puma/security/advisories/GHSA-rhww-p99c-hgj9))
+
+  CVE IDs have been requested for these advisories and will be added here once assigned.
+
+## 8.0.3 / 2026-11-13
+
+* Security
+  * Close connections whose reactor timeout passed even when another client keeps sending data. ([GHSA-m5xw-3hrw-qcmf](https://github.com/puma/puma/security/advisories/GHSA-m5xw-3hrw-qcmf))
+  * Don't block the reactor writing a `100 Continue` or `408` to a client that stops reading. ([GHSA-xw3h-pgr9-3vg7](https://github.com/puma/puma/security/advisories/GHSA-xw3h-pgr9-3vg7))
+  * Apply the write timeout to TLS responses and to file responses larger than 64 KB, and don't let a TLS client that stops reading keep its connection alive by sending TLS records with no request data. ([GHSA-x646-wp7c-h9mg](https://github.com/puma/puma/security/advisories/GHSA-x646-wp7c-h9mg))
+  * Bound how long a graceful shutdown or restart keeps reading an incomplete request, with the new `shutdown_body_timeout` option (default 25 seconds). ([GHSA-jm4r-w4xx-qxw7](https://github.com/puma/puma/security/advisories/GHSA-jm4r-w4xx-qxw7))
+  * Keep `+` literal in bind URL query values, and raise on an invalid `ssl_cipher_filter`. ([GHSA-r885-m39c-939g](https://github.com/puma/puma/security/advisories/GHSA-r885-m39c-939g))
+  * Verify the TLS certificate and hostname of `ssl://` control servers in `pumactl`, with the new `--control-ca-file` option for private CAs. ([GHSA-86xc-wrr9-xmmq](https://github.com/puma/puma/security/advisories/GHSA-86xc-wrr9-xmmq))
+  * Back off and rate-limit logging when `accept` runs out of file descriptors. ([GHSA-rf6g-xhmp-gm7v](https://github.com/puma/puma/security/advisories/GHSA-rf6g-xhmp-gm7v))
+
+  CVE IDs have been requested for these advisories and will be added here once assigned.
+
+* Bugfixes
+  * Send the idle notification from a clustered worker only once per idle period, so the master no longer stops an active cluster or delays an idle shutdown ([#4101])
+  * Fix build errors on Windows arm64 with Ruby head ([#4071])
+  * Send TLS `close_notify` when closing an SSL connection on JRuby ([#4029])
+
 ## 8.0.2 / 2026-05-27
 
 * Bugfixes
@@ -44,6 +133,31 @@
 
 * Breaking changes
   * Default production bind address changed from `0.0.0.0` to `::` (IPv6) when a non-loopback IPv6 interface is available; falls back to `0.0.0.0` if IPv6 is unavailable ([#3847])
+
+## 7.2.3 / 2026-11-17
+
+* Security
+  * Close a TLS connection when OpenSSL reports a fatal error reading it, rather than buffering everything the client sends until `first_data_timeout`. ([GHSA-4v6q-hvv7-49h9](https://github.com/puma/puma/security/advisories/GHSA-4v6q-hvv7-49h9))
+
+  A CVE ID has been requested for this advisory and will be added here once assigned.
+
+## 7.2.2 / 2026-11-13
+
+* Security
+  * Close connections whose reactor timeout passed even when another client keeps sending data. ([GHSA-m5xw-3hrw-qcmf](https://github.com/puma/puma/security/advisories/GHSA-m5xw-3hrw-qcmf))
+  * Don't block the reactor writing a `100 Continue` or `408` to a client that stops reading. ([GHSA-xw3h-pgr9-3vg7](https://github.com/puma/puma/security/advisories/GHSA-xw3h-pgr9-3vg7))
+  * Apply the write timeout to TLS responses and to file responses larger than 64 KB, and don't let a TLS client that stops reading keep its connection alive by sending TLS records with no request data. ([GHSA-x646-wp7c-h9mg](https://github.com/puma/puma/security/advisories/GHSA-x646-wp7c-h9mg))
+  * Bound how long a graceful shutdown or restart keeps reading an incomplete request, with the new `shutdown_body_timeout` option (default 25 seconds). ([GHSA-jm4r-w4xx-qxw7](https://github.com/puma/puma/security/advisories/GHSA-jm4r-w4xx-qxw7))
+  * Keep `+` literal in bind URL query values, and raise on an invalid `ssl_cipher_filter`. ([GHSA-r885-m39c-939g](https://github.com/puma/puma/security/advisories/GHSA-r885-m39c-939g))
+  * Verify the TLS certificate and hostname of `ssl://` control servers in `pumactl`, with the new `--control-ca-file` option for private CAs. ([GHSA-86xc-wrr9-xmmq](https://github.com/puma/puma/security/advisories/GHSA-86xc-wrr9-xmmq))
+  * Back off and rate-limit logging when `accept` runs out of file descriptors. ([GHSA-rf6g-xhmp-gm7v](https://github.com/puma/puma/security/advisories/GHSA-rf6g-xhmp-gm7v))
+
+  CVE IDs have been requested for these advisories and will be added here once assigned.
+
+* Bugfixes
+  * Send the idle notification from a clustered worker only once per idle period, so the master no longer stops an active cluster or delays an idle shutdown ([#4101])
+  * Fix build errors on Windows arm64 with Ruby head ([#4071])
+  * Send TLS `close_notify` when closing an SSL connection on JRuby ([#4029])
 
 ## 7.2.1 / 2026-05-27
 
@@ -2347,6 +2461,54 @@ be added back in a future date when a java Puma::MiniSSL is added.
 * Bugfixes
   * Your bugfix goes here <Most recent on the top, like GitHub> (#Github Number)
 
+[#4135]:https://github.com/puma/puma/pull/4135     "PR by Nate Berkopec, merged 2026-11-15"
+[#4108]:https://github.com/puma/puma/pull/4108     "PR by Nate Berkopec, merged 2026-11-15"
+[#4124]:https://github.com/puma/puma/pull/4124     "PR by Nate Berkopec, merged 2026-11-15"
+[#4059]:https://github.com/puma/puma/pull/4059     "PR by William T. Nelson, merged 2026-11-09"
+[#3976]:https://github.com/puma/puma/pull/3976     "PR by Maksim Romanov, merged 2026-10-02"
+[#4021]:https://github.com/puma/puma/pull/4021     "PR by Ted Ford, merged 2026-09-27"
+[#4027]:https://github.com/puma/puma/pull/4027     "PR by Joshua Young, merged 2026-09-27"
+[#3957]:https://github.com/puma/puma/pull/3957     "PR by Joel Stimson, merged 2026-07-08"
+[#3952]:https://github.com/puma/puma/pull/3952     "PR by Ben Kallus, merged 2026-06-22"
+[#4038]:https://github.com/puma/puma/pull/4038     "PR by Joshua Young, merged 2026-10-16"
+[#4044]:https://github.com/puma/puma/pull/4044     "PR by Joshua Young, merged 2026-10-24"
+[#4055]:https://github.com/puma/puma/pull/4055     "PR by Joshua Young, merged 2026-10-25"
+[#3982]:https://github.com/puma/puma/pull/3982     "PR by Giles, merged 2026-10-16"
+[#4019]:https://github.com/puma/puma/pull/4019     "PR by Henry Blyth, merged 2026-10-03"
+[#4028]:https://github.com/puma/puma/pull/4028     "PR by Islam Elsayed, merged 2026-10-03"
+[#3980]:https://github.com/puma/puma/pull/3980     "PR by Giles, merged 2026-09-27"
+[#3973]:https://github.com/puma/puma/pull/3973     "PR by Sean Doyle, merged 2026-07-11"
+[#3964]:https://github.com/puma/puma/pull/3964     "PR by Joshua Young, merged 2026-07-04"
+[#3937]:https://github.com/puma/puma/pull/3937     "PR by Nate Berkopec, merged 2026-05-27"
+[#4098]:https://github.com/puma/puma/pull/4098     "PR by Nate Berkopec, merged 2026-11-12"
+[#4056]:https://github.com/puma/puma/pull/4056     "PR by Joshua Young, merged 2026-10-25"
+[#4037]:https://github.com/puma/puma/pull/4037     "PR by Shai, merged 2026-10-16"
+[#4033]:https://github.com/puma/puma/pull/4033     "PR by Oskar Eichler, merged 2026-10-16"
+[#4036]:https://github.com/puma/puma/pull/4036     "PR by Bruno Tostes, merged 2026-10-16"
+[#4032]:https://github.com/puma/puma/pull/4032     "PR by kira tully, merged 2026-10-03"
+[#4031]:https://github.com/puma/puma/pull/4031     "PR by Januth Nimnal, merged 2026-10-03"
+[#4025]:https://github.com/puma/puma/pull/4025     "PR by Xavier, merged 2026-09-28"
+[#3992]:https://github.com/puma/puma/pull/3992     "PR by JinHyuk Sung, merged 2026-09-28"
+[#4024]:https://github.com/puma/puma/pull/4024     "PR by Shane Becker, merged 2026-09-27"
+[#4016]:https://github.com/puma/puma/pull/4016     "PR by Morax, merged 2026-09-27"
+[#4023]:https://github.com/puma/puma/pull/4023     "PR by Ethan Stoner, merged 2026-09-27"
+[#3970]:https://github.com/puma/puma/pull/3970     "PR by Joshua Young, merged 2026-09-03"
+[#4001]:https://github.com/puma/puma/pull/4001     "PR by Patrik Ragnarsson, merged 2026-08-31"
+[#3969]:https://github.com/puma/puma/pull/3969     "PR by Joshua Young, merged 2026-07-07"
+[#3968]:https://github.com/puma/puma/pull/3968     "PR by Joshua Young, merged 2026-07-04"
+[#3940]:https://github.com/puma/puma/pull/3940     "PR by Jesper Kjeldgaard, merged 2026-06-06"
+[#3938]:https://github.com/puma/puma/pull/3938     "PR by Patrik Ragnarsson, merged 2026-05-27"
+[#3939]:https://github.com/puma/puma/pull/3939     "PR by Joshua Young, merged 2026-05-25"
+[#3700]:https://github.com/puma/puma/pull/3700     "PR by Richard Schneeman, merged 2026-11-13"
+[#4102]:https://github.com/puma/puma/pull/4102     "PR by Nate Berkopec, merged 2026-11-13"
+[#4064]:https://github.com/puma/puma/pull/4064     "PR by Nate Berkopec, merged 2026-10-31"
+[#4035]:https://github.com/puma/puma/pull/4035     "PR by Bastin, merged 2026-10-08"
+[#3974]:https://github.com/puma/puma/pull/3974     "PR by max, merged 2026-07-30"
+[#3966]:https://github.com/puma/puma/pull/3966     "PR by Joshua Young, merged 2026-07-04"
+[#3965]:https://github.com/puma/puma/pull/3965     "PR by Joshua Young, merged 2026-07-04"
+[#4101]:https://github.com/puma/puma/pull/4101     "PR by Nate Berkopec, merged 2026-11-13"
+[#4071]:https://github.com/puma/puma/pull/4071     "PR by Nate Berkopec, merged 2026-11-09"
+[#4029]:https://github.com/puma/puma/pull/4029     "PR by Islam Elsayed, merged 2026-09-28"
 [#3947]:https://github.com/puma/puma/pull/3947     "PR by Nate Berkopec, merged 2026-05-26"
 [#3944]:https://github.com/puma/puma/pull/3944     "PR by Nate Berkopec, merged 2026-05-26"
 [#3929]:https://github.com/puma/puma/pull/3929     "PR by Joshua Young, merged 2026-04-26"

@@ -4,13 +4,14 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'ext/**'
+    paths: &ragel_paths
+      - 'ext/puma_http11/*.rl'
+      - 'ext/puma_http11/http11_parser.c'
+      - 'ext/puma_http11/org/jruby/puma/Http11Parser.java'
+      - 'Rakefile'
       - '.github/workflows/ragel.yml'
   pull_request:
-    paths:
-      - 'ext/**'
-      - '.github/workflows/ragel.yml'
+    paths: *ragel_paths
   workflow_dispatch:
 
 concurrency:
@@ -21,24 +22,18 @@ permissions:
   contents: read # to fetch code (actions/checkout)
 
 jobs:
-  skip_duplicate_runs:
-    uses: ./.github/workflows/skip_duplicate_workflow_runs.yml
-    with:
-      paths: '["ext/**", ".github/workflows/ragel.yml"]'
-
   ragel:
     name: >-
       ragel ${{ matrix.os }} ${{ matrix.ruby }}
-    needs: skip_duplicate_runs
     env:
       PUMA_NO_RUBOCOP: true
       PUMA_TEST_DEBUG: true
 
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     if: |
       !(   contains(github.event.pull_request.title,  '[ci skip]')
-        || contains(github.event.pull_request.title,  '[skip ci]')
-        || (needs.skip_duplicate_runs.outputs.should_skip == 'true'))
+        || contains(github.event.pull_request.title,  '[skip ci]'))
     strategy:
       fail-fast: false
       matrix:
@@ -46,11 +41,22 @@ jobs:
           - { os: ubuntu-22.04 , ruby: head }
 
     steps:
+      - name: skip duplicate runs
+        id: skip
+        uses: fkirc/skip-duplicate-actions@b974a9395958c231af965b70070979a577efa578 # v5.3.2
+        with:
+          paths_ignore: '["**.md"]'
+          paths: '["ext/puma_http11/*.rl", "ext/puma_http11/http11_parser.c", "ext/puma_http11/org/jruby/puma/Http11Parser.java", "Rakefile", ".github/workflows/ragel.yml"]'
+          concurrent_skipping: 'never'
+          skip_after_successful_duplicate: 'true'
+
       - name: repo checkout
-        uses: actions/checkout@v7
+        if: steps.skip.outputs.should_skip != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: load ruby
-        uses: ruby/setup-ruby-pkgs@v1
+        if: steps.skip.outputs.should_skip != 'true'
+        uses: ruby/setup-ruby-pkgs@2233d39c1315c667a2970436418b520a6300124e # v1.33.5
         with:
           ruby-version: ${{ matrix.ruby }}
           apt-get: ragel
@@ -59,6 +65,7 @@ jobs:
         timeout-minutes: 10
 
       - name: check ragel generation
+        if: steps.skip.outputs.should_skip != 'true'
         run: |
           ragel --version
           rm ext/puma_http11/http11_parser.c ext/puma_http11/org/jruby/puma/Http11Parser.java
@@ -70,7 +77,7 @@ jobs:
           fi
 
       - name: save ragel generated files on fail
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ failure() }}
         with:
           name: ${{ matrix.os }}-ragel-generated-files

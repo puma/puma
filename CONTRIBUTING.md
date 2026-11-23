@@ -18,7 +18,7 @@ There are lots of ways to contribute to Puma. Some examples include:
 [existing bug reports]: https://github.com/puma/puma/issues?q=is%3Aopen+is%3Aissue+label%3Aneeds-repro
 [pull requests]: https://github.com/puma/puma/pulls
 [documentation]: https://github.com/puma/puma/tree/main/docs
-[reproduction steps]: https://github.com/puma/puma/blob/CONTRIBUTING.md#reproduction-steps
+[reproduction steps]: https://github.com/puma/puma/blob/main/CONTRIBUTING.md#reproduction-steps
 [reproducing bug]: https://github.com/puma/puma/issues?utf8=%E2%9C%93&q=is%3Aopen+is%3Aissue+label%3Abug
 
 Newbies welcome! We would be happy to help you make your first contribution to a F/OSS project.
@@ -161,6 +161,21 @@ Puma also has a helper file for running tests, see the comments at the top of th
 test/runner -v test_puma_server.rb
 ```
 
+#### Local CI
+
+`test/local-ci` runs the Linux jobs from `.github/workflows/tests.yml` in Docker, on the same Ruby builds that CI uses. It needs Ruby, git, and Docker. Uncommitted changes are included.
+
+```sh
+test/local-ci                       # quick set: 3.0, newest, head, jruby, truffleruby
+test/local-ci --all                 # every Linux CI job
+test/local-ci --base main           # report only failures that are new compared to main
+test/local-ci --only 3.0,jruby -- test_puma_server
+test/local-ci --only jruby --repeat 20 -- test_integration_cluster
+test/local-ci --list                # show Linux CI jobs; * marks the selected ones
+```
+
+With `--base`, each new failure is rerun on both commits and labeled `REGRESSION`, `flaky`, `also fails on base`, or `passes on rerun`. macOS and Windows jobs are not run.
+
 #### File limits
 
 Puma's test suite opens up a lot of sockets. This may exceed the default limit of your operating system. If your file limits are low, you may experience "too many open files" errors when running the Puma test suite.
@@ -242,7 +257,7 @@ There's no need to update the changelog ([`History.md`](History.md)); that is do
 
 Puma uses [GitHub Actions](https://docs.github.com/en/actions) for CI testing. Please consider running the workflows in your fork before creating a PR. It is possible to enable GitHub Actions on your fork in the repository's `Actions` tab.
 
-CI runs against the latest patch release of each supported Ruby minor version. When reporting bugs or reproducing issues, please use the latest patch release for your Ruby minor version so your environment matches CI coverage.
+When reporting bugs or reproducing issues, please use the latest patch release of your Ruby minor version, as described in the [Ruby version support policy](docs/puma_support.md#ruby-version-support-policy).
 
 If changes are suggested, and you agree with them, please use a separate commit
 for them.  We can always squash commits when merging.
