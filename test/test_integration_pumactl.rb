@@ -312,4 +312,28 @@ class TestIntegrationPumactl < TestIntegration
     skip_unless :unix
     control_gc_stats unix: true
   end
+
+  def control_unparsed_request(environment)
+    cli_server "-q test/rackup/hello.ru -e #{environment} #{set_pumactl_args} -S #{@state_path}"
+
+    s = TCPSocket.new HOST, control_port
+    @ios_to_close << s
+    s << "GET / HTTP/1.1\r\nBad Header\r\n\r\n"
+    read_response s
+  end
+
+  def test_control_unparsed_request_body_in_production_environment
+    hdrs, body = control_unparsed_request 'production'
+
+    assert_start_with hdrs, 'HTTP/1.1 400 Bad Request'
+    refute_includes body, 'Puma caught this error'
+    refute_includes body, 'lib/puma'
+  end
+
+  def test_control_unparsed_request_body_in_development_environment
+    hdrs, body = control_unparsed_request 'development'
+
+    assert_start_with hdrs, 'HTTP/1.1 400 Bad Request'
+    assert_includes body, 'Puma caught this error'
+  end
 end
