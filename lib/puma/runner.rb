@@ -75,7 +75,8 @@ module Puma
       # A Reactor is not created and nio4r is not loaded when 'queue_requests: false'
       # Use `nil` for events, no hooks in control server
       control = Puma::Server.new app, nil,
-        { min_threads: 0, max_threads: 1, queue_requests: false, log_writer: @log_writer }
+        { min_threads: 0, max_threads: 1, queue_requests: false, log_writer: @log_writer,
+          environment: @options[:environment] }
 
       if (activated = @launcher.control_activated_socket)
         control.binder.activated_sockets.store(*activated)
