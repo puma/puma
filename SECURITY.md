@@ -50,6 +50,8 @@ If you throw enough traffic at _any_ web server, it eventually will fall over. S
 
 Where your logs go (stdout, stderr, files, pipes, log shippers) is part of your process setup, which we trust. Puma writes logs synchronously and on a best-effort basis. If the log destination fills up, returns errors, or stops reading, Puma may slow down or stop serving requests. While the log destination is healthy, logging must not crash Puma.
 
+A request must not be able to add or split lines in Puma's logs, or put raw control characters in them. Puma escapes control characters in request data before logging it, including request data that your app or middleware puts in the Rack `env`, such as `REMOTE_USER`. What a field says is not protected: values such as `X-Forwarded-For` are logged as the client sent them.
+
 A DoS attack that uses logging must still meet the "outsized harm" rule in "What's a Denial of Service?" above.
 
 Puma shouldn't deliberately log secrets such as the control token or private keys.
