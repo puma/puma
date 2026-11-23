@@ -2688,6 +2688,34 @@ class TestPumaServer < PumaTest
     assert_equal '|/public', body
   end
 
+  def test_absolute_form_ftp_percent_encoded_slash_preserves_path_info
+    server_run { |env| [200, {}, [env['PATH_INFO'].to_s]] }
+
+    body = send_http_read_resp_body "GET ftp://example.com/%2Fadmin HTTP/1.1\r\nHost: test.com\r\n\r\n"
+    assert_equal '/%2Fadmin', body
+  end
+
+  def test_absolute_form_ftp_double_slash_preserves_path_info
+    server_run { |env| [200, {}, [env['PATH_INFO'].to_s]] }
+
+    body = send_http_read_resp_body "GET ftp://example.com//admin HTTP/1.1\r\nHost: test.com\r\n\r\n"
+    assert_equal '//admin', body
+  end
+
+  def test_absolute_form_ftp_uppercase_scheme_preserves_path_info
+    server_run { |env| [200, {}, [env['PATH_INFO'].to_s]] }
+
+    body = send_http_read_resp_body "GET FTP://example.com/%2Fadmin HTTP/1.1\r\nHost: test.com\r\n\r\n"
+    assert_equal '/%2Fadmin', body
+  end
+
+  def test_absolute_form_http_preserves_path_info_and_query_string
+    server_run { |env| [200, {}, ["#{env['PATH_INFO']}|#{env['QUERY_STRING']}"]] }
+
+    body = send_http_read_resp_body "GET http://example.com/admin?x=1 HTTP/1.1\r\nHost: test.com\r\n\r\n"
+    assert_equal '/admin|x=1', body
+  end
+
   # see https://github.com/sinatra/sinatra/blob/main/examples/stream.ru
   def test_streaming_enum_body_1
     str = "Hello Puma World"
