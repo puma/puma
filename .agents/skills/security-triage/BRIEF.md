@@ -9,7 +9,7 @@ Give evidence and reasoning the maintainer could defend at a whiteboard. Don't d
 1. **What the report alleges**: what the attacker sends, what the reporter says happens, and which versions and configs they name. Report it without judging it yet.
 2. **Background**: only the mechanics the rest needs.
 3. **Evidence**: the exact commands and trimmed output, on `main` and each affected release.
-4. **Scope**: the attacker, the reachable path with file:line references, and the quoted `SECURITY.md` clause.
+4. **Scope**: the attacker, the reachable path with file:line references, and the quoted `SECURITY.md` clause. For DoS, a cost table: attacker effort, Puma's work or retained resource, who else is hit, how long it lasts, how Puma recovers, and any existing limit on the path. Show growth at small input sizes, not a run to exhaustion.
 5. **Versions**: when the bug was introduced (commit and PR), and the affected releases.
 6. **CVSS 4.0**: the vector, with one line of reasoning per metric. Skip it if the claim is out of scope.
 7. **What would change the call**: the specific evidence that would flip it, and whether you have already tested it.
