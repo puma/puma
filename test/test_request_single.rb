@@ -832,6 +832,26 @@ class TestRequestPeerip < TestRequestBase
     assert_equal "10.1.2.3", @client.env["REMOTE_ADDR"]
   end
 
+  { empty: "", whitespace: " \t", separators: ",,,", empty_first: ", 203.0.113.7" }.each do |name, value|
+    define_method("test_remote_addr_header_#{name}_falls_back_to_socket") do
+      peer_addr = -> () { ["AF_INET6", 80, "::ffff:10.1.2.3", "::ffff:10.1.2.3"] }
+      create_client("#{GET_PREFIX}X-Remote-IP: #{value}\r\n\r\n", peer_addr: peer_addr) { |client|
+        client.remote_addr_header = "HTTP_X_REMOTE_IP"
+      }
+
+      assert_equal "10.1.2.3", @client.peerip
+      assert_equal "10.1.2.3", @client.env["REMOTE_ADDR"]
+    end
+  end
+
+  def test_remote_addr_header_preserves_first_address
+    create_client("#{GET_PREFIX}X-Remote-IP: 203.0.113.7, 192.0.2.1\r\n\r\n") { |client|
+      client.remote_addr_header = "HTTP_X_REMOTE_IP"
+    }
+
+    assert_equal "203.0.113.7", @client.env["REMOTE_ADDR"]
+  end
+
   def test_peerip_preserves_plain_ipv4
     create_client("GET / HTTP/1.1\r\nHost: test.com\r\n\r\n")
 
