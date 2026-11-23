@@ -54,7 +54,7 @@ module Puma
       unless @env[REQUEST_PATH]
         # it might be a dumbass full host request header
         uri = begin
-          URI.parse(@env[REQUEST_URI])
+          URI::Generic.new(*URI.split(@env[REQUEST_URI]))
         rescue URI::InvalidURIError
           raise Puma::HttpParserError
         end
