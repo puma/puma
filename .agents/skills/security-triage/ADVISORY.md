@@ -1,6 +1,6 @@
 # Writing a Puma security advisory
 
-Base it on Puma's published GHSAs; GHSA-2vqw-3mp8-cgmx and GHSA-qpgp-93vx-g8v8 show the house style. Write as if the patched versions have already shipped. The reader is a Puma user who has seen nothing but this advisory: not the report, not this triage.
+Take tone and depth from Puma's published GHSAs, such as GHSA-2vqw-3mp8-cgmx and GHSA-qpgp-93vx-g8v8, and structure from this file. Write as if the patched versions have already shipped. The reader is a Puma user who has seen nothing but this advisory: not the report, not this triage.
 
 ## Title
 
@@ -16,11 +16,23 @@ Base it on Puma's published GHSAs; GHSA-2vqw-3mp8-cgmx and GHSA-qpgp-93vx-g8v8 s
 
 ### Impact
 
-1. One sentence: who is affected, and what an attacker can do.
-2. If the bug is in an optional feature, when it was added, with a link to the PR or issue.
-3. The mechanism, in two to four sentences: what Puma does, what it should do, and what an attacker sends.
-4. The consequence for applications, such as a spoofed `REMOTE_ADDR`, an OOM, or another user's response.
-5. A "What configurations are affected" heading, followed by the exact config that enables the bug. Say plainly whether the default config is affected.
+Write it as an inverted pyramid: a reader who stops after the first sentence knows whether to act. Three parts, in this order:
+
+1. **The lede**, visible, two paragraphs at most. The first sentence says what an attacker can do and what it costs the application, such as a spoofed `REMOTE_ADDR`, an OOM, or another user's response. The rest says who is affected: where the attacker must be, and any condition that rules most users out, such as an optional feature or a Ruby version.
+   - Good: "Clients can spoof their source IP when `set_remote_address proxy_protocol: :v1` is on and connections are persistent."
+2. **A `<details>` block** that holds everything a reader uses to check reachability in their own deployment: the mechanism (what Puma does, what it should do, and what an attacker sends), an example request with Puma's response or log output, and the proxies tested.
+3. **A `#### What configurations are affected` heading**, visible, followed by the exact config that enables the bug. Say plainly whether the default config is affected. If the bug is in an optional feature, say when it was added, with a link to the PR or issue.
+
+Write the block in this shape, blank lines included. GitHub renders Markdown inside `<details>` only after a blank line.
+
+```markdown
+<details>
+<summary>Technical details</summary>
+
+When PROXY protocol v1 support is on, Puma reads incoming bytes into a buffer ...
+
+</details>
+```
 
 ### Patches
 
