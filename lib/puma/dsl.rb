@@ -361,6 +361,9 @@ module Puma
     end
 
     # If a new request is not received within this number of seconds, begin shutting down.
+    # Running or queued requests prevent idle shutdown. A request that never finishes
+    # can therefore keep the server running; use an application-level request timeout
+    # (for example Rack::Timeout) if needed.
     #
     # The default is +nil+.
     #

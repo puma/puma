@@ -2,6 +2,7 @@
 
 require_relative "helper"
 require_relative "helpers/integration"
+require_relative "helpers/idle_timeout"
 
 require "puma/configuration"
 require "puma/runner"
@@ -307,6 +308,10 @@ class TestIntegrationCluster < TestIntegration
     CONFIG
 
     worker_timeout(timeout, 1, "failed to check in within \\\d+ seconds", config)
+  end
+
+  def test_idle_timeout_with_active_requests
+    assert_idle_timeout_with_active_requests(2)
   end
 
   def test_idle_timeout
