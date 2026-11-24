@@ -112,6 +112,7 @@ module Puma
     ensure
       io_buffer.reset
       app_body.close if app_body.respond_to? :close
+      res_body.close if !res_body.equal?(app_body) && res_body.respond_to?(:close)
       client&.tempfile_close
       if after_reply = env[RACK_AFTER_REPLY]
         after_reply.each do |o|
