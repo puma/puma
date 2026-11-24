@@ -75,7 +75,7 @@ class TestRackServer < PumaTest
 
   def header_hash(socket)
     t = socket.readline("\r\n\r\n").split("\r\n")
-    t.shift; t.map! { |line| line.split(/:\s?/) }
+    t.shift; t.map! { |line| line.split(/:\s?/, 2) }
     t.to_h
   end
 
