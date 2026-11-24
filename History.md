@@ -1,3 +1,12 @@
+## 7.2.4 / 2026-11-25
+
+* Security
+  * Apply `verify_mode`, `ca` and the other TLS options of an `ssl://` bind when the `localhost` gem supplies the certificate; such a bind now fails at boot if those options are invalid. ([GHSA-r3wq-wqc8-m4pv](https://github.com/puma/puma/security/advisories/GHSA-r3wq-wqc8-m4pv))
+  * Escape control characters and invalid UTF-8 bytes in the first line of error log entries, which can include request data. ([GHSA-rhp6-mwcq-4p4c](https://github.com/puma/puma/security/advisories/GHSA-rhp6-mwcq-4p4c))
+  * Escape control characters and invalid UTF-8 bytes in request log lines, such as a `REMOTE_USER` with a line break. ([GHSA-9v95-fm6g-2gj5](https://github.com/puma/puma/security/advisories/GHSA-9v95-fm6g-2gj5))
+  * Keep the path of an absolute-form request target as the client sent it, whatever its URI scheme. ([GHSA-w67v-xw8r-x55m](https://github.com/puma/puma/security/advisories/GHSA-w67v-xw8r-x55m))
+  * Send error details and backtraces from the control server only in the `development` and `test` environments. ([GHSA-7q89-p6pc-544r](https://github.com/puma/puma/security/advisories/GHSA-7q89-p6pc-544r))
+
 ## 7.2.3 / 2026-11-17
 
 * Security
