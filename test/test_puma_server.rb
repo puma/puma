@@ -524,6 +524,33 @@ class TestPumaServer < PumaTest
     assert app_body.closed?
   end
 
+  def test_lowlevel_error_handler_closes_body_when_app_raises
+    handler_body = ArrayClose.new(["handler response"])
+    server_run(lowlevel_error_handler: ->(_error) { [500, {}, handler_body] }) do
+      raise "app fixture error"
+    end
+
+    response = send_http_read_response GET_10
+    @server.stop(true)
+
+    assert_equal "handler response", response.body
+    assert handler_body.closed?, "the error handler's response body must be closed"
+  end
+
+  def test_lowlevel_error_handler_closes_body_when_request_processing_raises
+    handler_body = ArrayClose.new(["handler response"])
+    server_run(lowlevel_error_handler: ->(_error) { [500, {}, handler_body] })
+    @server.define_singleton_method(:handle_request) do |_processor, _client, _requests|
+      raise "server fixture error"
+    end
+
+    response = send_http_read_response GET_10
+    @server.stop(true)
+
+    assert_equal "handler response", response.body
+    assert handler_body.closed?, "the error handler's response body must be closed"
+  end
+
   def test_lowlevel_error_message
     server_run(log_writer: @log_writer, :force_shutdown_after => 2) do
       raise NoMethodError, "Oh no an error"
