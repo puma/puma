@@ -615,6 +615,9 @@ class TestIntegration < PumaTest
             # teardown
             if socket.is_a?(IO) && !socket.closed?
               begin
+                # reset rather than close, so the client port is not held in
+                # TIME_WAIT, which exhausts ephemeral ports if a restart is slow
+                socket.setsockopt Socket::Option.linger(true, 0) unless unix
                 socket.close
               rescue Errno::EBADF
               end
