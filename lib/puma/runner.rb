@@ -27,6 +27,13 @@ module Puma
     # @return [Puma::UserFileDefaultOptions]
     attr_reader :options
 
+    # PID 1 cannot die from its own SIGTERM (the kernel drops it) and Ruby
+    # would exit 1, so exit with the shell code for SIGTERM instead.
+    def raise_sigterm
+      exit 143 if Process.pid == 1 # 128 + SIGTERM
+      raise SignalException, "SIGTERM"
+    end
+
     def wakeup!
       return unless @wakeup
 
