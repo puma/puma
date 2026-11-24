@@ -844,6 +844,15 @@ class TestRequestPeerip < TestRequestBase
 
     assert_equal "::1", @client.peerip
   end
+
+  def test_remote_addr_is_unspecified_when_peer_already_disconnected
+    [Errno::ENOTCONN, Errno::EINVAL].each do |error|
+      peer_addr = -> () { raise error, "getpeername(2)" }
+      create_client("GET / HTTP/1.1\r\nHost: test.com\r\n\r\n", peer_addr: peer_addr)
+
+      assert_equal UNSPECIFIED_IPV4, @client.env[REMOTE_ADDR], error.name
+    end
+  end
 end
 
 # Tests that the interim and error responses written while a request is being

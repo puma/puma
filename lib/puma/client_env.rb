@@ -79,7 +79,7 @@ module Puma
       unless @env.key?(REMOTE_ADDR)
         begin
           addr = peerip
-        rescue Errno::ENOTCONN
+        rescue Errno::ENOTCONN, Errno::EINVAL
           # Client disconnects can result in an inability to get the
           # peeraddr from the socket; default to unspec.
           if peer_family == Socket::AF_INET6
