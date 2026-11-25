@@ -18,6 +18,9 @@ module Puma
   class Launcher
     autoload :BundlePruner, 'puma/launcher/bundle_pruner'
 
+    class JRubySigterm < SignalException; end
+    private_constant :JRubySigterm
+
     # Returns an instance of Launcher
     #
     # +conf+ A Puma::Configuration object indicating how to run the server.
@@ -199,17 +202,18 @@ module Puma
 
     # Run the server. This blocks until the server is stopped
     def run
-      previous_env = get_env
+      return run_server unless Puma.jruby? && Thread.current == Thread.main
 
-      @config.plugins.fire_starts self
-
-      setup_signals
-      set_process_title
-
-      # This blocks until the server is stopped
-      @runner.run
-
-      do_run_finished(previous_env)
+      Thread.handle_interrupt(JRubySigterm => :never) do
+        begin
+          Thread.handle_interrupt(JRubySigterm => :immediate) { run_server(jruby_sigterm: true) }
+        rescue JRubySigterm
+          do_graceful_stop
+          raise
+        end
+      end
+    rescue JRubySigterm
+      raise SignalException, "SIGTERM"
     end
 
     # Return all tcp ports the launcher may be using, TCP or SSL
@@ -252,6 +256,20 @@ module Puma
     end
 
     private
+
+    def run_server(jruby_sigterm: false)
+      previous_env = get_env
+
+      @config.plugins.fire_starts self
+
+      setup_signals(jruby_sigterm)
+      set_process_title
+
+      # This blocks until the server is stopped
+      @runner.run
+
+      do_run_finished(previous_env)
+    end
 
     def get_env
       if defined?(Bundler)
@@ -425,13 +443,13 @@ module Puma
       end
     end
 
-    def setup_signals
+    def setup_signals(jruby_sigterm)
       unless ENV["PUMA_SKIP_SIGUSR2"]
         begin
           Signal.trap "SIGUSR2" do
             restart
           end
-        rescue Exception
+        rescue StandardError, NotImplementedError
           log "*** SIGUSR2 not implemented, signal based restart unavailable!"
         end
       end
@@ -441,19 +459,23 @@ module Puma
           Signal.trap "SIGUSR1" do
             phased_restart
           end
-        rescue Exception
+        rescue StandardError, NotImplementedError
           log "*** SIGUSR1 not implemented, signal based restart unavailable!"
         end
       end
 
       begin
         Signal.trap "SIGTERM" do
-          # Shortcut the control flow in case raise_exception_on_sigterm is true
-          do_graceful_stop
+          if jruby_sigterm && @options[:raise_exception_on_sigterm]
+            Thread.main.raise(JRubySigterm, "SIGTERM")
+          else
+            # Shortcut the control flow in case raise_exception_on_sigterm is true
+            do_graceful_stop
 
-          raise(SignalException, "SIGTERM") if @options[:raise_exception_on_sigterm]
+            raise(SignalException, "SIGTERM") if @options[:raise_exception_on_sigterm]
+          end
         end
-      rescue Exception
+      rescue StandardError, NotImplementedError
         log "*** SIGTERM not implemented, signal based gracefully stopping unavailable!"
       end
 
@@ -461,7 +483,7 @@ module Puma
         Signal.trap "SIGINT" do
           stop
         end
-      rescue Exception
+      rescue StandardError, NotImplementedError
         log "*** SIGINT not implemented, signal based gracefully stopping unavailable!"
       end
 
@@ -473,7 +495,7 @@ module Puma
             stop
           end
         end
-      rescue Exception
+      rescue StandardError, NotImplementedError
         log "*** SIGHUP not implemented, signal based logs reopening unavailable!"
       end
 
@@ -486,7 +508,7 @@ module Puma
             end
           end
         end
-      rescue Exception
+      rescue StandardError, NotImplementedError
         log "*** SIGINFO/SIGPWR not implemented, signal based backtrace unavailable!"
       end
     end
