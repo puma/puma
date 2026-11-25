@@ -2030,24 +2030,34 @@ class TestPumaServer < PumaTest
       [204, {}, []]
     end
 
-    socket = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Type: text/plain\r\nContent-Length: 100000\r\n\r\na"
-    chunked = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n"
+    expect_continue = "Expect: 100-continue\r\n"
+    await_continue = ->(client) do
+      response = "HTTP/1.1 100 Continue\r\n\r\n"
+      assert_equal response, Timeout.timeout(2) { client.read(response.bytesize) }
+    end
+
+    socket = send_http "POST / HTTP/1.1\r\nHost: test.com\r\n#{expect_continue}Content-Type: text/plain\r\nContent-Length: 100000\r\n\r\na"
+    chunked = send_http "POST / HTTP/1.1\r\nHost: test.com\r\n#{expect_continue}Transfer-Encoding: chunked\r\n\r\n1\r\na\r\n"
+    [socket, chunked].each(&await_continue)
+
+    trickle = -> do
+      socket << "a"
+      chunked << "1\r\na\r\n"
+    end
+    trickle.call
     trickler = Thread.new do
       loop do
         sleep 0.05
-        socket << "a"
-        chunked << "1\r\na\r\n"
+        trickle.call
       end
     rescue IOError, SystemCallError
     end
 
-    sleep 0.1
-    stop_thread = Thread.new { @server.stop(true) }
-
-    assert stop_thread.join(2), "server did not stop after shutdown_body_timeout elapsed"
+    @server.stop
+    assert @server.thread.join(2), "server did not stop after shutdown_body_timeout elapsed"
     refute app_called
 
-    trickler.kill
+    trickler.kill.join
     socket.close
     chunked.close
     server_run(first_data_timeout: 10, shutdown_body_timeout: 0.25, queue_requests: false) do
@@ -2055,32 +2065,45 @@ class TestPumaServer < PumaTest
       [204, {}, []]
     end
 
-    silent = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: 100000\r\n\r\na"
-    late = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: 5\r\n\r\nh"
-    late_writer = Thread.new do
-      sleep 0.5
-      late << "ello"
-    rescue IOError, SystemCallError
+    silent = send_http "POST / HTTP/1.1\r\nHost: test.com\r\n#{expect_continue}Content-Length: 100000\r\n\r\na"
+    await_continue.call(silent)
+
+    monotonic_time = -> { Process.clock_gettime(Process::CLOCK_MONOTONIC) }
+    checked_idle_deadline = false
+    granted_idle_grace = false
+    @server.define_singleton_method(:new_client) do |io, listener|
+      client = super(io, listener)
+      client.define_singleton_method(:check_deadline) do |&deadline|
+        if !checked_idle_deadline && deadline.call && !io.wait_readable(0)
+          checked_idle_deadline = true
+          super(&monotonic_time)
+          granted_idle_grace = true
+        else
+          super(&deadline)
+        end
+      end
+      client
     end
 
-    sleep 0.1
-    stop_thread = Thread.new { @server.stop(true) }
+    idle = send_http "POST / HTTP/1.1\r\nHost: test.com\r\n#{expect_continue}Content-Length: 5\r\n\r\nh"
+    await_continue.call(idle)
 
-    assert stop_thread.join(2), "server did not stop after shutdown_body_timeout elapsed"
+    stop_started_at = monotonic_time.call
+    @server.stop
+    expected_deadline = (stop_started_at + 0.25)..(monotonic_time.call + 0.25)
+    assert @server.thread.join(2), "server did not stop after shutdown_body_timeout elapsed"
     assert_equal "HTTP/1.1 408 Request Timeout", silent.read_response(timeout: 2).status
-    assert_equal "HTTP/1.1 408 Request Timeout", late.read_response(timeout: 2).status
+    assert_equal "HTTP/1.1 408 Request Timeout", idle.read_response(timeout: 2).status
     refute app_called
+    assert_includes expected_deadline, @server.shutdown_body_limit
+    assert checked_idle_deadline, "the incomplete body did not reach the idle deadline check"
+    refute granted_idle_grace, "an unreadable body was allowed to continue past the deadline"
   ensure
     trickler&.kill
-    late_writer&.join(2) || late_writer&.kill
-    begin
-      socket&.close
-      chunked&.close
-      silent&.close
-      late&.close
+    [socket, chunked, silent, idle].compact.each do |client|
+      client.close unless client.closed?
     rescue IOError, SystemCallError
     end
-    stop_thread&.join(2) || stop_thread&.kill
   end
 
   def test_shutdown_body_timeout_limits_continuously_streamed_chunked_body
