@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+[ $# -eq 2 ] || { echo "usage: publish-release TAG PKG_DIR" >&2; exit 1; }
+tag=$1
+pkg=$2
+[[ $tag =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "not a release tag: $tag" >&2; exit 1; }
+version=${tag#v}
+scripts=$(cd "$(dirname "$0")" && pwd)
+gems=("$pkg/puma-$version.gem" "$pkg/puma-$version-java.gem")
+
+rubygems_sha() {
+  local out code
+  out=$(curl -sS -w '\n%{http_code}' "https://rubygems.org/api/v2/rubygems/puma/versions/$version.json?platform=$1")
+  code=${out##*$'\n'}
+  case $code in
+    200) ruby -rjson -e 'puts JSON.parse(ARGV[0]).fetch("sha")' "${out%$'\n'*}" ;;
+    404) echo none ;;
+    *) echo "RubyGems returned HTTP $code for $1" >&2; return 1 ;;
+  esac
+}
+
+matched=0
+missing=0
+for gem in "${gems[@]}"; do
+  [ -f "$gem" ] || { echo "missing $gem" >&2; exit 1; }
+  platform=ruby
+  [[ $gem == *-java.gem ]] && platform=java
+  want=$(sha256sum "$gem" | cut -d' ' -f1)
+  got=$(rubygems_sha "$platform")
+  if [ "$got" = none ]; then
+    missing=$((missing + 1))
+  elif [ "$got" = "$want" ]; then
+    matched=$((matched + 1))
+  else
+    echo "RubyGems has $(basename "$gem") with SHA256 $got, the tag builds $want" >&2
+    exit 1
+  fi
+done
+[ "$matched" -eq 0 ] || [ "$missing" -eq 0 ] || { echo "only some gems for $version are on RubyGems" >&2; exit 1; }
+
+notes=$(mktemp)
+history=$(mktemp)
+git show "$tag:History.md" > "$history"
+"$scripts/release-notes" "$version" "$history" > "$notes"
+
+if gh release view "$tag" > /dev/null 2>&1; then
+  gh release edit "$tag" --title "$tag" --notes-file "$notes"
+else
+  gh release create "$tag" --draft --verify-tag --title "$tag" --notes-file "$notes"
+fi
+gh release upload "$tag" "${gems[@]}" --clobber
+
+if [ "$matched" -eq 2 ]; then
+  newest=$( (gh release list --exclude-drafts --exclude-pre-releases --limit 200 --json tagName -q '.[].tagName'; echo "$tag") |
+    grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+  latest=false
+  [ "$newest" = "$tag" ] && latest=true
+  gh release edit "$tag" --draft=false --latest="$latest"
+  echo "published $tag (latest: $latest)"
+else
+  echo "$tag is a draft until RubyGems has its gems"
+fi
+gh release view "$tag" --json name,isDraft,assets -q '"\(.name) draft=\(.isDraft) " + ([.assets[] | "\(.name):\(.size)"] | join(" "))'

@@ -42,7 +42,7 @@ Done when every job has finished (the maintainer may waive slow ones) and every 
 
 ## Publish
 
-Each of these steps in Release.md needs a **go**: merging, pushing the tag, pushing the gems, publishing the GitHub release, and the PR to `main`.
+Each of these steps in Release.md needs a **go**: merging, pushing the tag, pushing the gems, and the PR to `main`. Run the `release` workflow yourself with `workflow_dispatch` on `main`, once after the tag push and once after the gem push; it runs from `main`, so it works for tags on stable branches. Then read the release back: two assets, the notes, and latest only on the highest version.
 
 To push the gems, ask the maintainer where their RubyGems API key is stored, then hand them one command that sets `GEM_HOST_API_KEY` from that source for this run only, e.g. `env GEM_HOST_API_KEY=(<read secret>) .agents/skills/releasing-puma/scripts/push-gems vX.Y.Z tmp/release/build-<sha>/pkg/*.gem`. If its key check fails with a 401, the key is revoked; the maintainer makes a new one scoped to push `puma`. If RubyGems already lists a gem, its SHA256 must match yours; leave it off the command.
 
