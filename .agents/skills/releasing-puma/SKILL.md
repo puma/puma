@@ -48,6 +48,15 @@ To push the gems, ask the maintainer where their RubyGems API key is stored, the
 
 Done when the verify step passes for every series.
 
+## Security releases
+
+The maintainer can publish an advisory only after its fix is on `main`. Plan this with the release, not after it. Each PR below needs a **go**.
+
+1. After the gems are pushed, push each fix commit to `puma/puma` as branch `ghsa-<id>`. Open one PR per fix into `main`, starting "This PR puts the fix for [GHSA-…](link) on `main`" and naming the releases that have it.
+2. Squash-merge each with its fix commit's message, so `Reported-by:` trailers survive.
+3. Merge the **Patch releases** History PR from Release.md after the fixes.
+4. Tell the maintainer the advisories are ready to publish.
+
 ## Gotchas
 
 - `main` is protected and takes PRs only. Stable branches take direct fast-forward pushes.
