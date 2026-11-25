@@ -15,6 +15,12 @@ AllCops:
     - 'Rakefile'
   SuggestExtensions: false
   NewCops: enable
+  Include:
+    - '.duel.rb'
+
+inherit_mode:
+  merge:
+    - Include
 
 # enable all Performance cops
 Performance:

@@ -17,6 +17,7 @@ module PumaGemManifest
   NOT_SHIPPED = %w[
     .agents/**/*
     .codeclimate.yml
+    .duel.rb
     .gitattributes
     .github/**/*
     .gitignore
@@ -32,6 +33,7 @@ module PumaGemManifest
     SECURITY.md
     benchmarks/**/*
     cops/**/*
+    duel/**/*
     ext/puma_http11/*.rl
     ext/puma_http11/**/*.java
     puma.gemspec

@@ -121,3 +121,10 @@ task "test:integration" => test_prereq
 task :test => test_prereq
 
 task :default => [:rubocop, :test]
+
+begin
+  require "duel/rake_task"
+  Duel::RakeTask.new
+rescue LoadError
+  # Duel requires Ruby 3.4 or later
+end
