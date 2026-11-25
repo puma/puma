@@ -58,10 +58,9 @@ unless ENV["PUMA_DISABLE_SSL"]
 end
 
 if ENV["PUMA_MAKE_WARNINGS_INTO_ERRORS"]
-  # Make all warnings into errors
-  # Except `implicit-fallthrough` since most failures comes from ragel state machine generated code
   append_cflags(config_string('WERRORFLAG') || '-Werror')
   append_cflags '-Wno-implicit-fallthrough'
+  append_cflags '-Wno-error=type-limits'
 end
 
 create_makefile("puma/puma_http11")
