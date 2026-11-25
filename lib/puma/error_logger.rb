@@ -67,7 +67,8 @@ module Puma
       string_block << " #{text}" if text
       string_block << " (#{request_title(req)})" if request_parsed?(req)
       string_block << ": #{error.inspect}" if error
-      string_block.join('')
+      hex = ->(str) { str.bytes.map { |byte| "\\x%02X" % byte }.join }
+      string_block.join('').force_encoding(Encoding::UTF_8).scrub(&hex).gsub(/[\p{Cc}\u2028\u2029]/, &hex)
     end
 
     def request_dump(req)
