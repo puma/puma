@@ -2283,7 +2283,9 @@ class TestPumaServer < PumaTest
 
     clients = []
     2.times do
-      io = StringIO.new(request.dup)
+      io = StringIO.new
+      io.write request
+      io.rewind
       io.define_singleton_method(:to_io) { self }
       io.define_singleton_method(:wait_readable) { |_| !eof? }
       client = Puma::Client.new(io, {"REMOTE_ADDR" => HOST.ip})
