@@ -1470,8 +1470,8 @@ module Puma
     #    provided http header. For instance:
     #    `set_remote_address header: "X-Real-IP"`.
     #    Only the first word (as separated by spaces or comma) is used, allowing
-    #    headers such as X-Forwarded-For to be used as well. If this header is absent,
-    #    Puma will fall back to the behavior of :socket
+    #    headers such as X-Forwarded-For to be used as well. If this header is absent
+    #    or its first word is empty, Puma will fall back to the behavior of :socket.
     # 4. **proxy_protocol: :v1**- set the remote address to the value read from the
     #    HAproxy PROXY protocol, version 1. If the request does not have the PROXY
     #    protocol attached to it, will fall back to :socket
