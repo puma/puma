@@ -26,7 +26,7 @@ We review this access periodically, but we're looser with it than gem release ac
 
 If you have commit bit, we trust you enough to merge to `main` without necessarily getting review first.
 
-While all [security reports go to Evan directly](./SECURITY.md), maintainers will collaborate together on the fix.
+All [security reports go to Github](./SECURITY.md), maintainers will collaborate together on the fix.
 
 **Current members:** Everyone on the [Maintainers](./MAINTAINERS) list.
 
