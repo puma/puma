@@ -38,13 +38,22 @@ module Puma
         # host can be a hostname, ipv4 or bracketed ipv6. Followed by an optional port.
         if colon = host.rindex("]:") # IPV6 with port
           @env[SERVER_NAME] = host[0, colon+1]
-          @env[SERVER_PORT] = host[colon+2, host.bytesize]
+          port = host[colon+2, host.bytesize]
         elsif !host.start_with?("[") && colon = host.index(":") # not hostname or IPV4 with port
           @env[SERVER_NAME] = host[0, colon]
-          @env[SERVER_PORT] = host[colon+1, host.bytesize]
+          port = host[colon+1, host.bytesize]
         else
           @env[SERVER_NAME] = host
           @env[SERVER_PORT] = default_server_port
+        end
+
+        if port
+          unless port.match?(/\A[0-9]*\z/)
+            @error_status_code = 400
+            @env[HTTP_CONNECTION] = CLOSE
+            raise HttpParserError, "Invalid Host header port"
+          end
+          @env[SERVER_PORT] = port.empty? ? default_server_port : port
         end
       else
         @env[SERVER_NAME] = LOCALHOST
