@@ -236,7 +236,7 @@ module Puma
           # Load localhost authority if not loaded.
           # Ruby 3 `values_at` accepts an array, earlier do not
           if params.values_at(*cert_key).all? { |v| v.to_s.empty? }
-            ctx = localhost_authority && localhost_authority_context
+            ctx = localhost_authority && localhost_authority_context(params)
           end
 
           ctx ||=
@@ -320,7 +320,7 @@ module Puma
       @localhost_authority ||= Localhost::Authority.fetch if defined?(Localhost::Authority) && !Puma::IS_JRUBY
     end
 
-    def localhost_authority_context
+    def localhost_authority_context(params = {})
       return unless localhost_authority
 
       key_path, crt_path = if [:key_path, :certificate_path].all? { |m| localhost_authority.respond_to?(m) }
@@ -329,7 +329,8 @@ module Puma
         local_certificates_path = File.expand_path("~/.localhost")
         [File.join(local_certificates_path, "localhost.key"), File.join(local_certificates_path, "localhost.crt")]
       end
-      MiniSSL::ContextBuilder.new({ "key" => key_path, "cert" => crt_path }, @log_writer).context
+      params = params.reject { |k, _| k.start_with?("cert", "key") }
+      MiniSSL::ContextBuilder.new(params.merge("key" => key_path, "cert" => crt_path), @log_writer).context
     end
 
     # Tell the server to listen on host +host+, port +port+.
