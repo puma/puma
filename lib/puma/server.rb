@@ -109,6 +109,7 @@ module Puma
       @enable_keep_alives      &&= @queue_requests
       @io_selector_backend       = @options[:io_selector_backend]
       @http_content_length_limit = @options[:http_content_length_limit]
+      @http_parser               = @options[:http_parser] || default_http_parser
       @continue_callback         = @options[:continue_callback]
       @allow_underscore_headers  = @options.fetch(:allow_underscore_headers, true)
       @cluster_accept_loop_delay = ClusterAcceptLoopDelay.new(
@@ -489,9 +490,19 @@ module Puma
       @events.fire :state, :done
     end
 
+    # The parser used when the `http_parser` option is not set, which comes
+    # from the puma_http11 extension.
+    def default_http_parser
+      return HttpParser if Puma.const_defined?(:HttpParser, false)
+
+      raise LoadError, "Puma's puma_http11 extension could not be loaded, so there is no default HTTP parser. " \
+        "Reinstall Puma with a compiler, or set the http_parser option to a parser class, see docs/http_parser.md."
+    end
+    private :default_http_parser
+
     # :nodoc:
     def new_client(io, sock)
-      client = Client.new(io, @binder.env(sock))
+      client = Client.new(io, @binder.env(sock), http_parser: @http_parser)
       client.listener = sock
       client.env_set_http_version = @env_set_http_version
       client.http_content_length_limit = @http_content_length_limit
