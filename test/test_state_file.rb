@@ -26,4 +26,21 @@ running_from: "/path/to/app"
     assert_nil sf.control_auth_token
 
   end
+
+  def test_load_keeps_numeric_looking_token_as_string
+    state_path = tmp_path('.state')
+    %w[0123 1.50 1234].each do |token|
+      sf = Puma::StateFile.new
+      sf.pid = 12345
+      sf.control_auth_token = token
+      sf.save state_path
+
+      loaded = Puma::StateFile.new
+      loaded.load state_path
+      assert_equal token, loaded.control_auth_token
+      assert_kind_of String, loaded.control_auth_token
+      assert_equal 12345, loaded.pid
+      assert_kind_of Integer, loaded.pid
+    end
+  end
 end
