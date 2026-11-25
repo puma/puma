@@ -2222,14 +2222,21 @@ class TestPumaServer < PumaTest
   end
 
   def test_zero_first_data_timeout_reads_complete_body_without_queue
+    body = "a" * 256 * 1024
+    request = "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: #{body.bytesize}\r\n\r\n#{body}"
     body_sizes = []
     server_run(queue_requests: false, first_data_timeout: 0) do |env|
       body_sizes << env["rack.input"].read.bytesize
       [204, {}, []]
     end
 
-    body = "a" * 256 * 1024
-    socket = send_http "POST / HTTP/1.1\r\nHost: test.com\r\nContent-Length: #{body.bytesize}\r\n\r\n#{body}"
+    @server.define_singleton_method(:new_client) do |io, listener|
+      io.ungetbyte(io.read(request.bytesize))
+      super(io, listener)
+    end
+
+    socket = new_socket
+    socket << request
 
     assert_equal "HTTP/1.1 204 No Content", socket.read_response(timeout: 3).status
     assert_equal [body.bytesize], body_sizes
