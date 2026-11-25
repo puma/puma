@@ -2241,22 +2241,32 @@ class TestPumaServer < PumaTest
   end
 
   def test_shutdown_body_timeout_bounds_many_streamed_chunked_bodies
-    server_run(first_data_timeout: 10, shutdown_body_timeout: 0.25) { [204, {}, []] }
+    chunk_size = Puma::Const::CHUNK_SIZE
+    chunk = "#{chunk_size.to_s(16)}\r\n#{'a' * chunk_size}\r\n"
+    headers = "POST / HTTP/1.1\r\nHost: test.com\r\nTransfer-Encoding: chunked\r\n"
+    assert_shared_shutdown_body_cutoff("#{headers}\r\n", chunk)
 
-    chunk = "#{(64 * 1024).to_s(16)}\r\n#{'a' * 64 * 1024}\r\n"
-    sockets = Array.new(4) { send_http "POST / HTTP/1.1\r\nHost: test.com\r\nTransfer-Encoding: chunked\r\n\r\n" }
+    server_thread = server_run(first_data_timeout: 10, shutdown_body_timeout: 0) { [204, {}, []] }
+    sockets = Array.new(4) { send_http "#{headers}Expect: 100-continue\r\n\r\n" }
+    sockets.each do |socket|
+      assert_equal "HTTP/1.1 100 Continue", socket.read_response.status
+    end
+
+    streaming = Queue.new
     streamers = sockets.map do |socket|
       Thread.new do
+        socket.write chunk
+        streaming << true
         loop { socket.write chunk }
       rescue IOError, SystemCallError
       end
     end
 
-    sleep 0.2
+    Timeout.timeout(5) { sockets.size.times { streaming.pop } }
     started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    stop_thread = Thread.new { @server.stop(true) }
+    @server.stop
 
-    assert stop_thread.join(3), "server did not stop while chunked bodies were streamed"
+    assert server_thread.join(3), "server did not stop while chunked bodies were streamed"
     assert_operator Process.clock_gettime(Process::CLOCK_MONOTONIC) - started, :<, 1.5
   ensure
     streamers&.each(&:kill)
@@ -2264,7 +2274,46 @@ class TestPumaServer < PumaTest
       socket.close
     rescue IOError, SystemCallError
     end
-    stop_thread&.join(2) || stop_thread&.kill
+  end
+
+  private def assert_shared_shutdown_body_cutoff(request, chunk)
+    server = Puma::Server.new(@app, @events, log_writer: @log_writer, shutdown_body_timeout: 0.25)
+    queued = []
+    server.instance_variable_set(:@thread_pool, queued)
+
+    clients = []
+    2.times do
+      io = StringIO.new(request.dup)
+      io.define_singleton_method(:to_io) { self }
+      io.define_singleton_method(:wait_readable) { |_| !eof? }
+      client = Puma::Client.new(io, {"REMOTE_ADDR" => HOST.ip})
+      client.supported_http_methods = :any
+      clients << client
+      refute client.try_to_finish
+      io.string << chunk << "0\r\n\r\n"
+    end
+    early, late = clients
+
+    clock_gettime = Process.method(:clock_gettime)
+    test_thread = Thread.current
+    now = 0.0
+    clock = lambda do |*args|
+      Thread.current == test_thread && args == [Process::CLOCK_MONOTONIC] ? now : clock_gettime.call(*args)
+    end
+    Process.stub(:clock_gettime, clock) do
+      server.stop
+      now = 0.75
+      assert server.send(:reactor_wakeup, early)
+      assert_equal [early], queued
+
+      now = 1.5
+      assert server.send(:reactor_wakeup, late)
+      assert_equal [early], queued, "late upload was accepted after the shared shutdown cutoff"
+      assert_predicate late.io, :closed?
+      assert_includes late.io.string, "HTTP/1.1 408 Request Timeout"
+    end
+  ensure
+    clients&.each(&:close)
   end
 
   def test_zero_first_data_timeout_still_applies_shutdown_body_timeout
