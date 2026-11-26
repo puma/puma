@@ -504,4 +504,25 @@ class TestThreadPool < PumaTest
     mutex.unlock if mutex.owned?
     pool.shutdown(1)
   end
+
+  def test_wait_until_not_full_returns_when_thread_marked_as_io
+    mark = Queue.new
+    release = Queue.new
+    pool = new_pool(1, 1, max_io_threads: 1) do |processor|
+      mark.pop
+      processor.mark_as_io_thread!
+      release.pop
+    end
+
+    pool << true
+    gate = Thread.new { pool.wait_until_not_full }
+    assert_nil gate.join(0.1), "pool should be full with one busy thread"
+
+    mark << true
+    assert gate.join(1), "pool should not be full after the thread is marked as io"
+  ensure
+    gate&.kill
+    release.close
+    pool.shutdown(1)
+  end
 end

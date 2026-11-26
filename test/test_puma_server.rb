@@ -2745,6 +2745,24 @@ class TestPumaServer < PumaTest
     refute served, 'Connection accepted after stop command was served'
   end
 
+  def test_accepts_while_io_bound_request_runs_without_queue_requests
+    wait = Queue.new
+
+    server_run(queue_requests: false, max_threads: 1, max_io_threads: 1) do |env|
+      if env['PATH_INFO'] == '/io'
+        env['puma.mark_as_io_bound'].call
+        wait.pop
+      end
+      [200, {}, ["DONE"]]
+    end
+
+    send_http "GET /io HTTP/1.0\r\n\r\n"
+
+    assert_match 'DONE', send_http(GET_10).read_body(timeout: 2)
+  ensure
+    wait.close
+  end
+
   def test_remote_address_header
     server_run(remote_address: :header, remote_address_header: 'HTTP_X_REMOTE_IP') do |env|
       [200, {}, [env['REMOTE_ADDR']]]
