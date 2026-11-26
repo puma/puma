@@ -483,6 +483,25 @@ class TestRequestHeadersValid < TestRequestBase
     assert_equal '80', @client.env[SERVER_PORT]
   end
 
+  # An empty Host is valid when the target URI has no authority (RFC 9112 §3.2),
+  # e.g. requests over a unix socket
+  def test_host_header_empty_http11
+    create_client "GET / HTTP/1.1\r\nHost:\r\n\r\n"
+
+    assert_equal '', @client.env[HTTP_HOST]
+    assert_equal '', @client.env[SERVER_NAME]
+    assert_equal '80', @client.env[SERVER_PORT]
+  end
+
+  # Surrounding whitespace is not part of the field value, so this is also empty
+  def test_host_header_whitespace_http11
+    create_client "GET / HTTP/1.1\r\nHost: \r\n\r\n"
+
+    assert_equal '', @client.env[HTTP_HOST]
+    assert_equal '', @client.env[SERVER_NAME]
+    assert_equal '80', @client.env[SERVER_PORT]
+  end
+
   def test_host_ipv4_port
     request = <<~REQ.gsub("\n", "\r\n")
       GET / HTTP/1.0
@@ -615,18 +634,6 @@ class TestRequestHeadersInvalid < TestRequestBase
   def test_missing_host_http11
     assert_invalid "GET / HTTP/1.1\r\n\r\n",
       "Missing Host header",
-      status: 400
-  end
-
-  def test_empty_host_http11
-    assert_invalid "GET / HTTP/1.1\r\nHost:\r\n\r\n",
-      "Invalid Host header",
-      status: 400
-  end
-
-  def test_whitespace_host_http11
-    assert_invalid "GET / HTTP/1.1\r\nHost: \r\n\r\n",
-      "Invalid Host header",
       status: 400
   end
 end

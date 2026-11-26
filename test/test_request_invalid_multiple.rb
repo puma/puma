@@ -112,8 +112,16 @@ class TestRequestInvalidMultiple < PumaTest
     assert_status "GET / HTTP/1.1\r\n\r\n", 400
   end
 
+  # An empty Host is valid when the target URI has no authority (RFC 9112 §3.2),
+  # e.g. requests over a unix socket
   def test_empty_host_http11
-    assert_status "GET / HTTP/1.1\r\nHost:\r\n\r\n", 400
+    assert_status "GET / HTTP/1.1\r\nHost:\r\n\r\n", 200
+    assert_includes @response, "HTTP_HOST = \n"
+  end
+
+  def test_whitespace_host_http11
+    assert_status "GET / HTTP/1.1\r\nHost: \r\n\r\n", 200
+    assert_includes @response, "HTTP_HOST = \n"
   end
 
   # ──────────────────────────────────── below are invalid unescaped path characters

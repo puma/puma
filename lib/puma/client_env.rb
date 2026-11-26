@@ -20,12 +20,6 @@ module Puma
         @env[HTTP_CONNECTION] = CLOSE
         raise HttpParserError, "Missing Host header"
       end
-
-      if @env[HTTP_HOST].empty?
-        @error_status_code = 400
-        @env[HTTP_CONNECTION] = CLOSE
-        raise HttpParserError, "Invalid Host header"
-      end
     end
 
     # Given a Hash +env+ for the request read from +client+, add
