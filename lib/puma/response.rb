@@ -506,6 +506,9 @@ module Puma
         case key
         when CONTENT_LENGTH2
           next if illegal_header_value?(vs)
+          # Rack allows a header value to be an Array of Strings. Content-Length
+          # carries a single value, so read the one value it holds.
+          vs = vs.first if vs.is_a?(::Array)
           # nil.to_i is 0, nil&.to_i is nil
           resp_info[:content_length] = vs&.to_i
           next
