@@ -185,4 +185,11 @@ class TestResponseHeader < PumaTest
     resp = "HTTP/1.1 200 OK\r\nset-cookie: z=1\r\nset-cookie: a=2\r\ncontent-length: 5\r\n\r\n"
     assert_includes data, resp
   end
+
+  def test_content_length_value_array
+    server_run app: ->(env) { [200, {'Content-Length' => ['5']}, ['Hello']] }
+    data = send_http_and_read "GET / HTTP/1.0\r\n\r\n"
+
+    assert_includes data, "HTTP/1.0 200 OK\r\ncontent-length: 5\r\n\r\nHello"
+  end
 end
