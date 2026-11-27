@@ -125,6 +125,7 @@ module Puma
     #       Otherwise, if a normalized version of a `,` header already exists, we
     #       ignore the `,` version. This prevents clobbering headers managed by
     #       proxies but not by clients (Like X-Forwarded-For).
+    #       Aliases that would produce Rack-forbidden env keys are also discarded.
     #
     # @param env [Hash] see Puma::Client#env, from request, modifies in place
     # @version 5.0.3
@@ -144,7 +145,7 @@ module Puma
         next unless @allow_underscore_headers
 
         new_k = k.tr(",", "_")
-        next if @env.key?(new_k)
+        next if @env.key?(new_k) || RACK_FORBIDDEN_ENV_KEYS.key?(new_k)
 
         (to_add ||= {})[new_k] = v
       end
