@@ -707,6 +707,8 @@ module Puma
         status, headers, res_body = lowlevel_error(err, client.env, status_code)
       end
       prepare_response(status, headers, res_body, requests, client)
+    ensure
+      res_body.close if res_body.respond_to? :close
     end
     private :response_to_error
 
