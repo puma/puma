@@ -47,11 +47,12 @@ module Puma
         next unless v && ALLOWED_FIELDS.include?(k)
         v = v.strip
         @options[k] =
-          case v
-          when ''              then nil
-          when /\A\d+\z/       then v.to_i
-          when /\A\d+\.\d+\z/  then v.to_f
-          else                      v.gsub(/\A"|"\z/, '')
+          if v.empty?
+            nil
+          elsif k == 'pid' && v.match?(/\A\d+\z/)
+            v.to_i
+          else
+            v.gsub(/\A"|"\z/, '')
           end
       end
     end
