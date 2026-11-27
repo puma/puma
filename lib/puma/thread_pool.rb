@@ -210,21 +210,25 @@ module Puma
                 processor.marked_as_io_thread = false
               else
                 # We're already at max threads, so we exit the extra io thread.
-                @spawned -= 1
-                @processors.delete(processor)
-                trigger_before_thread_exit_hooks
-                Thread.exit
+                trim_thread(processor)
               end
             end
 
+            trim_thread_if_requested(processor)
+
             while todo.empty?
+              # Thread trimming could be requested when process is idle, when
+              # max was lowered, or during shutdown, hence we need to trim when
+              # todo is empty.
               if @trim_requested > 0
                 @trim_requested -= 1
-                @spawned -= 1
-                @processors.delete(processor)
-                not_full.signal
-                trigger_before_thread_exit_hooks
-                Thread.exit
+                if @shutdown || @spawned > @min
+                  trim_thread(processor)
+                else
+                  @trim_requested = 0
+                end
+              elsif !@shutdown && @spawned > @min && over_max_processors?
+                trim_thread(processor)
               end
 
               @waiting += 1
@@ -256,6 +260,40 @@ module Puma
     end
 
     private :spawn_thread
+
+    # :nodoc:
+    #
+    # Must be called with @mutex held, on a worker thread, between work items.
+    #
+    def trim_thread_if_requested(processor)
+      return if @shutdown || @spawned <= @min || @spawned <= 1
+
+      if @trim_requested > 0
+        @trim_requested -= 1
+        trim_thread(processor)
+      elsif over_max_processors?
+        trim_thread(processor)
+      end
+    end
+
+    private :trim_thread_if_requested
+
+    # :nodoc:
+    #
+    # Must be called with @mutex held, on the worker thread being trimmed.
+    # Performs the trim bookkeeping and exits the current thread. Signals
+    # not_full because the exit lowers busy_threads, which may unblock
+    # threads waiting in wait_until_not_full.
+    #
+    def trim_thread(processor)
+      @spawned -= 1
+      @processors.delete(processor)
+      @not_full.signal
+      trigger_before_thread_exit_hooks
+      Thread.exit
+    end
+
+    private :trim_thread
 
     def trigger_before_thread_start_hooks
       return unless @before_thread_start&.any?
@@ -337,9 +375,45 @@ module Puma
     # Must be called with @mutex held!
     #
     def can_spawn_processor?
+      normal_processors_delta < 0
+    end
+
+    # :nodoc:
+    #
+    # Must be called with @mutex held!
+    #
+    def over_max_processors?
+      normal_processors_delta > 0
+    end
+
+    private :over_max_processors?
+
+    def normal_processors_delta
       io_processors_count = @processors.count(&:marked_as_io_thread?)
       extra_io_processors_count = io_processors_count > @max_io_threads ? io_processors_count - @max_io_threads : 0
-      (@spawned - io_processors_count) < (@max - extra_io_processors_count)
+      (@spawned - io_processors_count) - (@max - extra_io_processors_count)
+    end
+
+    private :normal_processors_delta
+
+    # Update the minimum and maximum number of threads in the pool.
+    #
+    # When +max+ is lowered below the current thread count, idle threads are
+    # woken to exit immediately and busy threads exit between work items.
+    # When +max+ is raised, threads waiting in +wait_until_not_full+ are woken.
+    #
+    def update_min_max(min, max)
+      with_mutex do
+        @min = min
+        @max = max
+        return if @shutdown
+
+        max_trims = [@spawned - @min, 0].max
+        @trim_requested = max_trims if @trim_requested > max_trims
+
+        @not_empty.broadcast if over_max_processors?
+        @not_full.broadcast if (@spawned - @waiting + @todo.size) < @max
+      end
     end
 
     # Add +work+ to the todo list for a Thread to pickup and process.
