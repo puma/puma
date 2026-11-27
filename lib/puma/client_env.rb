@@ -58,7 +58,13 @@ module Puma
         rescue URI::InvalidURIError
           raise Puma::HttpParserError
         end
-        @env[REQUEST_PATH] = uri.path
+        path = uri.path
+        # RFC 9110 §4.2.3: an empty path on an http(s) absolute-form target is "/".
+        # Any other path is left exactly as the client sent it.
+        if (path.nil? || path.empty?) && %w[http https].include?(uri.scheme&.downcase)
+          path = "/"
+        end
+        @env[REQUEST_PATH] = path
 
         # A nil env value will cause a LintError (and fatal errors elsewhere),
         # so only set the env value if there actually is a value.
