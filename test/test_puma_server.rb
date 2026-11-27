@@ -390,6 +390,75 @@ class TestPumaServer < PumaTest
     assert_equal expected_resp, response
   end
 
+  def test_early_hints_array_value_is_sent_as_one_line_per_element
+    server_run(early_hints: true) do |env|
+      env['rack.early_hints'].call("Link" => ["</style.css>; rel=preload; as=style", "</script.js>; rel=preload"])
+      [200, { "X-Hello" => "World" }, ["Hello world!"]]
+    end
+
+    response = send_http_read_all "HEAD / HTTP/1.0\r\n\r\n"
+
+    expected_resp = <<~EOF.gsub("\n", "\r\n") + "\r\n"
+      HTTP/1.1 103 Early Hints
+      Link: </style.css>; rel=preload; as=style
+      Link: </script.js>; rel=preload
+
+      HTTP/1.0 200 OK
+      x-hello: World
+      content-length: 12
+    EOF
+
+    assert_equal expected_resp, response
+  end
+
+  def test_early_hints_skips_an_empty_array_value
+    server_run(early_hints: true) do |env|
+      env['rack.early_hints'].call("Link" => [], "X-Hint" => ["a"])
+      [200, { "X-Hello" => "World" }, ["Hello world!"]]
+    end
+
+    response = send_http_read_all "HEAD / HTTP/1.0\r\n\r\n"
+
+    assert_includes response, "HTTP/1.1 103 Early Hints\r\nX-Hint: a\r\n\r\n"
+    refute_includes response, "Link:"
+  end
+
+  def test_early_hints_rejects_invalid_array_elements_without_losing_safe_values
+    server_run(early_hints: true) do |env|
+      env['rack.early_hints'].call("Link" => ["bad\r\nX-Injected: value", "bad\nvalue", "bad\x00value", "</safe.css>; rel=preload"])
+      [200, { "X-Hello" => "World" }, ["Hello world!"]]
+    end
+
+    response = send_http_read_all "HEAD / HTTP/1.0\r\n\r\n"
+
+    assert_includes response, "HTTP/1.1 103 Early Hints\r\nLink: </safe.css>; rel=preload\r\n\r\n"
+    refute_includes response, "bad"
+    refute_includes response, "X-Injected"
+  end
+
+  def test_early_hints_does_not_send_a_response_for_only_empty_arrays
+    server_run(early_hints: true) do |env|
+      env['rack.early_hints'].call("Link" => [])
+      [200, { "X-Hello" => "World" }, ["Hello world!"]]
+    end
+
+    response = send_http_read_all "HEAD / HTTP/1.0\r\n\r\n"
+
+    refute_includes response, "103 Early Hints"
+    assert_includes response, "HTTP/1.0 200 OK"
+  end
+
+  def test_early_hints_preserves_an_empty_string_array_element
+    server_run(early_hints: true) do |env|
+      env['rack.early_hints'].call("X-Hint" => [""])
+      [200, { "X-Hello" => "World" }, ["Hello world!"]]
+    end
+
+    response = send_http_read_all "HEAD / HTTP/1.0\r\n\r\n"
+
+    assert_includes response, "HTTP/1.1 103 Early Hints\r\nX-Hint: \r\n\r\n"
+  end
+
   def test_early_hints_are_ignored_if_connection_lost
 
     server_run(early_hints: true) do |env|
