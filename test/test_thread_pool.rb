@@ -256,18 +256,19 @@ class TestThreadPool < PumaTest
   end
 
   def test_force_trim_is_honored_while_pool_is_busy
+    started = Queue.new
     release = Queue.new
-    pool = new_pool(0, 3) { release.pop }
+    pool = new_pool(0, 3) do
+      started << true
+      release.pop
+    end
     4.times { |i| pool << i } # 4 because 3 threads busy, 1 item queued
 
-    wait_until do
-      pool.instance_variable_get(:@processors).map(&:thread).count(&:stop?) == 3
-    end
+    3.times { started.pop }
 
     assert_equal 3, pool.spawned
     assert_equal 1, pool.backlog
 
-    pool.max = 2
     pool.trim(true)
 
     assert_equal 1, pool.trim_requested
@@ -276,30 +277,257 @@ class TestThreadPool < PumaTest
     wait_until { pool.spawned == 2 }
 
     assert_equal 2, pool.spawned
+    assert_equal 1, pool.backlog
     assert_equal 0, pool.trim_requested
   ensure
     3.times { release << true }
   end
 
+  def test_force_trim_unblocks_wait_until_not_full
+    started = Queue.new
+    release = Queue.new
+    pool = new_pool(1, 3) do
+      started << true
+      release.pop
+    end
+
+    3.times { |i| pool << i }
+    3.times { started.pop }
+
+    unblocked = Queue.new
+    waiter = Thread.new do
+      pool.wait_until_not_full
+      unblocked << true
+    end
+    wait_until { waiter.stop? }
+
+    pool.trim(true)
+    release << true
+
+    assert Timeout.timeout(1) { unblocked.pop }
+    assert_equal 2, pool.spawned
+  ensure
+    3.times { release << true }
+    waiter&.join(1)
+  end
+
+  def test_update_min_max_shrinks_idle_pool_without_auto_trim
+    pool = new_pool(4, 4)
+    assert_equal 4, pool.spawned
+    assert_equal 4, pool.waiting
+
+    pool.update_min_max(2, 2)
+    wait_until { pool.spawned == 2 && pool.waiting == 2 }
+
+    assert_equal 2, pool.spawned
+    assert_equal 2, pool.waiting
+  end
+
+  def test_update_min_max_lower_then_raise_does_not_overtrim
+    started = Queue.new
+    release = Queue.new
+    exited = Queue.new
+    options = {
+      min_threads: 1,
+      max_threads: 4,
+      before_thread_exit: [{ id: nil, block: proc { exited << true }, cluster_only: false }]
+    }
+    pool = @pool = Puma::ThreadPool.new("tst", options) do
+      started << true
+      release.pop
+    end
+
+    6.times { |i| pool << i }
+    4.times { started.pop }
+    assert_equal 2, pool.backlog
+
+    pool.update_min_max(1, 2)
+    pool.update_min_max(1, 4)
+
+    6.times { release << true }
+    wait_until { pool.waiting == 4 && pool.backlog == 0 }
+
+    assert_equal 4, pool.spawned
+    assert_equal 0, exited.size
+  ensure
+    6.times { release << true }
+  end
+
+  def test_update_min_max_raising_min_prevents_overtrim_from_pending_trims
+    started = Queue.new
+    release = Queue.new
+    pool = new_pool(1, 4) do
+      started << true
+      release.pop
+    end
+
+    4.times { |i| pool << i }
+    4.times { started.pop }
+
+    2.times { pool.trim(true) }
+    assert_equal 2, pool.trim_requested
+
+    pool.update_min_max(3, 4)
+    assert_equal 1, pool.trim_requested
+
+    4.times { release << true }
+    wait_until { pool.waiting == 3 }
+
+    assert_equal 3, pool.spawned
+    assert_equal 0, pool.trim_requested
+  ensure
+    4.times { release << true }
+  end
+
+  def test_update_min_max_with_io_threads_does_not_overtrim_normal_threads
+    io_started = Queue.new
+    io_release = Queue.new
+    normal_started = Queue.new
+    normal_release = Queue.new
+
+    pool = new_pool(0, 3, max_io_threads: 2) do |processor, kind|
+      if kind == :io
+        processor.mark_as_io_thread!
+        io_started << true
+        io_release.pop
+      else
+        normal_started << true
+        normal_release.pop
+      end
+    end
+
+    2.times { pool << :io }
+    2.times { io_started.pop }
+
+    5.times { pool << :normal }
+    3.times { normal_started.pop }
+
+    assert_equal 5, pool.spawned
+    assert_equal 2, pool.backlog
+
+    pool.update_min_max(0, 2)
+
+    2.times { io_release << true }
+    wait_until { pool.spawned == 3 }
+
+    normal_release << true
+    wait_until { pool.spawned == 2 }
+    assert_equal 2, pool.backlog
+
+    4.times { normal_release << true }
+    wait_until { pool.waiting == 2 && pool.backlog == 0 }
+
+    assert_equal 2, pool.spawned
+  ensure
+    2.times { io_release << true }
+    5.times { normal_release << true }
+  end
+
+  def test_update_min_max_after_reap_does_not_overtrim
+    started = Queue.new
+    release = Queue.new
+    pool = new_pool(1, 4) do
+      started << true
+      release.pop
+    end
+
+    4.times { |i| pool << i }
+    4.times { started.pop }
+
+    pool.update_min_max(1, 2)
+
+    victim = pool.instance_variable_get(:@processors).first
+    victim.kill
+    victim.join
+    pool.reap
+
+    assert_equal 3, pool.spawned
+
+    3.times { release << true }
+    wait_until { pool.waiting == 2 }
+
+    assert_equal 2, pool.spawned
+  ensure
+    4.times { release << true }
+  end
+
+  def test_update_min_max_zero_drains_queued_work_before_last_thread_exits
+    started = Queue.new
+    release = Queue.new
+    processed = Queue.new
+    pool = new_pool(0, 2) do
+      started << true
+      release.pop
+      processed << true
+    end
+
+    5.times { |i| pool << i }
+    2.times { started.pop }
+
+    assert_equal 2, pool.spawned
+    assert_equal 3, pool.backlog
+
+    pool.update_min_max(0, 0)
+
+    release << true
+    wait_until { pool.spawned == 1 }
+    assert_equal 3, pool.backlog
+
+    4.times { release << true }
+    wait_until { pool.spawned == 0 }
+
+    assert_equal 5, processed.size
+  ensure
+    5.times { release << true }
+  end
+
+  def test_update_min_max_raising_max_unblocks_wait_until_not_full
+    started = Queue.new
+    release = Queue.new
+    pool = new_pool(1, 2) do
+      started << true
+      release.pop
+    end
+
+    2.times { |i| pool << i }
+    2.times { started.pop }
+
+    unblocked = Queue.new
+    waiter = Thread.new do
+      pool.wait_until_not_full
+      unblocked << true
+    end
+    wait_until { waiter.stop? }
+
+    pool.update_min_max(1, 3)
+
+    assert Timeout.timeout(1) { unblocked.pop }
+  ensure
+    2.times { release << true }
+    waiter&.join(1)
+  end
+
   def test_shutdown_with_pending_trims_processes_all_queued_work
+    started = Queue.new
     release = Queue.new
     processed = Queue.new
 
     pool = new_pool(0, 3) do
+      started << true
       release.pop
       processed << true
     end
 
     request_size = 9
-    request_size.times { |i| pool << i } # 6 because 3 threads busy, 3 item queued
+    request_size.times { |i| pool << i } # 3 threads busy, 6 items queued
 
-    wait_until do
-      pool.instance_variable_get(:@processors).map(&:thread).count(&:stop?) == 3
-    end
+    3.times { started.pop }
 
     assert_equal 3, pool.spawned
 
     shutdown_thread = Thread.new { pool.shutdown(-1) }
+    wait_until { pool.trim_requested == 3 }
+
     6.times { release << true }
     wait_until { processed.size == 6 }
 
@@ -310,7 +538,7 @@ class TestThreadPool < PumaTest
 
     assert_equal request_size, processed.size
   ensure
-    (request_size - release.size).times { release << true }
+    request_size.times { release << true }
   end
 
   def test_trim_thread_exit_hook

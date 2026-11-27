@@ -3295,4 +3295,62 @@ class TestPumaServer < PumaTest
     assert_equal 5, @server.max_threads
     assert_equal 0, @server.min_threads
   end
+
+  def test_update_thread_pool_min_max_shrinks_busy_pool
+    started = Queue.new
+    release = Queue.new
+    exited = Queue.new
+
+    @app = ->(_env) do
+      started << true
+      release.pop
+      [200, {}, ["ok"]]
+    end
+
+    server_run(
+      min_threads: 1,
+      max_threads: 4,
+      auto_trim_time: 1,
+      before_thread_exit: [{ id: nil, block: proc { exited << true }, cluster_only: false }]
+    )
+
+    req_ary = send_http_array 6
+    4.times { started.pop }
+    Timeout.timeout(2) { sleep 0.01 until @pool.backlog == 2 }
+
+    assert_equal 4, @pool.spawned
+    assert_equal 2, @pool.backlog
+
+    @server.update_thread_pool_min_max(max: 2)
+
+    2.times { release << true }
+    Timeout.timeout(2) { sleep 0.01 until @pool.spawned == 2 }
+
+    assert_equal 2, @pool.spawned
+    assert_equal 2, @pool.backlog
+    assert_equal 2, exited.size
+
+    4.times { release << true }
+    responses = req_ary.map(&:read_response)
+
+    assert_equal 6, responses.size
+    assert responses.all? { |r| r.status == "HTTP/1.1 200 OK" }
+    assert_equal 2, @pool.spawned
+    assert_equal 0, @pool.backlog
+  ensure
+    6.times { release << true }
+  end
+
+  def test_update_thread_pool_min_max_shrinks_idle_fixed_pool
+    server_run(min_threads: 4, max_threads: 4, auto_trim_time: 1)
+
+    refute @pool.instance_variable_get(:@auto_trim)
+    assert_equal 4, @pool.spawned
+
+    @server.update_thread_pool_min_max(min: 2, max: 2)
+    Timeout.timeout(2) { sleep 0.01 until @pool.spawned == 2 }
+
+    assert_equal 2, @pool.spawned
+    assert_equal 2, @pool.waiting
+  end
 end

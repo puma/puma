@@ -856,7 +856,7 @@ module Puma
       end
 
       @thread_pool&.with_mutex do
-        @thread_pool.min, @thread_pool.max = min, max
+        @thread_pool.update_min_max(min, max)
         @min_threads, @max_threads = min, max
       end
     end
