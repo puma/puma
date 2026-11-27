@@ -163,6 +163,11 @@ class TestRequestLineInvalid < TestRequestBase
       "Invalid HTTP format, parsing fails. Are you trying to open an SSL connection to a non-SSL Puma?"
   end
 
+  def test_request_line_ends_with_bare_cr
+    assert_invalid "GET / HTTP/1.1\rHost: test.com\r\n\r\n",
+      "Invalid HTTP format, parsing fails. Are you trying to open an SSL connection to a non-SSL Puma?"
+  end
+
   def test_method_lower_case
     assert_invalid "GEt /?a=1 HTTP/1.1\r\nHost: test.com\r\n\r\n",
       "Invalid HTTP format, parsing fails. Bad method GEt"
