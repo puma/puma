@@ -368,6 +368,49 @@ class TestRequestHeadersValid < TestRequestBase
     assert_equal ["X_FORWARDED_FOR"], @client.env[PUMA_UNDERSCORE_HEADERS]
   end
 
+  # The Rack SPEC forbids HTTP_CONTENT_TYPE in the env, so a Content_Type header is dropped
+  def test_underscore_content_type_is_not_aliased
+    %w[Content_Type content_type CONTENT_TYPE].each do |name|
+      request = "GET / HTTP/1.1\r\nHost: test.com\r\n" \
+        "#{name}: application/json\r\n" \
+        "Content-Length: 11\r\n\r\nHello World"
+
+      create_client request
+
+      refute_operator @client.env, :key?, 'HTTP_CONTENT_TYPE'
+      refute_operator @client.env, :key?, 'CONTENT_TYPE'
+      assert_equal ["CONTENT_TYPE"], @client.env[PUMA_UNDERSCORE_HEADERS]
+    end
+  end
+
+  def test_underscore_content_type_does_not_replace_standard_content_type
+    [
+      "Content-Type: text/plain\r\nContent_Type: application/json",
+      "Content_Type: application/json\r\nContent-Type: text/plain",
+    ].each do |headers|
+      request = "GET / HTTP/1.1\r\nHost: test.com\r\n#{headers}\r\n" \
+        "Content-Length: 11\r\n\r\nHello World"
+
+      create_client request
+
+      assert_equal 'text/plain', @client.env['CONTENT_TYPE']
+      refute_operator @client.env, :key?, 'HTTP_CONTENT_TYPE'
+      assert_equal ["CONTENT_TYPE"], @client.env[PUMA_UNDERSCORE_HEADERS]
+    end
+  end
+
+  def test_underscore_content_type_disallowed
+    request = "GET / HTTP/1.1\r\nHost: test.com\r\n" \
+      "Content_Type: application/json\r\nContent-Length: 0\r\n\r\n"
+
+    create_client(request) { |client| client.allow_underscore_headers = false }
+
+    refute_operator @client.env, :key?, 'HTTP_CONTENT_TYPE'
+    refute_operator @client.env, :key?, 'CONTENT_TYPE'
+    refute_operator @client.env, :key?, 'HTTP_CONTENT,TYPE'
+    assert_equal ["CONTENT_TYPE"], @client.env[PUMA_UNDERSCORE_HEADERS]
+  end
+
   def test_underscore_header_1
     request = <<~REQ.gsub("\n", "\r\n").rstrip
       GET / HTTP/1.1
