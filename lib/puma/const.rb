@@ -292,6 +292,12 @@ module Puma
       "HTTP_CONTENT,LENGTH" => true,
     }
 
+    # Rack forbids HTTP_CONTENT_TYPE in the env; discard underscore aliases.
+    # HTTP_CONTENT_LENGTH is rejected earlier by Client#setup_body.
+    RACK_FORBIDDEN_ENV_KEYS = {
+      "HTTP_CONTENT_TYPE" => true,
+    }.freeze
+
     # Banned keys of response header
     BANNED_HEADER_KEY = /\A(rack\.|status\z)/.freeze
 
