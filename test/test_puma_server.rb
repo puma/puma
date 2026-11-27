@@ -2797,6 +2797,33 @@ class TestPumaServer < PumaTest
     assert_equal '/admin|x=1', body
   end
 
+  # RFC 9110 §4.2.3. See https://github.com/puma/puma/issues/4214
+  def test_absolute_form_http_without_path_is_root
+    server_run { |env| [200, {}, ["#{env['PATH_INFO']}|#{env['REQUEST_PATH']}|#{env['QUERY_STRING']}"]] }
+
+    body = send_http_read_resp_body "GET http://h HTTP/1.1\r\nHost: h\r\n\r\n"
+    assert_equal '/|/|', body
+
+    body = send_http_read_resp_body "GET http://h?x=1 HTTP/1.1\r\nHost: h\r\n\r\n"
+    assert_equal '/|/|x=1', body
+
+    body = send_http_read_resp_body "GET https://h HTTP/1.1\r\nHost: h\r\n\r\n"
+    assert_equal '/|/|', body
+
+    body = send_http_read_resp_body "GET HTTP://h HTTP/1.1\r\nHost: h\r\n\r\n"
+    assert_equal '/|/|', body
+
+    body = send_http_read_resp_body "GET http://h/ HTTP/1.1\r\nHost: h\r\n\r\n"
+    assert_equal '/|/|', body
+  end
+
+  def test_absolute_form_ftp_without_path_stays_empty
+    server_run { |env| [200, {}, [env['PATH_INFO'].to_s]] }
+
+    body = send_http_read_resp_body "GET ftp://h HTTP/1.1\r\nHost: h\r\n\r\n"
+    assert_equal '', body
+  end
+
   # see https://github.com/sinatra/sinatra/blob/main/examples/stream.ru
   def test_streaming_enum_body_1
     str = "Hello Puma World"
