@@ -411,7 +411,12 @@ module Puma
       headers.each_pair do |k, vs|
         next if illegal_header_key?(k)
 
-        if vs.respond_to?(:to_s) && !vs.to_s.empty?
+        if vs.is_a?(::Array)
+          vs.each do |v|
+            next if illegal_header_value?(v)
+            eh_str << "#{k}: #{v}\r\n"
+          end
+        elsif vs.respond_to?(:to_s) && !vs.to_s.empty?
           vs.to_s.split(NEWLINE).each do |v|
             next if illegal_header_value?(v)
             eh_str << "#{k}: #{v}\r\n"
