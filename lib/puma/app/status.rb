@@ -28,7 +28,13 @@ module Puma
 
         # resp_type is processed by following case statement, return
         # is a number (status) or a string used as the body of a 200 response
-        command = env['PATH_INFO'][/\/([^\/]+)$/, 1]
+        # A command is only the whole path. The last segment of `/stats/stop`
+        # is not a command, or that request would stop the server.
+        command = env['PATH_INFO'][/\A\/([^\/]+)\z/, 1]
+        unless command
+          return rack_response(404, "Unsupported action", 'text/plain')
+        end
+
         if @enabled_commands && !@enabled_commands.include?(command)
           return rack_response(404, "Command #{command.inspect} unavailable", 'text/plain')
         end

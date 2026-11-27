@@ -92,7 +92,22 @@ class TestAppStatus < PumaTest
 
   def test_alternate_location
     status, _ , _ = lint('__alternatE_location_/stats')
-    assert_equal 200, status
+    assert_equal 404, status
+  end
+
+  def test_nested_stop_is_not_a_command
+    status, _, app = lint('/stats/stop')
+
+    assert_equal :running, @server.status
+    assert_equal 404, status
+    assert_equal ['Unsupported action'], app.enum_for.to_a
+  end
+
+  def test_nested_stats_is_not_a_command
+    status, _, app = lint('/a/b/stats')
+
+    assert_equal 404, status
+    assert_equal ['Unsupported action'], app.enum_for.to_a
   end
 
   def test_disabled_command
